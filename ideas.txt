@@ -1,0 +1,1 @@
+Have it automatically connect with excel spreadsheets, as well as Google Forms for easy input
