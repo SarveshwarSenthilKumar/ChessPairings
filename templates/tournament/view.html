@@ -1,0 +1,272 @@
+{% extends "tournament/base.html" %}
+
+{% block title %}{{ tournament[1] }} - Chess Pairings{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center">
+            <a href="{{ url_for('tournament.index') }}" class="text-blue-600 hover:text-blue-800 mr-4">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">{{ tournament[1] }}</h1>
+                <div class="flex items-center text-sm text-gray-500 mt-1">
+                    <span class="mr-4">
+                        <i class="far fa-calendar-alt mr-1"></i>
+                        {% if tournament[2] %}
+                            {{ tournament[2].split(' ')[0] }}{% if tournament[3] %} - {{ tournament[3].split(' ')[0] }}{% endif %}
+                        {% else %}
+                            Date not set
+                        {% endif %}
+                    </span>
+                    <span>
+                        <i class="fas fa-flag-checkered mr-1"></i>
+                        Round {{ tournament[5] }} of {{ tournament[4] }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="flex space-x-2">
+            <a href="{{ url_for('tournament.standings', tournament_id=tournament[0]) }}" class="btn-secondary">
+                <i class="fas fa-list-ol mr-2"></i>Standings
+            </a>
+            <a href="{{ url_for('tournament.view_pairings', tournament_id=tournament[0]) }}" class="btn-secondary">
+                <i class="fas fa-chess-board mr-2"></i>All Pairings
+            </a>
+            {% if tournament[6] == 'in_progress' and current_round > 0 %}
+            <form method="POST" action="{{ url_for('tournament.generate_pairings', tournament_id=tournament[0]) }}" class="inline">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-plus-circle mr-2"></i>Generate Next Round
+                </button>
+            </form>
+            {% elif tournament[6] == 'pending' %}
+            <form method="POST" action="{{ url_for('tournament.generate_pairings', tournament_id=tournament[0]) }}" class="inline">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-play mr-2"></i>Start Tournament
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Current Round -->
+    <div class="lg:col-span-2">
+        <div class="card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-900">
+                    {% if current_round > 0 %}
+                        Round {{ current_round }} Pairings
+                    {% else %}
+                        Tournament Not Started
+                    {% endif %}
+                </h2>
+                {% if current_round > 0 %}
+                <span class="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    {{ tournament[6].replace('_', ' ').title() }}
+                </span>
+                {% endif %}
+            </div>
+
+            {% if current_round == 0 %}
+            <div class="text-center py-8">
+                <i class="fas fa-chess-king text-gray-300 text-5xl mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Tournament Not Started</h3>
+                <p class="text-gray-500 mb-4">Add players and start the tournament when ready.</p>
+                <form method="POST" action="{{ url_for('tournament.generate_pairings', tournament_id=tournament[0]) }}">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-play mr-2"></i>Start Tournament
+                    </button>
+                </form>
+            </div>
+            {% elif current_round_pairings %}
+            <div class="table-container">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>White</th>
+                            <th>Vs</th>
+                            <th>Black</th>
+                            <th>Result</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pairing in current_round_pairings %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td class="font-medium">{{ pairing.white_name }}</td>
+                            <td>vs</td>
+                            <td class="font-medium">
+                                {% if pairing.black_name %}
+                                    {{ pairing.black_name }}
+                                {% else %}
+                                    <span class="text-gray-400">BYE</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pairing.result %}
+                                    {{ pairing.result }}
+                                {% else %}
+                                    <span class="text-gray-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not pairing.result %}
+                                <div class="flex space-x-2">
+                                    <form method="POST" action="{{ url_for('tournament.record_result', pairing_id=pairing.id) }}" class="inline">
+                                        <input type="hidden" name="result" value="1-0">
+                                        <button type="submit" class="text-green-600 hover:text-green-800" title="White wins">
+                                            <i class="fas fa-flag"></i>
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('tournament.record_result', pairing_id=pairing.id) }}" class="inline">
+                                        <input type="hidden" name="result" value="1/2-1/2">
+                                        <button type="submit" class="text-yellow-600 hover:text-yellow-800" title="Draw">
+                                            <i class="fas fa-equals"></i>
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('tournament.record_result', pairing_id=pairing.id) }}" class="inline">
+                                        <input type="hidden" name="result" value="0-1">
+                                        <button type="submit" class="text-red-600 hover:text-red-800" title="Black wins">
+                                            <i class="fas fa-flag"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                {% else %}
+                                    <span class="text-gray-400">Completed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="fas fa-chess-king text-gray-300 text-5xl mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No Pairings Yet</h3>
+                <p class="text-gray-500 mb-4">Generate pairings for the next round when ready.</p>
+                <form method="POST" action="{{ url_for('tournament.generate_pairings', tournament_id=tournament[0]) }}">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-plus-circle mr-2"></i>Generate Pairings
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Players -->
+    <div>
+        <div class="card mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-900">Players ({{ players|length }})</h2>
+                <button onclick="document.getElementById('addPlayerModal').classList.remove('hidden')" 
+                        class="btn-primary py-1 px-3 text-sm">
+                    <i class="fas fa-plus mr-1"></i> Add
+                </button>
+            </div>
+            
+            {% if players %}
+            <div class="overflow-y-auto" style="max-height: 400px;">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Rating</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in players %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td class="font-medium">{{ player[3] }}</td>
+                            <td>{{ player[4] or 'Unrated' }}</td>
+                            <td>{{ player[5] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="fas fa-users text-gray-300 text-5xl mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No Players Yet</h3>
+                <p class="text-gray-500">Add players to get started.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Rounds -->
+        <div class="card">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Rounds</h2>
+            {% if rounds %}
+            <div class="space-y-2">
+                {% for round in rounds %}
+                <a href="{{ url_for('tournament.view_pairings', tournament_id=tournament[0]) }}?round={{ round[2] }}" 
+                   class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-50">
+                    <div>
+                        <h3 class="font-medium">Round {{ round[2] }}</h3>
+                        <p class="text-sm text-gray-500">
+                            {{ round[4].split('T')[0] if round[4] else 'Not started' }}
+                        </p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded-full 
+                              {% if round[3] == 'completed' %}bg-green-100 text-green-800
+                              {% elif round[3] == 'in_progress' %}bg-blue-100 text-blue-800
+                              {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ round[3].replace('_', ' ').title() }}
+                    </span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="fas fa-flag text-gray-300 text-5xl mb-4"></i>
+                <p class="text-gray-500">No rounds yet. Start the tournament to begin.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Player Modal -->
+<div id="addPlayerModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Add Player</h3>
+            <button onclick="document.getElementById('addPlayerModal').classList.add('hidden')" 
+                    class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('tournament.add_player', tournament_id=tournament[0]) }}">
+            <div class="mb-4">
+                <label for="name" class="form-label">Player Name</label>
+                <input type="text" id="name" name="name" class="form-input" required>
+            </div>
+            <div class="mb-4">
+                <label for="rating" class="form-label">Rating (Optional)</label>
+                <input type="number" id="rating" name="rating" class="form-input" min="0" step="1">
+            </div>
+            <div class="flex justify-end space-x-3 pt-2">
+                <button type="button" 
+                        onclick="document.getElementById('addPlayerModal').classList.add('hidden')" 
+                        class="btn-secondary">
+                    Cancel
+                </button>
+                <button type="submit" class="btn-primary">
+                    Add Player
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

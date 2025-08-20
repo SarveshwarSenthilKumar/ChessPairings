@@ -1,0 +1,72 @@
+{% extends "tournament/base.html" %}
+
+{% block title %}Tournaments - Chess Pairings{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">Tournaments</h1>
+    <a href="{{ url_for('tournament.create') }}" class="btn-primary">
+        <i class="fas fa-plus mr-2"></i>New Tournament
+    </a>
+</div>
+
+{% if not tournaments %}
+<div class="card text-center">
+    <div class="py-12">
+        <i class="fas fa-trophy text-gray-300 text-5xl mb-4"></i>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No tournaments yet</h3>
+        <p class="text-gray-500 mb-4">Get started by creating your first tournament.</p>
+        <a href="{{ url_for('tournament.create') }}" class="btn-primary">
+            <i class="fas fa-plus mr-2"></i>Create Tournament
+        </a>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="table-container">
+        <table class="w-full">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Rounds</th>
+                    <th>Current Round</th>
+                    <th>Start Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tournament in tournaments %}
+                <tr>
+                    <td class="font-medium">{{ tournament[1] }}</td>
+                    <td>
+                        {% if tournament[6] == 'pending' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Pending
+                            </span>
+                        {% elif tournament[6] == 'in_progress' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                In Progress
+                            </span>
+                        {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Completed
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>{{ tournament[4] }}</td>
+                    <td>{{ tournament[5] }}/{{ tournament[4] }}</td>
+                    <td>{{ tournament[2] or 'Not started' }}</td>
+                    <td class="space-x-2">
+                        <a href="{{ url_for('tournament.view', tournament_id=tournament[0]) }}" class="text-blue-600 hover:text-blue-900">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
