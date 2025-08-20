@@ -1,3 +1,106 @@
+# Chess Tournament Management System
+
+A comprehensive web application for managing chess tournaments using the Swiss system, built with Python Flask and SQLite.
+
+## 🚀 Features
+
+- **Tournament Management**: Create and manage multiple tournaments
+- **Player Management**: Add, edit, and remove players
+- **Swiss System Pairings**: Automatic pairing based on player scores
+- **Round Management**: Track rounds and match results
+- **Standings & Tiebreaks**: Real-time standings with multiple tiebreak systems
+- **User Authentication**: Secure login system with different user roles
+- **Responsive Design**: Works on desktop and mobile devices
+
+## 🛠️ Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/ChessPairings.git
+   cd ChessPairings
+   ```
+
+2. **Create a virtual environment** (recommended)
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set up the database**
+   ```bash
+   python createDatabase.py
+   ```
+
+5. **Configure environment variables**
+   Create a `.env` file in the project root with the following:
+   ```
+   FLASK_APP=app.py
+   FLASK_ENV=development
+   SECRET_KEY=your-secret-key-here
+   ```
+
+6. **Run the application**
+   ```bash
+   flask run
+   ```
+   The application will be available at `http://localhost:5000`
+
+## 🔑 Default Admin Account
+
+- **Username**: admin
+- **Password**: admin123 (change this after first login)
+
+## 📚 Technical Stack
+
+- **Backend**: Python 3.9+, Flask
+- **Database**: SQLite (with SQLAlchemy ORM)
+- **Frontend**: HTML5, CSS3, JavaScript, Bootstrap 5
+- **Authentication**: Flask-Login with password hashing
+- **Templates**: Jinja2
+
+## 📋 Database Schema
+
+The application uses the following main tables:
+
+- **users**: User accounts and authentication
+- **tournaments**: Tournament information
+- **players**: Player profiles
+- **tournament_players**: Junction table for tournament participants
+- **rounds**: Tournament rounds
+- **matches**: Individual chess matches
+- **user_tournament_roles**: User permissions for tournaments
+
+## 🧩 API Endpoints
+
+- `GET /` - Home page
+- `GET /tournaments` - List all tournaments
+- `GET /tournaments/<int:tournament_id>` - View tournament details
+- `GET /tournaments/create` - Create new tournament form
+- `POST /tournaments/create` - Create new tournament
+- `POST /tournaments/<int:tournament_id>/update` - Update tournament
+- `GET /auth/login` - Login page
+- `POST /auth/login` - Process login
+- `GET /auth/signup` - Signup page
+- `POST /auth/signup` - Process signup
+- `GET /auth/logout` - Logout
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📧 Contact
+
+For any questions or feedback, please open an issue on GitHub.
+
 Swiss System for Chess — Summary
 🧠 Purpose
 A Swiss-system tournament pairs players with similar scores each round, allowing many players to compete fairly and efficiently over a few rounds — without elimination.
