@@ -31,19 +31,76 @@ if authentication:
 # Register tournament blueprint
 app.register_blueprint(tournament_bp)
 
-# Ensure the instance folder exists
-os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
+# Database configuration
+def get_db_connection(db_name='tournament.db'):
+    """Create and configure a thread-local database connection"""
+    import sqlite3
+    from flask import g
+    
+    db_path = os.path.join(app.root_path, 'instance', db_name)
+    
+    if 'db' not in g:
+        g.db = sqlite3.connect(
+            db_path,
+            detect_types=sqlite3.PARSE_DECLTYPES,
+            check_same_thread=False  # Allow multiple threads to access the connection
+        )
+        g.db.row_factory = sqlite3.Row
+    
+    return g.db
 
-# Initialize database
-def init_db():
+# Initialize database tables
+def init_tournament_db():
     from tournament_db import TournamentDB
-    db = TournamentDB(os.path.join(app.root_path, 'instance', 'tournament.db'))
+    db_path = os.path.join(app.root_path, 'instance', 'tournament.db')
+    db = TournamentDB(db_path)
     db.create_tables()
     db.close()
 
-# Initialize database on first run
-if not os.path.exists(os.path.join(app.root_path, 'instance', 'tournament.db')):
-    init_db()
+def init_users_db():
+    db_path = os.path.join(app.root_path, 'instance', 'users.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            email TEXT UNIQUE,
+            first_name TEXT,
+            last_name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Initialize databases on first run
+def init_databases():
+    # Create instance directory if it doesn't exist
+    os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
+    
+    # Initialize tournament database
+    tournament_db_path = os.path.join(app.root_path, 'instance', 'tournament.db')
+    if not os.path.exists(tournament_db_path):
+        init_tournament_db()
+    
+    # Initialize users database
+    users_db_path = os.path.join(app.root_path, 'instance', 'users.db')
+    if not os.path.exists(users_db_path):
+        init_users_db()
+
+# Run database initialization
+init_databases()
+
+# Teardown app context to close database connection
+@app.teardown_appcontext
+def close_db(exception):
+    from flask import g
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 # Base route
 @app.route("/")
