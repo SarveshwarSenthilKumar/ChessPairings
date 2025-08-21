@@ -32,20 +32,33 @@ def login():
             return render_template("/auth/login.html", error="You have entered an incorrect password! Please try again!")
     
 @auth_blueprint.route("/signup", methods=["GET", "POST"])
-def signup():
+def register():
     if session.get("name"):
         return redirect("/")
-    if request.method=="GET":
-        return render_template("/auth/signup.html")
+    if request.method == "GET":
+        return render_template("auth/signup.html")
             
-    emailAddress = request.form.get("emailaddress").strip().lower()
-    fullName = request.form.get("name").strip()
-    username = request.form.get("username").strip().lower()
-    password = request.form.get("password").strip()
+    emailAddress = request.form.get("emailaddress", "").strip().lower()
+    fullName = request.form.get("name", "").strip()
+    username = request.form.get("username", "").strip().lower()
+    password = request.form.get("password", "").strip()
+    confirm_password = request.form.get("confirm_password", "").strip()
+    terms = request.form.get("terms")
 
+    # Basic validation
+    if not all([emailAddress, fullName, username, password, confirm_password]):
+        return render_template("auth/signup.html", error="All fields are required")
+        
+    if password != confirm_password:
+        return render_template("auth/signup.html", error="Passwords do not match")
+        
+    if not terms:
+        return render_template("auth/signup.html", error="You must accept the terms and conditions")
+
+    # Validate name
     validName = verifyName(fullName)
     if not validName[0]:
-        return render_template("/auth/signUp.html", error=validName[1])
+        return render_template("auth/signup.html", error=validName[1])
     fullName = validName[1]
 
     db = SQL("sqlite:///users.db")
