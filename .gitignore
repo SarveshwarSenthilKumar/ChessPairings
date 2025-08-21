@@ -40,20 +40,18 @@ ENV/
 
 # Environment variables
 .env
-.env.local
-.env.*.local
+.DS_Store
 
-# Flask
-instance/
-.webassets-cache
-/flask_session
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
 
 # Local development
-.DS_Store
-Thumbs.db
+flask_session/
+.python-version
 
 # Logs
-logs/
 *.log
 
 # Local configuration
