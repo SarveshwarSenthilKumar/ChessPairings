@@ -1,65 +1,68 @@
-
 import os
-from flask import Flask, render_template, request, redirect, session, jsonify, url_for
+import sqlite3
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, g
 from flask_session import Session
 from datetime import datetime, timedelta
 import pytz
-from sql import *  # Used for database connection and management
-from SarvAuth import *  # Used for user authentication functions
-from auth import auth_blueprint
-from tournament_routes import tournament_bp
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Initialize Flask app
 app = Flask(__name__)
 
 # Configuration
-app.config["SESSION_PERMANENT"] = True
-app.config["SESSION_TYPE"] = "filesystem"
-app.config['SECRET_KEY'] = os.urandom(24)  # For session management
+app.config['SECRET_KEY'] = os.urandom(24)
+app.config['SESSION_PERMANENT'] = True
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
+# Configure session
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
+# Create session directory if it doesn't exist
+os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 
 # Initialize session
-Session(app)
+Session().init_app(app)
+
+# Handle proxy headers if behind a reverse proxy
+app.wsgi_app = ProxyFix(app.wsgi_app)
 
 # Settings
-auto_run = True  # Auto-run the server when app.py is executed
-port = 5000  # Default port
-authentication = True  # Enable/disable authentication
+auto_run = True
+port = 5000
+authentication = True
 
-# Register blueprints
-if authentication:
+# Import blueprints
+try:
+    from auth import auth_blueprint
+    from tournament_routes import tournament_bp
+    from tournament_db import TournamentDB
+    
+    # Register blueprints
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
-
-# Register tournament blueprint
-app.register_blueprint(tournament_bp)
+    app.register_blueprint(tournament_bp, url_prefix='')
+    
+    print("Blueprints registered successfully")
+except Exception as e:
+    print(f"Error importing blueprints: {e}")
 
 # Database configuration
 def get_db_connection(db_name='tournament.db'):
     """Create and configure a thread-local database connection"""
-    import sqlite3
-    from flask import g
-    
-    db_path = os.path.join(app.root_path, 'instance', db_name)
+    db_path = os.path.join(app.instance_path, db_name)
     
     if 'db' not in g:
-        g.db = sqlite3.connect(
-            db_path,
-            detect_types=sqlite3.PARSE_DECLTYPES,
-            check_same_thread=False  # Allow multiple threads to access the connection
-        )
+        g.db = sqlite3.connect(db_path, check_same_thread=False)
         g.db.row_factory = sqlite3.Row
     
     return g.db
 
-# Initialize database tables
-def init_tournament_db():
-    from tournament_db import TournamentDB
-    db_path = os.path.join(app.root_path, 'instance', 'tournament.db')
-    db = TournamentDB(db_path)
-    db.create_tables()
-    db.close()
-
 def init_users_db():
-    db_path = os.path.join(app.root_path, 'instance', 'users.db')
+    """Initialize the users database with required tables"""
+    db_path = os.path.join(app.instance_path, 'users.db')
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
@@ -77,42 +80,51 @@ def init_users_db():
     conn.commit()
     conn.close()
 
-# Initialize databases on first run
+# Initialize database tables
+def init_tournament_db():
+    """Initialize the tournament database with required tables"""
+    db_path = os.path.join(app.instance_path, 'tournament.db')
+    if not os.path.exists(db_path):
+        db = TournamentDB(db_path)
+        db.create_tables()
+        db.close()
+        print("Tournament database initialized successfully")
+    else:
+        print("Tournament database already exists")
+
+# Initialize all databases
 def init_databases():
+    """Initialize all required databases"""
     # Create instance directory if it doesn't exist
-    os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
+    os.makedirs(app.instance_path, exist_ok=True)
     
     # Initialize tournament database
-    tournament_db_path = os.path.join(app.root_path, 'instance', 'tournament.db')
-    if not os.path.exists(tournament_db_path):
-        init_tournament_db()
+    init_tournament_db()
     
     # Initialize users database
-    users_db_path = os.path.join(app.root_path, 'instance', 'users.db')
+    users_db_path = os.path.join(app.instance_path, 'users.db')
     if not os.path.exists(users_db_path):
         init_users_db()
 
-# Run database initialization
-init_databases()
+# Initialize the application
+with app.app_context():
+    init_databases()
 
 # Teardown app context to close database connection
 @app.teardown_appcontext
-def close_db(exception):
-    from flask import g
+def close_db(exception=None):
     db = g.pop('db', None)
     if db is not None:
         db.close()
 
-# Base route
-@app.route("/")
+# Routes
+@app.route('/')
 def index():
     if not authentication:
-        return render_template("index.html")
-    else:
-        if not session.get("name"):
-            return render_template("index.html", authentication=True)
-        else:
-            return redirect(url_for('tournament.index'))
+        return render_template('index.html')
+    if not session.get('name'):
+        return render_template('index.html', authentication=True)
+    return redirect(url_for('tournament.index'))
 
 # Error handlers
 @app.errorhandler(404)
