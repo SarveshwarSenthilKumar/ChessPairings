@@ -1,0 +1,63 @@
+import sqlite3
+import os
+
+def create_database():
+    """Create both tournament and users databases with proper schema."""
+    # Create users database
+    users_db = 'users.db'
+    if os.path.exists(users_db):
+        os.remove(users_db)
+    
+    conn_users = sqlite3.connect(users_db)
+    cursor_users = conn_users.cursor()
+    
+    # Create users table
+    cursor_users.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        email TEXT UNIQUE,
+        name TEXT,
+        dateJoined TEXT,
+        is_admin BOOLEAN DEFAULT 0
+    )
+    ''')
+    
+    # Enable foreign key constraints for users database
+    cursor_users.execute("PRAGMA foreign_keys = ON;")
+    conn_users.commit()
+    conn_users.close()
+    
+    # Create tournament database
+    tournament_db = 'tournament.db'
+    if os.path.exists(tournament_db):
+        os.remove(tournament_db)
+    
+    conn_tournament = sqlite3.connect(tournament_db)
+    cursor_tournament = conn_tournament.cursor()
+    
+    # Enable foreign key constraints for tournament database
+    cursor_tournament.execute("PRAGMA foreign_keys = ON;")
+    
+    # Read and execute tournament schema
+    with open('database_schema.sql', 'r') as f:
+        schema = f.read()
+    
+    # Execute each statement in the schema
+    for statement in schema.split(';'):
+        statement = statement.strip()
+        if statement:
+            try:
+                cursor_tournament.execute(statement)
+            except sqlite3.Error as e:
+                print(f"Error executing statement: {statement}")
+                print(f"Error: {e}")
+    
+    conn_tournament.commit()
+    conn_tournament.close()
+    
+    print("Both 'users.db' and 'tournament.db' have been created successfully!")
+
+if __name__ == "__main__":
+    create_database()

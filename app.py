@@ -2,13 +2,14 @@
 import os
 from flask import Flask, render_template, request, redirect, session, jsonify, url_for
 from flask_session import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 from sql import *  # Used for database connection and management
 from SarvAuth import *  # Used for user authentication functions
 from auth import auth_blueprint
 from tournament_routes import tournament_bp
 
+# Initialize Flask app
 app = Flask(__name__)
 
 # Configuration

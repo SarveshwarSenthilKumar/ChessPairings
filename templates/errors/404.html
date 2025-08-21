@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Page Not Found - Chess Tournament Manager{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-template">
+                <h1 class="display-1 text-danger">404</h1>
+                <h2 class="display-4">Page Not Found</h2>
+                <div class="error-details">
+                    <p class="lead">Sorry, the page you are looking for could not be found.</p>
+                </div>
+                <div class="error-actions mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg me-2">
+                        <i class="bi bi-house-door"></i> Take Me Home
+                    </a>
+                    <a href="{{ url_for('tournament.list_tournaments') }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-trophy"></i> View Tournaments
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
