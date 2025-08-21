@@ -1,97 +1,145 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Flask Development Template</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #282c34;
-            color: white;
-            text-align: center;
-        }
-        .container {
-            max-width: 400px;
-            padding: 20px;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        h1 {
-            font-size: 2rem;
-        }
-        input {
-            width: calc(100% - 20px);
-            padding: 12px;
-            margin: 10px 0;
-            border: none;
-            border-radius: 5px;
-            background-color: #fff;
-            color: #000;
-            font-size: 1rem;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: none;
-            border-radius: 5px;
-            background-color: #61dafb;
-            color: black;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background-color: #4fa3d1;
-        }
-        .footer {
-            margin-top: 20px;
-            font-size: 1rem;
-            opacity: 0.9;
-            font-weight: bold;
-            background: linear-gradient(90deg, #61dafb, #4fa3d1);
-            padding: 10px;
-            border-radius: 5px;
-            display: inline-block;
-        }
-        .error-message {
-            background-color: #ff4d4d;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            font-size: 1rem;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
 
-    <div class="container">
-        <h1>Login</h1>
+{% block title %}Login - Chess Tournament Manager{% endblock %}
 
-        <div id="error-message" class="error-message" 
-            {% if error %} style="display: block;" {% else %} style="display: none;" {% endif %}>
-            {{ error }}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0 rounded-lg mt-5">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h3 class="my-0">
+                        <i class="fas fa-chess-knight me-2"></i>Welcome Back
+                    </h3>
+                    <p class="mb-0 mt-2">Sign in to manage your tournaments</p>
+                </div>
+                <div class="card-body p-5">
+                    <!-- Social Login Buttons -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <a href="#" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fab fa-google me-2"></i> Continue with Google
+                            </a>
+                            <a href="#" class="btn btn-outline-dark w-100">
+                                <i class="fab fa-github me-2"></i> Continue with GitHub
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="divider my-4">
+                        <span class="px-3 bg-white text-muted">OR</span>
+                    </div>
+
+                    <!-- Error Message -->
+                    {% if error %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+
+                    <!-- Login Form -->
+                    <form action="{{ url_for('auth.login') }}" method="POST" class="mt-4">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                            <label for="username"><i class="fas fa-user me-2"></i>Username</label>
+                        </div>
+                        <div class="form-floating mb-4">
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                            <label for="password"><i class="fas fa-lock me-2"></i>Password</label>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="rememberMe" name="remember_me">
+                                <label class="form-check-label" for="rememberMe">
+                                    Remember me
+                                </label>
+                            </div>
+                            <a href="#" class="text-decoration-none">Forgot password?</a>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg w-100 py-3 mb-3">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <p class="mb-0">Don't have an account? 
+                            <a href="{{ url_for('auth.register') }}" class="text-primary text-decoration-none fw-bold">
+                                Create one now
+                            </a>
+                        </p>
+                    </div>
+                </div>
+                <div class="card-footer text-center py-3 bg-light">
+                    <a href="{{ url_for('tournament.index') }}" class="text-decoration-none">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Home
+                    </a>
+                </div>
+            </div>
         </div>
-
-
-        <form action="/auth/login" method="POST">
-            <input name="username" type="text" placeholder="Username" required>
-            <input name="password" type="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
-        <button onclick="location.href='/'">Back to Home</button>
-        <button onclick="location.href='/signup'">Sign Up</button>
-        <div class="footer">Flask Development Template - Created by Sarveshwar Senthil Kumar</div>
     </div>
+</div>
+{% endblock %}
 
-</body>
-</html>
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f8f9fa;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e9ecef' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .card {
+        border: none;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    .card-header {
+        border-radius: 0 !important;
+    }
+    .form-floating>label {
+        padding: 1rem 0.75rem;
+    }
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    .divider {
+        position: relative;
+        text-align: center;
+        margin: 2rem 0;
+    }
+    .divider:before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: #e9ecef;
+        z-index: -1;
+    }
+    .divider span {
+        position: relative;
+        display: inline-block;
+        font-size: 0.875rem;
+    }
+    .btn {
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+    }
+    .btn-primary {
+        background: linear-gradient(45deg, #0d6efd, #0b5ed7);
+        border: none;
+    }
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+    }
+    .btn-outline-primary:hover {
+        background-color: rgba(13, 110, 253, 0.1);
+    }
+    .btn-outline-dark:hover {
+        background-color: rgba(33, 37, 41, 0.1);
+    }
+</style>
+{% endblock %}
