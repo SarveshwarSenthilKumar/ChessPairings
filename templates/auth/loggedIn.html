@@ -1,178 +1,51 @@
-{% extends "base.html" %}
-
-{% block title %}Dashboard - Chess Tournament Manager{% endblock %}
-
-{% block content %}
-<div class="container">
-    <div class="row mb-5">
-        <div class="col-12 text-center">
-            <div class="d-flex justify-content-center align-items-center mb-3">
-                <div class="me-3">
-                    <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
-                        <i class="bi-person-circle text-primary" style="font-size: 2.5rem;"></i>
-                    </div>
-                </div>
-                <div class="text-start">
-                    <h2 class="mb-0">Welcome back, {{ name }}!</h2>
-                    <p class="text-muted mb-0">{{ email }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="row g-4 mb-5">
-        <!-- Quick Stats -->
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                        <i class="bi-trophy" style="font-size: 1.5rem;"></i>
-                    </div>
-                    <h3 class="h5">Tournaments</h3>
-                    <h2 class="display-6 fw-bold my-3">{{ stats.tournaments|default('0') }}</h2>
-                    <a href="{{ url_for('tournament.list_tournaments') }}" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <div class="bg-success bg-opacity-10 text-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                        <i class="bi-people" style="font-size: 1.5rem;"></i>
-                    </div>
-                    <h3 class="h5">Players</h3>
-                    <h2 class="display-6 fw-bold my-3">{{ stats.players|default('0') }}</h2>
-                    <a href="#" class="btn btn-sm btn-outline-success">Manage Players</a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <div class="bg-info bg-opacity-10 text-info rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                        <i class="bi-graph-up" style="font-size: 1.5rem;"></i>
-                    </div>
-                    <h3 class="h5">Rating</h3>
-                    <h2 class="display-6 fw-bold my-3">{{ stats.rating|default('1200') }}</h2>
-                    <a href="#" class="btn btn-sm btn-outline-info">View Profile</a>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Quick Actions -->
-    <div class="row mb-5">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0">Quick Actions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex flex-wrap gap-3">
-                        <a href="{{ url_for('tournament.create_tournament') }}" class="btn btn-primary">
-                            <i class="bi-plus-circle me-2"></i>New Tournament
-                        </a>
-                        <a href="#" class="btn btn-outline-secondary">
-                            <i class="bi-people me-2"></i>Add Players
-                        </a>
-                        <a href="#" class="btn btn-outline-secondary">
-                            <i class="bi-upload me-2"></i>Import Games
-                        </a>
-                        <a href="#" class="btn btn-outline-secondary">
-                            <i class="bi-gear me-2"></i>Settings
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Recent Tournaments -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0">Recent Tournaments</h5>
-                    <a href="{{ url_for('tournament.list_tournaments') }}" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-                <div class="card-body p-0">
-                    {% if tournaments %}
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Date</th>
-                                        <th>Players</th>
-                                        <th>Rounds</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for tournament in tournaments %}
-                                    <tr>
-                                        <td>
-                                            <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}" class="text-decoration-none">
-                                                {{ tournament.name }}
-                                            </a>
-                                        </td>
-                                        <td>{{ tournament.start_date.strftime('%b %d, %Y') }}</td>
-                                        <td>{{ tournament.player_count }}/{{ tournament.max_players }}</td>
-                                        <td>{{ tournament.current_round }}/{{ tournament.total_rounds }}</td>
-                                        <td>
-                                            <span class="badge bg-{{ 'success' if tournament.status == 'completed' else 'primary' if tournament.status == 'in_progress' else 'secondary' }}">
-                                                {{ tournament.status|replace('_', ' ')|title }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}" class="btn btn-outline-primary" title="View">
-                                                    <i class="bi-eye"></i>
-                                                </a>
-                                                <a href="#" class="btn btn-outline-secondary" title="Edit">
-                                                    <i class="bi-pencil"></i>
-                                                </a>
-                                                <a href="#" class="btn btn-outline-danger" title="Delete">
-                                                    <i class="bi-trash"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-5">
-                            <div class="mb-3">
-                                <i class="bi-trophy text-muted" style="font-size: 3rem; opacity: 0.5;"></i>
-                            </div>
-                            <h5 class="text-muted mb-3">No tournaments yet</h5>
-                            <p class="text-muted mb-4">Get started by creating your first tournament</p>
-                            <a href="{{ url_for('tournament.create_tournament') }}" class="btn btn-primary">
-                                <i class="bi-plus-circle me-2"></i>Create Tournament
-                            </a>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    // Any additional dashboard-specific JavaScript can go here
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-    });
-</script>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome Back</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #282c34;
+            color: white;
+            text-align: center;
+            flex-direction: column;
+        }
+        .header {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .subtext {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+        .logout-button {
+            background-color: transparent;
+            color: #61dafb;
+            border: 2px solid #61dafb;
+            font-size: 1rem;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s, color 0.3s;
+        }
+        .logout-button:hover {
+            background-color: #61dafb;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">Welcome Back to the Flask Development Template</div>
+    <div class="subtext">You are now logged in!</div>
+    <button class="logout-button" onclick="location.href='/auth/logout'">Logout</button>
+</body>
+</html>

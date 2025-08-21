@@ -3,158 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - Chess Tournament</title>
+    <title>Sign Up - Flask Development Template</title>
     <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #e74c3c;
-            --accent: #3498db;
-            --light: #ecf0f1;
-            --dark: #2c3e50;
-            --success: #27ae60;
-            --error: #e74c3c;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f7fa;
-            color: var(--dark);
-            line-height: 1.6;
+            font-family: Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            height: 100vh;
             margin: 0;
-            padding: 20px;
-        }
-        
-        .signup-container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 450px;
-            padding: 2.5rem;
+            background-color: #282c34;
+            color: white;
             text-align: center;
         }
-        
-        .logo {
-            width: 100px;
-            margin-bottom: 1.5rem;
+        .container {
+            max-width: 400px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
-        
         h1 {
-            color: var(--primary);
-            margin-bottom: 1.5rem;
-            font-size: 1.8rem;
+            font-size: 2rem;
         }
-        
-        .form-group {
-            margin-bottom: 1.2rem;
-            text-align: left;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--dark);
-            font-weight: 500;
-            font-size: 0.95rem;
-        }
-        
         input {
-            width: 100%;
-            padding: 0.8rem;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        
-        input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
-        }
-        
-        .btn {
-            display: inline-block;
-            background-color: var(--accent);
-            color: white;
-            padding: 0.8rem 1.5rem;
+            width: calc(100% - 20px);
+            padding: 12px;
+            margin: 10px 0;
             border: none;
-            border-radius: 6px;
+            border-radius: 5px;
+            background-color: #fff;
+            color: #000;
             font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
+        }
+        button {
             width: 100%;
-            margin-top: 1rem;
-            transition: background-color 0.3s, transform 0.2s;
-        }
-        
-        .btn:hover {
-            background-color: #2980b9;
-            transform: translateY(-2px);
-        }
-        
-        .btn:active {
-            transform: translateY(0);
-        }
-        
-        .login-link {
-            margin-top: 1.5rem;
-            color: #666;
-            font-size: 0.95rem;
-        }
-        
-        .login-link a {
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-        
-        .alert {
-            padding: 0.8rem 1rem;
-            border-radius: 6px;
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-            text-align: left;
-        }
-        
-        .alert-error {
-            background-color: #fde8e8;
-            color: var(--error);
-            border-left: 4px solid var(--error);
-        }
-        
-        .alert-success {
-            background-color: #e8f8f0;
-            color: var(--success);
-            border-left: 4px solid var(--success);
-        }
-        
-        .password-requirements {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 0.3rem;
-            text-align: left;
-        }
-        
-        .name-fields {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1.2rem;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            background-color: #61dafb;
+            color: black;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
         }
         button:hover {
             background-color: #4fa3d1;
@@ -167,6 +59,7 @@
             background: linear-gradient(90deg, #61dafb, #4fa3d1);
             padding: 10px;
             border-radius: 5px;
+            display: inline-block;
         }
         .error-message {
             background-color: #ff4d4d;
@@ -177,167 +70,29 @@
             font-size: 1rem;
             font-weight: bold;
         }
-        
-        @media (max-width: 480px) {
-            .signup-container {
-                padding: 1.5rem;
-            }
-            
-            .name-fields {
-                grid-template-columns: 1fr;
-                gap: 0.5rem;
-            }
-        }
     </style>
 </head>
 <body>
-    <div class="signup-container">
-        <h1>Create an Account</h1>
-        <p>Join our chess community today</p>
+    <div class="container">
+        <h1>Sign Up</h1>
         
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        
-        <form action="{{ url_for('auth.signup') }}" method="POST" onsubmit="return validateForm()">
-            <div class="name-fields">
-                <div class="form-group">
-                    <label for="first_name">First Name</label>
-                    <input type="text" id="first_name" name="first_name" required 
-                           placeholder="First name" value="{{ request.form.first_name or '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="last_name">Last Name</label>
-                    <input type="text" id="last_name" name="last_name" required 
-                           placeholder="Last name" value="{{ request.form.last_name or '' }}">
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required 
-                       placeholder="Choose a username" value="{{ request.form.username or '' }}">
-            </div>
-            
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required 
-                       placeholder="Your email address" value="{{ request.form.email or '' }}">
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required 
-                       placeholder="Create a password" onkeyup="checkPasswordStrength()">
-                <div class="password-requirements" id="password-strength">
-                    Password should be at least 8 characters long
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" required 
-                       placeholder="Confirm your password" onkeyup="checkPasswordMatch()">
-                <div class="password-requirements" id="password-match"></div>
-            </div>
-            
-            <button type="submit" class="btn" id="submit-btn">Create Account</button>
+        <div id="error-message" class="error-message" 
+            {% if error %} style="display: block;" {% else %} style="display: none;" {% endif %}>
+            {{ error }}
+        </div>
+
+        <form action="/auth/signup" method="POST">
+            <input name="name" type="text" placeholder="Full Name" required>
+            <input name="emailaddress" type="email" placeholder="Email Address" required>
+            <input name="username" type="text" placeholder="Username" required>
+            <input name="password" type="password" placeholder="Password" required>
+            <button type="submit">Create Account</button>
         </form>
         
-        <div class="login-link">
-            Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a>
-        </div>
-        
-        <div class="login-link">
-            <a href="{{ url_for('index') }}">Back to Home</a>
-        </div>
+        <button onclick="location.href='/'">Back to Home</button>
+        <button onclick="location.href='/auth/login'">Already have an account? Login</button>
+        <div class="footer">Flask Development Template - Created by Sarveshwar Senthil Kumar</div>
     </div>
-    
-    <div class="footer">Chess Tournament Pairings &copy; 2023</div>
-    
-    <script>
-        function checkPasswordStrength() {
-            const password = document.getElementById('password').value;
-            const strengthText = document.getElementById('password-strength');
-            
-            if (password.length === 0) {
-                strengthText.textContent = 'Password should be at least 8 characters long';
-                strengthText.style.color = '#666';
-                return;
-            }
-            
-            let strength = 0;
-            let feedback = [];
-            
-            if (password.length >= 8) strength++;
-            if (password.length >= 12) strength++;
-            if (/[A-Z]/.test(password)) strength++;
-            if (/[0-9]/.test(password)) strength++;
-            if (/[^A-Za-z0-9]/.test(password)) strength++;
-            
-            if (password.length < 8) {
-                feedback.push('at least 8 characters');
-            } else if (password.length < 12) {
-                feedback.push('consider a longer password');
-            }
-            
-            if (!/[A-Z]/.test(password)) feedback.push('an uppercase letter');
-            if (!/[0-9]/.test(password)) feedback.push('a number');
-            if (!/[^A-Za-z0-9]/.test(password)) feedback.push('a special character');
-            
-            if (strength < 2) {
-                strengthText.textContent = 'Weak' + (feedback.length ? ' - add ' + feedback.join(', ') : '');
-                strengthText.style.color = '#e74c3c';
-            } else if (strength < 4) {
-                strengthText.textContent = 'Moderate' + (feedback.length ? ' - consider adding ' + feedback.join(', ') : '');
-                strengthText.style.color = '#f39c12';
-            } else {
-                strengthText.textContent = 'Strong password';
-                strengthText.style.color = '#27ae60';
-            }
-        }
-        
-        function checkPasswordMatch() {
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
-            const matchText = document.getElementById('password-match');
-            
-            if (confirmPassword.length === 0) {
-                matchText.textContent = '';
-                return;
-            }
-            
-            if (password === confirmPassword) {
-                matchText.textContent = 'Passwords match';
-                matchText.style.color = '#27ae60';
-            } else {
-                matchText.textContent = 'Passwords do not match';
-                matchText.style.color = '#e74c3c';
-            }
-        }
-        
-        function validateForm() {
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
-            
-            if (password !== confirmPassword) {
-                alert('Passwords do not match. Please check and try again.');
-                return false;
-            }
-            
-            if (password.length < 8) {
-                alert('Password must be at least 8 characters long.');
-                return false;
-            }
-            
-            return true;
-        }
-    </script>
+
 </body>
 </html>
