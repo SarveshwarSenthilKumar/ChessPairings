@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Create Tournament - Chess Tournament Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h2 class="h5 mb-0"><i class="fas fa-plus-circle me-2"></i>Create New Tournament</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('tournament.create') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Tournament Name</label>
+                        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="Enter tournament name") }}
+                        {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.name.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            {{ form.start_date(class="form-control" + (" is-invalid" if form.start_date.errors else ""), type="date") }}
+                            {% if form.start_date.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.start_date.errors[0] }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="end_date" class="form-label">End Date</label>
+                            {{ form.end_date(class="form-control" + (" is-invalid" if form.end_date.errors else ""), type="date") }}
+                            {% if form.end_date.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.end_date.errors[0] }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="rounds" class="form-label">Number of Rounds</label>
+                            {{ form.rounds(class="form-select" + (" is-invalid" if form.rounds.errors else "")) }}
+                            {% if form.rounds.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.rounds.errors[0] }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="time_control" class="form-label">Time Control</label>
+                            {{ form.time_control(class="form-select" + (" is-invalid" if form.time_control.errors else "")) }}
+                            {% if form.time_control.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.time_control.errors[0] }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (Optional)</label>
+                        {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows="3") }}
+                        {% if form.description.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.description.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('tournament.index') }}" class="btn btn-outline-secondary me-md-2">
+                            <i class="fas fa-times me-1"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> Create Tournament
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set minimum date for end date based on start date
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    
+    if (startDateInput && endDateInput) {
+        startDateInput.addEventListener('change', function() {
+            endDateInput.min = this.value;
+            if (endDateInput.value && endDateInput.value < this.value) {
+                endDateInput.value = this.value;
+            }
+        });
+    }
+    
+    // Set default values
+    const today = new Date().toISOString().split('T')[0];
+    if (startDateInput && !startDateInput.value) {
+        startDateInput.value = today;
+    }
+    if (endDateInput) {
+        endDateInput.min = today;
+        if (!endDateInput.value) {
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            endDateInput.value = nextWeek.toISOString().split('T')[0];
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Tournaments - Chess Tournament Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-trophy me-2"></i>Tournaments</h1>
+    <a href="{{ url_for('tournament.create') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i> New Tournament
+    </a>
+</div>
+
+<div class="row">
+    {% for tournament in tournaments %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ tournament.name }}</h5>
+                    <span class="badge bg-light text-dark">
+                        {{ tournament.status|title }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-calendar-day me-2 text-muted"></i>
+                        <span>{{ tournament.start_date|datetimeformat('%b %d, %Y') }} - {{ tournament.end_date|datetimeformat('%b %d, %Y') }}</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-flag-checkered me-2 text-muted"></i>
+                        <span>Rounds: {{ tournament.rounds }}</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-users me-2 text-muted"></i>
+                        <span>Players: {{ tournament.player_count }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent">
+                <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-primary">
+                    View Tournament
+                </a>
+                {% if tournament.status == 'ongoing' %}
+                <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" class="btn btn-sm btn-success ms-2">
+                    Manage Pairings
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i> No tournaments found. Create your first tournament to get started!
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add any tournament-specific JavaScript here
+</script>
+{% endblock %}

@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}Standings - {{ tournament.name }} - Chess Tournament Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}">{{ tournament.name|truncate(20) }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Standings</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">
+            <i class="fas fa-trophy me-2"></i>Tournament Standings
+        </h1>
+    </div>
+    <div>
+        <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-arrow-left me-1"></i> Back to Tournament
+        </a>
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-download me-1"></i> Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="#"><i class="fas fa-file-pdf me-2"></i>PDF</a></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-print me-2"></i>Print</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Total Players</h6>
+                        <h3 class="mb-0">{{ standings|length }}</h3>
+                    </div>
+                    <div class="avatar-lg bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="fas fa-users text-primary" style="font-size: 1.75rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Leader</h6>
+                        <h5 class="mb-0">{{ standings[0].name if standings else '—' }}</h5>
+                        {% if standings %}
+                        <small class="text-muted">{{ standings[0].points }} points</small>
+                        {% endif %}
+                    </div>
+                    <div class="avatar-lg bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="fas fa-trophy text-success" style="font-size: 1.75rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Current Round</h6>
+                        <h3 class="mb-0">
+                            {{ current_round.round_number if current_else }}/{{ tournament.rounds }}
+                        </h3>
+                    </div>
+                    <div class="avatar-lg bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="fas fa-flag-checkered text-info" style="font-size: 1.75rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <h5 class="mb-0">
+            <i class="fas fa-list-ol me-2"></i>Standings
+        </h5>
+        <div class="d-flex
+            <div class="input-group input-group-sm" style="width: 250px;">
+                <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" id="searchStandings" class="form-control" placeholder="Search players...">
+            </div>
+            <div class="dropdown ms-2">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-filter me-1"></i> Filter
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#">Top 10</a></li>
+                    <li><a class="dropdown-item" href="#">Top 50%</a></li>
+                    <li><a class="dropdown-item" href="#">Prize Winners</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#">Clear Filters</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center" style="width: 60px;">#</th>
+                        <th>Player</th>
+                        <th class="text-center">Rating</th>
+                        <th class="text-center">Pts</th>
+                        <th class="text-center">TB1</th>
+                        <th class="text-center">TB2</th>
+                        <th class="text-center">TB3</th>
+                        <th class="text-center">+</th>
+                        <th class="text-center">-</th>
+                        <th class="text-center">=</th>
+                        <th class="text-center">Perf</th>
+                        <th class="text-center">Progress</th>
+                    </tr>
+                </thead>
+                <tbody id="standingsTable">
+                    {% for player in standings %}
+                    <tr class="{{ 'table-warning' if loop.index <= tournament.prize_winners and tournament.prize_winners > 0 }}">
+                        <td class="text-center fw-bold">
+                            {{ loop.index }}
+                            {% if loop.index == 1 %}
+                                <i class="fas fa-trophy text-warning ms-1"></i>
+                            {% elif loop.index == 2 %}
+                                <i class="fas fa-medal text-secondary ms-1"></i>
+                            {% elif loop.index == 3 %}
+                                <i class="fas fa-award text-bronze ms-1"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                    <i class="fas fa-chess-king"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-medium">{{ player.name }}</div>
+                                    <small class="text-muted">{{ player.federation or '—' }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center">{{ player.rating }}</td>
+                        <td class="text-center fw-bold">{{ player.points }}</td>
+                        <td class="text-center">{{ player.tiebreak1|default('—') }}</td>
+                        <td class="text-center">{{ player.tiebreak2|default('—') }}</td>
+                        <td class="text-center">{{ player.tiebreak3|default('—') }}</td>
+                        <td class="text-center text-success">{{ player.wins }}</td>
+                        <td class="text-center text-danger">{{ player.losses }}</td>
+                        <td class="text-center">{{ player.draws }}</td>
+                        <td class="text-center">{{ player.performance|default('—') }}</td>
+                        <td>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-{{ 'success' if player.trend > 0 else 'danger' }}" 
+                                     role="progressbar" 
+                                     style="width: {{ player.trend|abs }}%" 
+                                     aria-valuenow="{{ player.trend|abs }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="text-{{ 'success' if player.trend > 0 else 'danger' }}">
+                                {{ player.trend|abs }}% {{ '▲' if player.trend > 0 else '▼' if player.trend < 0 else '—' }}
+                            </small>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="12" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="fas fa-users-slash fa-3x mb-3"></i>
+                                <p class="mb-0">No players found</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted small">
+                Showing <strong>{{ standings|length }}</strong> of <strong>{{ standings|length }}</strong> players
+            </div>
+            <nav aria-label="Standings pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                    </li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="row mt-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-light py-2">
+                <h6 class="mb-0"><i class="fas fa-info-circle me-1"></i> Legend</h6>
+            </div>
+            <div class="card-body p-3">
+                <div class="row">
+                    <div class="col-6">
+                        <p class="mb-1"><span class="badge bg-warning me-2">1-3</span> Prize Winners</p>
+                        <p class="mb-1"><span class="badge bg-success me-2">+2.5</span> Points</p>
+                        <p class="mb-0"><span class="badge bg-primary me-2">TB1</span> Buchholz</p>
+                    </div>
+                    <div class="col-6">
+                        <p class="mb-1"><span class="badge bg-danger me-2">-1.0</span> Negative Score</p>
+                        <p class="mb-1"><span class="badge bg-info me-2">TB2</span> Sonneborn-Berger</p>
+                        <p class="mb-0"><span class="badge bg-secondary me-2">TB3</span> Direct Encounter</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-light py-2">
+                <h6 class="mb-0"><i class="fas fa-chart-line me-1"></i> Performance</h6>
+            </div>
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-around text-center">
+                    <div>
+                        <div class="h4 mb-0">{{ (standings|sum(attribute='points') / (standings|length or 1))|round(1) }}</div>
+                        <small class="text-muted">Avg. Pts</small>
+                    </div>
+                    <div>
+                        <div class="h4 mb-0">{{ (standings|sum(attribute='rating') / (standings|length or 1))|round(0) }}</div>
+                        <small class="text-muted">Avg. Rating</small>
+                    </div>
+                    <div>
+                        <div class="h4 mb-0">{{ (standings|selectattr('wins')|map(attribute='wins')|sum / (standings|length or 1))|round(1) }}</div>
+                        <small class="text-muted">Avg. Wins</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    const searchInput = document.getElementById('searchStandings');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#standingsTable tr');
+            
+            rows.forEach(row => {
+                const playerName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                if (playerName.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // Add tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+
+<style>
+/* Custom styles for the standings table */
+.table th {
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: 1px solid #f0f0f0;
+    white-space: nowrap;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.table-hover > tbody > tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.text-bronze {
+    color: #cd7f32; /* Bronze color for 3rd place */
+}
+
+.progress {
+    background-color: #f0f0f0;
+    border-radius: 10px;
+}
+
+.progress-bar {
+    border-radius: 10px;
+}
+
+.avatar-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8rem;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem;
+    }
+    
+    .progress {
+        height: 4px;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+</style>
+{% endblock %}

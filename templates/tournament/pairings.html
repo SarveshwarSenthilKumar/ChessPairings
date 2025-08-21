@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Pairings - {{ tournament.name }} - Chess Tournament Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}">{{ tournament.name|truncate(20) }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Pairings</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">
+            <i class="fas fa-chess-board me-2"></i>Round {{ current_round.round_number }} Pairings
+        </h1>
+    </div>
+    <div>
+        <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-arrow-left me-1"></i> Back to Tournament
+        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generatePairingsModal">
+            <i class="fas fa-random me-1"></i> Generate Pairings
+        </button>
+    </div>
+</div>
+
+<!-- Pairings Table -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-list-ol me-2"></i>Pairings
+            <span class="badge bg-light text-dark ms-2">{{ pairings|length }}</span>
+        </h5>
+        <div class="input-group input-group-sm" style="width: 250px;">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+            <input type="text" id="pairingSearch" class="form-control" placeholder="Search pairings...">
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if pairings %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Board</th>
+                            <th>White Player</th>
+                            <th>vs</th>
+                            <th>Black Player</th>
+                            <th>Result</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pairing in pairings %}
+                        <tr class="align-middle {{ 'table-warning' if not pairing.result and current_round.status == 'ongoing' }}">
+                            <td class="fw-medium">
+                                <span class="badge bg-primary">{{ pairing.board_number }}</span>
+                            </td>
+                            <td>{{ pairing.white_name }} <small class="text-muted">({{ pairing.white_rating }})</small></td>
+                            <td class="text-muted fw-bold">vs</td>
+                            <td>{{ pairing.black_name }} <small class="text-muted">({{ pairing.black_rating }})</small></td>
+                            <td>
+                                {% if pairing.result %}
+                                    <span class="badge bg-success">{{ pairing.result }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#recordResultModal"
+                                    data-pairing-id="{{ pairing.id }}"
+                                    data-white-name="{{ pairing.white_name }}"
+                                    data-black-name="{{ pairing.black_name }}"
+                                    data-result="{{ pairing.result or '' }}">
+                                    <i class="fas fa-pen"></i> Record
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="fas fa-chess-board fa-4x text-muted"></i>
+                </div>
+                <h5>No Pairings Yet</h5>
+                <p class="text-muted">Generate pairings to get started with this round</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generatePairingsModal">
+                    <i class="fas fa-random me-1"></i> Generate Pairings
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modals -->
+<!-- Record Result Modal -->
+<div class="modal fade" id="recordResultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Record Game Result</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="resultForm" method="POST">
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <h6 id="pairingTitle">White vs Black</h6>
+                        <p class="text-muted">Select the game result</p>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <input type="hidden" name="pairing_id" id="pairingId">
+                        <button type="button" class="btn btn-outline-primary result-btn" data-result="1-0">
+                            <i class="fas fa-trophy me-2"></i> White Wins
+                        </button>
+                        <button type="button" class="btn btn-outline-dark result-btn" data-result="0.5-0.5">
+                            <i class="fas fa-handshake me-2"></i> Draw
+                        </button>
+                        <button type="button" class="btn btn-outline-dark result-btn" data-result="0-1">
+                            <i class="fas fa-trophy me-2"></i> Black Wins
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary result-btn" data-result="*">
+                            <i class="fas fa-undo me-2"></i> Reset to Pending
+                        </button>
+                        <input type="hidden" name="result" id="gameResult">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Result</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Pairings Modal -->
+<div class="modal fade" id="generatePairingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Generate Pairings</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('tournament.generate_pairings', tournament_id=tournament.id, round_id=current_round.id) if current_round else '#' }}">
+                <div class="modal-body">
+                    <p>Generate pairings for <strong>Round {{ current_round.round_number }}</strong> using the following method:</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Pairing Method</label>
+                        <select class="form-select" name="pairing_method">
+                            <option value="swiss">Swiss System (Default)</option>
+                            <option value="round_robin">Round Robin</option>
+                            <option value="manual">Manual Pairing</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="checkColorBalance" name="check_color_balance" checked>
+                        <label class="form-check-label" for="checkColorBalance">
+                            Try to balance colors
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="avoidSamePairings" name="avoid_same_pairings" checked>
+                        <label class="form-check-label" for="avoidSamePairings">
+                            Avoid previous pairings
+                        </label>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This will generate pairings based on current standings and pairing rules.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-random me-1"></i> Generate Pairings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle record result modal
+    const recordResultModal = document.getElementById('recordResultModal');
+    if (recordResultModal) {
+        recordResultModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const whiteName = button.getAttribute('data-white-name');
+            const blackName = button.getAttribute('data-black-name');
+            const result = button.getAttribute('data-result');
+            const pairingId = button.getAttribute('data-pairing-id');
+            
+            document.getElementById('pairingTitle').textContent = `${whiteName} vs ${blackName}`;
+            document.getElementById('pairingId').value = pairingId;
+            document.getElementById('gameResult').value = result;
+            
+            // Highlight the current result if any
+            document.querySelectorAll('.result-btn').forEach(btn => {
+                if (btn.getAttribute('data-result') === result) {
+                    btn.classList.remove('btn-outline-primary', 'btn-outline-dark', 'btn-outline-secondary');
+                    btn.classList.add('btn-primary');
+                } else {
+                    btn.className = btn.className.replace('btn-primary', '');
+                    if (btn.getAttribute('data-result') === '1-0') {
+                        btn.className = btn.className.replace('btn-outline-dark', 'btn-outline-primary');
+                    } else if (btn.getAttribute('data-result') === '*') {
+                        btn.className = btn.className.replace('btn-outline-primary', 'btn-outline-secondary');
+                    } else {
+                        btn.className = btn.className.replace('btn-outline-primary', 'btn-outline-dark');
+                    }
+                }
+            });
+        });
+        
+        // Handle result button clicks
+        document.querySelectorAll('.result-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const result = this.getAttribute('data-result');
+                document.getElementById('gameResult').value = result;
+                
+                // Update button styles
+                document.querySelectorAll('.result-btn').forEach(b => {
+                    b.classList.remove('btn-primary');
+                    if (b === this) {
+                        b.classList.add('btn-primary');
+                        b.classList.remove('btn-outline-primary', 'btn-outline-dark', 'btn-outline-secondary');
+                    } else {
+                        if (b.getAttribute('data-result') === '1-0') {
+                            b.className = b.className.replace('btn-outline-dark', 'btn-outline-primary');
+                        } else if (b.getAttribute('data-result') === '*') {
+                            b.className = b.className.replace('btn-outline-primary', 'btn-outline-secondary');
+                        } else {
+                            b.className = b.className.replace('btn-outline-primary', 'btn-outline-dark');
+                        }
+                    }
+                });
+            });
+        });
+        
+        // Handle form submission
+        const resultForm = document.getElementById('resultForm');
+        if (resultForm) {
+            resultForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                
+                // Here you would typically make an AJAX call to save the result
+                console.log('Saving result:', {
+                    pairing_id: formData.get('pairing_id'),
+                    result: formData.get('result')
+                });
+                
+                // For now, just close the modal and reload the page
+                const modal = bootstrap.Modal.getInstance(recordResultModal);
+                modal.hide();
+                window.location.reload();
+            });
+        }
+    }
+    
+    // Handle pairing search
+    const pairingSearch = document.getElementById('pairingSearch');
+    if (pairingSearch) {
+        pairingSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const whiteName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                const blackName = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+                
+                if (whiteName.includes(searchTerm) || blackName.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

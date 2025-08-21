@@ -1,0 +1,610 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Players - {{ tournament.name }} - Chess Tournament Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i class="fas fa-users me-2"></i>Manage Players
+        <small class="text-muted">{{ tournament.name }}</small>
+    </h1>
+    <div>
+        <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-arrow-left me-1"></i> Back to Tournament
+        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPlayerModal">
+            <i class="fas fa-user-plus me-1"></i> Add Player
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Registered Players -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list-check me-2"></i>Registered Players
+                    <span class="badge bg-light text-dark ms-2">{{ tournament_players|length }}</span>
+                </h5>
+                <div class="input-group input-group-sm" style="width: 250px;">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" id="playerSearch" class="form-control" placeholder="Search players...">
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if tournament_players %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Rating</th>
+                                    <th>Federation</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for player in tournament_players %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">{{ player.name }}</div>
+                                                <small class="text-muted">@{{ player.username }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ player.rating }}</td>
+                                    <td>{{ player.federation or '—' }}</td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i> Active
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPlayerModal" data-player-id="{{ player.id }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#removePlayerModal" data-player-id="{{ player.id }}" data-player-name="{{ player.name }}">
+                                                <i class="fas fa-user-minus"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="mb-3">
+                            <i class="fas fa-users-slash fa-4x text-muted"></i>
+                        </div>
+                        <h5>No players registered yet</h5>
+                        <p class="text-muted">Add players to get started with the tournament</p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPlayerModal">
+                            <i class="fas fa-user-plus me-1"></i> Add First Player
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+            {% if tournament_players %}
+            <div class="card-footer bg-transparent">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small">
+                            Showing <strong>{{ tournament_players|length }}</strong> of <strong>{{ tournament_players|length }}</strong> players
+                        </span>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary me-2">
+                            <i class="fas fa-file-export me-1"></i> Export
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bulkImportModal">
+                            <i class="fas fa-file-import me-1"></i> Bulk Import
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>Player Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total Players</span>
+                        <span class="fw-medium">{{ tournament_players|length }}</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Average Rating</span>
+                        <span class="fw-medium">{{ (tournament_players|sum(attribute='rating') / (tournament_players|length or 1))|round(0)|int }}</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: 75%" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Federations</span>
+                        <span class="fw-medium">{{ tournament_players|map(attribute='federation')|unique|list|length }}</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 60%" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <h6 class="text-muted mb-3">Rating Distribution</h6>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="text-muted small" style="width: 50px;">2000+</span>
+                        <div class="progress flex-grow-1 mx-2" style="height: 10px;">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: 15%" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span class="text-muted small" style="width: 20px;">3</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="text-muted small" style="width: 50px;">1800-1999</span>
+                        <div class="progress flex-grow-1 mx-2" style="height: 10px;">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span class="text-muted small" style="width: 20px;">5</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="text-muted small" style="width: 50px;">1600-1799</span>
+                        <div class="progress flex-grow-1 mx-2" style="height: 10px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: 35%" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span class="text-muted small" style="width: 20px;">7</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted small" style="width: 50px;">Below 1600</span>
+                        <div class="progress flex-grow-1 mx-2" style="height: 10px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span class="text-muted small" style="width: 20px;">5</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-bs-toggle="modal" data-bs-target="#bulkImportModal">
+                    <div>
+                        <i class="fas fa-file-import text-primary me-2"></i>
+                        <span>Bulk Import Players</span>
+                    </div>
+                    <i class="fas fa-chevron-right small text-muted"></i>
+                </a>
+                <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-file-export text-success me-2"></i>
+                        <span>Export Player List</span>
+                    </div>
+                    <i class="fas fa-chevron-right small text-muted"></i>
+                </a>
+                <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-bs-toggle="modal" data-bs-target="#sendMessageModal">
+                    <div>
+                        <i class="fas fa-envelope text-info me-2"></i>
+                        <span>Message All Players</span>
+                    </div>
+                    <i class="fas fa-chevron-right small text-muted"></i>
+                </a>
+                <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-danger" data-bs-toggle="modal" data-bs-target="#clearAllPlayersModal">
+                    <div>
+                        <i class="fas fa-trash-alt me-2"></i>
+                        <span>Remove All Players</span>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Player Modal -->
+<div class="modal fade" id="addPlayerModal" tabindex="-1" aria-labelledby="addPlayerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addPlayerModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Add New Player
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('tournament.add_player', tournament_id=tournament.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="playerName" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="playerName" name="name" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="playerUsername" class="form-label">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text">@</span>
+                                <input type="text" class="form-control" id="playerUsername" name="username" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="playerRating" class="form-label">Rating</label>
+                            <input type="number" class="form-control" id="playerRating" name="rating" value="1200" min="0" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="playerFederation" class="form-label">Federation</label>
+                            <select class="form-select" id="playerFederation" name="federation">
+                                <option value="">Select Federation</option>
+                                <option value="USA">United States (USA)</option>
+                                <option value="IND">India (IND)</option>
+                                <option value="CHN">China (CHN)</option>
+                                <option value="RUS">Russia (RUS)</option>
+                                <option value="FIDE">FIDE</option>
+                                <!-- Add more federations as needed -->
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="playerTitle" class="form-label">Title</label>
+                            <select class="form-select" id="playerTitle" name="title">
+                                <option value="">None</option>
+                                <option value="GM">Grandmaster (GM)</option>
+                                <option value="IM">International Master (IM)</option>
+                                <option value="FM">FIDE Master (FM)</option>
+                                <option value="CM">Candidate Master (CM)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="playerNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="playerNotes" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Save Player
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Import Modal -->
+<div class="modal fade" id="bulkImportModal" tabindex="-1" aria-labelledby="bulkImportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="bulkImportModalLabel">
+                    <i class="fas fa-file-import me-2"></i>Bulk Import Players
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    You can import multiple players at once using a CSV or Excel file. 
+                    <a href="#" class="alert-link">Download template</a>
+                </div>
+                
+                <div class="border rounded p-3 mb-4">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
+                        <h5>Drag & drop your file here</h5>
+                        <p class="text-muted">or</p>
+                        <button class="btn btn-primary">
+                            <i class="fas fa-folder-open me-2"></i>Browse Files
+                        </button>
+                        <input type="file" class="d-none" id="fileInput">
+                    </div>
+                    <div class="text-center">
+                        <small class="text-muted">Supports .csv, .xls, .xlsx (Max 5MB)</small>
+                    </div>
+                </div>
+                
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="updateExisting" checked>
+                    <label class="form-check-label" for="updateExisting">
+                        Update existing players if username matches
+                    </label>
+                </div>
+                
+                <h6 class="mt-4 mb-3">Import Preview</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Username</th>
+                                <th>Rating</th>
+                                <th>Federation</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">
+                                    No file selected or preview available
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" disabled>
+                    <i class="fas fa-file-import me-1"></i> Import Players (0)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Player Modal -->
+<div class="modal fade" id="removePlayerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-minus me-2"></i>Remove Player
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to remove <strong id="playerToRemove">[Player Name]</strong> from the tournament?</p>
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    This action cannot be undone. The player's results will be deleted.
+                </p>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="confirmRemove">
+                    <label class="form-check-label" for="confirmRemove">
+                        Yes, I want to remove this player
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmRemoveBtn" disabled>
+                    <i class="fas fa-trash-alt me-1"></i> Remove Player
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clear All Players Modal -->
+<div class="modal fade" id="clearAllPlayersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Remove All Players
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <h5 class="alert-heading">
+                        <i class="fas fa-exclamation-circle me-2"></i>Warning!
+                    </h5>
+                    <p>You are about to remove <strong>all {{ tournament_players|length }} players</strong> from the tournament.</p>
+                    <p class="mb-0">This action cannot be undone. All player data, including game results, will be permanently deleted.</p>
+                </div>
+                <div class="form-group">
+                    <label for="confirmText" class="form-label">
+                        Type <strong>DELETE ALL</strong> to confirm:
+                    </label>
+                    <input type="text" class="form-control" id="confirmText" placeholder="Type DELETE ALL to confirm">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmClearAllBtn" disabled>
+                    <i class="fas fa-trash-alt me-1"></i> Remove All Players
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Message Modal -->
+<div class="modal fade" id="sendMessageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-envelope me-2"></i>Message All Players
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="messageSubject" class="form-label">Subject</label>
+                    <input type="text" class="form-control" id="messageSubject" placeholder="Enter message subject">
+                </div>
+                <div class="mb-3">
+                    <label for="messageContent" class="form-label">Message</label>
+                    <textarea class="form-control" id="messageContent" rows="5" placeholder="Type your message here..."></textarea>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="includeEmail" checked>
+                    <label class="form-check-label" for="includeEmail">
+                        Send as email to all players
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="includeSystemMessage">
+                    <label class="form-check-label" for="includeSystemMessage">
+                        Also post as a system message
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">
+                    <i class="fas fa-paper-plane me-1"></i> Send Message
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize player search
+    const playerSearch = document.getElementById('playerSearch');
+    if (playerSearch) {
+        playerSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const playerName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                if (playerName.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // Handle remove player modal
+    const removePlayerModal = document.getElementById('removePlayerModal');
+    if (removePlayerModal) {
+        removePlayerModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const playerName = button.getAttribute('data-player-name');
+            const modal = this;
+            
+            modal.querySelector('#playerToRemove').textContent = playerName;
+            
+            // Reset confirmation
+            const confirmCheckbox = modal.querySelector('#confirmRemove');
+            const confirmButton = modal.querySelector('#confirmRemoveBtn');
+            
+            confirmCheckbox.checked = false;
+            confirmButton.disabled = true;
+            
+            confirmCheckbox.addEventListener('change', function() {
+                confirmButton.disabled = !this.checked;
+            });
+            
+            // Handle confirm button click
+            confirmButton.addEventListener('click', function() {
+                // Add your remove player logic here
+                alert(`Player ${playerName} will be removed`);
+                const modalInstance = bootstrap.Modal.getInstance(removePlayerModal);
+                modalInstance.hide();
+                // You might want to reload the page or update the UI
+            });
+        });
+    }
+    
+    // Handle clear all players modal
+    const clearAllModal = document.getElementById('clearAllPlayersModal');
+    if (clearAllModal) {
+        const confirmText = clearAllModal.querySelector('#confirmText');
+        const confirmButton = clearAllModal.querySelector('#confirmClearAllBtn');
+        
+        confirmText.addEventListener('input', function() {
+            confirmButton.disabled = this.value !== 'DELETE ALL';
+        });
+        
+        confirmButton.addEventListener('click', function() {
+            // Add your clear all players logic here
+            alert('All players will be removed');
+            const modalInstance = bootstrap.Modal.getInstance(clearAllModal);
+            modalInstance.hide();
+            // You might want to reload the page or update the UI
+        });
+    }
+    
+    // Handle file input for bulk import
+    const fileInput = document.getElementById('fileInput');
+    const fileUploadArea = document.querySelector('.border.rounded.p-3.mb-4');
+    
+    if (fileUploadArea && fileInput) {
+        fileUploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        fileUploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('border-primary');
+        });
+        
+        fileUploadArea.addEventListener('dragleave', function() {
+            this.classList.remove('border-primary');
+        });
+        
+        fileUploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('border-primary');
+            
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', function() {
+            if (this.files.length) {
+                handleFileSelect(this.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            // Here you would handle the file and update the preview
+            console.log('File selected:', file.name);
+            // Update UI to show file is ready for import
+            fileUploadArea.innerHTML = `
+                <div class="text-center">
+                    <i class="fas fa-file-alt fa-3x text-success mb-2"></i>
+                    <h5>${file.name}</h5>
+                    <p class="text-muted mb-0">${(file.size / 1024).toFixed(1)} KB</p>
+                    <button class="btn btn-sm btn-outline-danger mt-2">
+                        <i class="fas fa-times me-1"></i> Remove File
+                    </button>
+                </div>
+            `;
+        }
+    }
+});
+</script>
+{% endblock %}
