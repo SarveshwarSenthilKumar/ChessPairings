@@ -39,7 +39,7 @@
                     {% endif %}
 
                     <!-- Login Form -->
-                    <form action="{{ url_for('auth.login') }}" method="POST" class="mt-4">
+                    <form action="/auth/login" method="post" class="mt-4">
                         <div class="form-floating mb-3">
                             <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
                             <label for="username"><i class="fas fa-user me-2"></i>Username</label>
@@ -64,14 +64,14 @@
 
                     <div class="text-center mt-4">
                         <p class="mb-0">Don't have an account? 
-                            <a href="{{ url_for('auth.register') }}" class="text-primary text-decoration-none fw-bold">
+                            <a href="/auth/signup" class="text-primary text-decoration-none fw-bold">
                                 Create one now
                             </a>
                         </p>
                     </div>
                 </div>
                 <div class="card-footer text-center py-3 bg-light">
-                    <a href="{{ url_for('tournament.index') }}" class="text-decoration-none">
+                    <a href="/tournament/" class="text-decoration-none">
                         <i class="fas fa-arrow-left me-1"></i> Back to Home
                     </a>
                 </div>

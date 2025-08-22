@@ -17,9 +17,9 @@ def get_db():
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        if 'name' not in session:
             flash('Please log in to access this page.', 'warning')
-            return redirect(url_for('auth.login', next=request.url))
+            return redirect(f'/auth/login?next={request.url}')
         return f(*args, **kwargs)
     return decorated_function
 

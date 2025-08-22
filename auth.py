@@ -10,81 +10,101 @@ auth_blueprint = Blueprint('auth', __name__)
 @auth_blueprint.route("/login", methods=["GET", "POST"])
 def login():
     if session.get("name"):
-        return redirect("/")
+        return redirect(url_for('tournament.index'))
+    
     if request.method == "GET":
-        return render_template("/auth/login.html")
-    else:
-        username = request.form.get("username").strip().lower()
-        password = request.form.get("password").strip()
+        return render_template("auth/login.html")
+    
+    # Handle POST request
+    username = request.form.get("username", "").strip().lower()
+    password = request.form.get("password", "").strip()
 
-        password = hash(password)
+    if not username or not password:
+        return render_template("auth/login.html", error="Username and password are required!")
 
+    password_hash = hash(password)
+
+    try:
         db = SQL("sqlite:///users.db")
         users = db.execute("SELECT * FROM users WHERE username = :username", username=username)
 
-        if len(users) == 0:
-            return render_template("/auth/login.html", error="No account has been found with this username!")
+        if not users:
+            return render_template("auth/login.html", error="No account found with this username!")
+            
         user = users[0]
-        if user["password"] == password:
+        if user["password"] == password_hash:
             session["name"] = username
-            return redirect("/")
+            next_page = request.args.get('next')
+            return redirect(next_page or '/tournament/')
 
-        return render_template("/auth/login.html", error="You have entered an incorrect password! Please try again!")
+        return render_template("auth/login.html", error="Incorrect password!")
+        
+    except Exception as e:
+        print(f"Error during login: {str(e)}")
+        return render_template("auth/login.html", error="An error occurred. Please try again later.")
     
 @auth_blueprint.route("/signup", methods=["GET", "POST"])
 def register():
     if session.get("name"):
-        return redirect("/")
+        return redirect(url_for('tournament.index'))
+        
     if request.method == "GET":
         return render_template("auth/signup.html")
-            
-    emailAddress = request.form.get("emailaddress", "").strip().lower()
-    fullName = request.form.get("name", "").strip()
+    
+    # Get form data
+    email = request.form.get("emailaddress", "").strip().lower()
+    name = request.form.get("name", "").strip()
     username = request.form.get("username", "").strip().lower()
     password = request.form.get("password", "").strip()
-    confirm_password = request.form.get("confirm_password", "").strip()
-    terms = request.form.get("terms")
-
-    # Basic validation
-    if not all([emailAddress, fullName, username, password, confirm_password]):
-        return render_template("auth/signup.html", error="All fields are required")
-        
+    confirm_password = request.form.get("confirmpassword", "").strip()
+    
+    # Validate form data
+    if not all([email, name, username, password, confirm_password]):
+        return render_template("auth/signup.html", error="All fields are required!")
+    
     if password != confirm_password:
-        return render_template("auth/signup.html", error="Passwords do not match")
+        return render_template("auth/signup.html", error="Passwords do not match!")
+    
+    if len(password) < 8:
+        return render_template("auth/signup.html", error="Password must be at least 8 characters long!")
+    
+    try:
+        db = SQL("sqlite:///users.db")
         
-    if not terms:
-        return render_template("auth/signup.html", error="You must accept the terms and conditions")
-
-    # Validate name
-    validName = verifyName(fullName)
-    if not validName[0]:
-        return render_template("auth/signup.html", error=validName[1])
-    fullName = validName[1]
-
-    db = SQL("sqlite:///users.db")
-    results = db.execute("SELECT * FROM users WHERE username = :username", username=username)
-
-    if len(results) != 0:
-        return render_template("/auth/signup.html", error="This username is already taken! Please select a different username!")
-    if not checkEmail(emailAddress):
-        return render_template("/auth/signup.html", error="You have not entered a valid email address!")
-    if len(checkUserPassword(username, password)) > 1:
-        return render_template("/auth/signup.html", error=checkUserPassword(username, password)[1])
+        # Check if username exists
+        existing_user = db.execute("SELECT * FROM users WHERE username = :username", username=username)
+        if existing_user:
+            return render_template("auth/signup.html", error="Username already taken!")
+            
+        # Check if email exists
+        existing_email = db.execute("SELECT * FROM users WHERE email = :email", email=email)
+        if existing_email:
+            return render_template("auth/signup.html", error="Email already registered!")
         
-    tz_NY = pytz.timezone('America/New_York') 
-    now = datetime.now(tz_NY)
-    dateJoined = now.strftime("%d/%m/%Y %H:%M:%S")
-
-    password = hash(password)
+        # Hash password and create user
+        hashed_password = hash(password)
+        db.execute(
+            """
+            INSERT INTO users (username, password, email, name, date_created)
+            VALUES (:username, :password, :email, :name, :date_created)
+            """,
+            username=username,
+            password=hashed_password,
+            email=email,
+            name=name,
+            date_created=datetime.now(pytz.timezone("US/Eastern"))
+        )
         
-    db = SQL("sqlite:///users.db")
-    db.execute("INSERT INTO users (username, password, emailaddress, name, dateJoined) VALUES (?,?,?,?,?)", username, password, emailAddress, fullName, dateJoined)
-
-    session["name"] = username
+        # Log the user in
+        session["name"] = username
+        return redirect('/tournament/')
         
-    return redirect("/")
+    except Exception as e:
+        print(f"Error during registration: {str(e)}")
+        return render_template("auth/signup.html", 
+                             error="An error occurred during registration. Please try again.")
     
 @auth_blueprint.route("/logout")
 def logout():
-    session["name"] = None
-    return redirect("/")
+    session.pop("name", None)
+    return redirect('/')
