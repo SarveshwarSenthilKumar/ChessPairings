@@ -9,27 +9,27 @@ auth_blueprint = Blueprint('auth', __name__)
 
 @auth_blueprint.route("/login", methods=["GET", "POST"])
 def login():
-        if session.get("name"):
+    if session.get("name"):
+        return redirect("/")
+    if request.method == "GET":
+        return render_template("/auth/login.html")
+    else:
+        username = request.form.get("username").strip().lower()
+        password = request.form.get("password").strip()
+
+        password = hash(password)
+
+        db = SQL("sqlite:///users.db")
+        users = db.execute("SELECT * FROM users WHERE username = :username", username=username)
+
+        if len(users) == 0:
+            return render_template("/auth/login.html", error="No account has been found with this username!")
+        user = users[0]
+        if user["password"] == password:
+            session["name"] = username
             return redirect("/")
-        if request.method == "GET":
-            return render_template("/auth/login.html")
-        else:
-            username = request.form.get("username").strip().lower()
-            password = request.form.get("password").strip()
 
-            password = hash(password)
-
-            db = SQL("sqlite:///users.db")
-            users=db.execute("SELECT * FROM users WHERE username = :username", username=username)
-
-            if len(users) == 0:
-                return render_template("/auth/login.html", error="No account has been found with this username!")
-            user = users[0]
-            if user["password"] == password:
-                session["name"] = username
-                return redirect("/")
-
-            return render_template("/auth/login.html", error="You have entered an incorrect password! Please try again!")
+        return render_template("/auth/login.html", error="You have entered an incorrect password! Please try again!")
     
 @auth_blueprint.route("/signup", methods=["GET", "POST"])
 def register():

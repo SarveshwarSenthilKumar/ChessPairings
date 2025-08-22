@@ -37,42 +37,45 @@ def verifyName(name):
    return True, validName[:-1]
 
 def checkUserPassword(username, password):
-
-   if username.lower() in password.lower():
-      return False, "Your password cannot contain your username!"
-   if len(password)<8:
-      return False, "Your password needs to be at least 8 characters!"
-    
-   for letter in username:
-      if letter not in allowedChar:
-         return False, "Your username may not contain any symbols or special characters!"
-   
-   if len(username)<8:
-      return False, "Your username needs to be at least 8 characters!"
-   
-   hasUpper=False
-   hasLower=False
-   hasNumber=False
-
-   for letter in password: 
-      indexOfLetter = allowedChar.index(letter)
-      if indexOfLetter < 25:   
-         hasLower=True
-      elif indexOfLetter < 51:
-         hasUpper = True
-      elif letter in allowedChar:
-         hasNumber=True
-      else:
-         return False, "Your password may not contain any symbols or special characters!"
+    if username.lower() in password.lower():
+        return False, "Your password cannot contain your username!"
+    if len(password) < 8:
+        return False, "Your password needs to be at least 8 characters!"
         
-   if not hasUpper:
-      return False, "Your password must contain at least one uppercase letter!"
-   elif not hasLower:
-      return False, "Your password must contain at least one lowercase letter!"
-   elif not hasNumber:
-      return False, "Your password must contain at least one uppercase letter!"
-   else:
-      return [True]
+    for letter in username:
+        if letter not in allowedChar:
+            return False, "Your username may not contain any symbols or special characters!"
+    
+    if len(username) < 8:
+        return False, "Your username needs to be at least 8 characters!"
+    
+    hasUpper = False
+    hasLower = False
+    hasNumber = False
+    hasSpecial = False
+
+    for letter in password: 
+        if letter in allowedChar:
+            index = allowedChar.index(letter)
+            if index < 26:   
+                hasLower = True
+            elif index < 52:
+                hasUpper = True
+            elif 52 <= index < 62:
+                hasNumber = True
+            else:
+                hasSpecial = True
+        else:
+            return False, "Your password may not contain any symbols or special characters!"
+    
+    if not hasUpper:
+        return False, "Your password must contain at least one uppercase letter!"
+    if not hasLower:
+        return False, "Your password must contain at least one lowercase letter!"
+    if not hasNumber:
+        return False, "Your password must contain at least one number!"
+    
+    return (True,)
 
 def hash(password):
     hashing_object = hashlib.sha256()

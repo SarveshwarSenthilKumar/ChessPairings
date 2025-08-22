@@ -71,7 +71,7 @@ def view(tournament_id):
     
     standings = db.get_standings(tournament_id)
     current_round = db.get_current_round(tournament_id)
-    pairings = db.get_pairings(current_round['id']) if current_else []
+    pairings = db.get_pairings(current_round['id']) if current_round else []
     
     return render_template(
         'tournament/view.html',
