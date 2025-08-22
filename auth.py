@@ -52,7 +52,7 @@ def register():
         return render_template("auth/signup.html")
     
     # Get form data
-    email = request.form.get("emailaddress", "").strip().lower()
+    email = request.form.get("email", "").strip().lower()
     name = request.form.get("name", "").strip()
     username = request.form.get("username", "").strip().lower()
     password = request.form.get("password", "").strip()
@@ -77,22 +77,25 @@ def register():
             return render_template("auth/signup.html", error="Username already taken!")
             
         # Check if email exists
-        existing_email = db.execute("SELECT * FROM users WHERE email = :email", email=email)
+        existing_email = db.execute("SELECT * FROM users WHERE emailAddress = :email", email=email)
         if existing_email:
             return render_template("auth/signup.html", error="Email already registered!")
         
         # Hash password and create user
         hashed_password = hash(password)
+        current_time = datetime.now(pytz.timezone("US/Eastern"))
+        formatted_date = current_time.strftime("%Y-%m-%d %H:%M:%S")
+        
         db.execute(
             """
-            INSERT INTO users (username, password, email, name, date_created)
-            VALUES (:username, :password, :email, :name, :date_created)
+            INSERT INTO users (username, password, emailAddress, name, dateJoined, accountStatus, role, twoFactorAuth)
+            VALUES (:username, :password, :email, :name, :date_joined, 'active', 'user', 0)
             """,
             username=username,
             password=hashed_password,
             email=email,
             name=name,
-            date_created=datetime.now(pytz.timezone("US/Eastern"))
+            date_joined=formatted_date
         )
         
         # Log the user in
