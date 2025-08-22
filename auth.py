@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, session, jsonify, Blueprint
+import os
+from flask import Flask, render_template, request, redirect, session, jsonify, Blueprint, url_for
 from flask_session import Session
 from datetime import datetime
 import pytz
@@ -69,43 +70,78 @@ def register():
         return render_template("auth/signup.html", error="Password must be at least 8 characters long!")
     
     try:
-        db = SQL("sqlite:///users.db")
+        print("Attempting to connect to database...")
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'users.db')
+        db_url = f"sqlite:///{db_path}"
+        print(f"Database path: {db_url}")
+        
+        # Test database connection
+        try:
+            db = SQL(db_url)
+            test_query = db.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            print(f"Database tables: {test_query}")
+            print("Database connection successful")
+        except Exception as db_error:
+            print(f"Database connection failed: {str(db_error)}")
+            raise Exception(f"Could not connect to database: {str(db_error)}")
         
         # Check if username exists
+        print(f"Checking if username '{username}' exists...")
         existing_user = db.execute("SELECT * FROM users WHERE username = :username", username=username)
         if existing_user:
+            print("Username already exists")
             return render_template("auth/signup.html", error="Username already taken!")
             
         # Check if email exists
+        print(f"Checking if email '{email}' exists...")
         existing_email = db.execute("SELECT * FROM users WHERE emailAddress = :email", email=email)
         if existing_email:
+            print("Email already exists")
             return render_template("auth/signup.html", error="Email already registered!")
         
         # Hash password and create user
+        print("Hashing password...")
         hashed_password = hash(password)
         current_time = datetime.now(pytz.timezone("US/Eastern"))
         formatted_date = current_time.strftime("%Y-%m-%d %H:%M:%S")
         
-        db.execute(
-            """
-            INSERT INTO users (username, password, emailAddress, name, dateJoined, accountStatus, role, twoFactorAuth)
-            VALUES (:username, :password, :email, :name, :date_joined, 'active', 'user', 0)
-            """,
-            username=username,
-            password=hashed_password,
-            email=email,
-            name=name,
-            date_joined=formatted_date
-        )
+        print("Preparing to insert user into database...")
+        print(f"Username: {username}")
+        print(f"Email: {email}")
+        print(f"Name: {name}")
+        print(f"Date: {formatted_date}")
         
-        # Log the user in
-        session["name"] = username
-        return redirect('/tournament/')
+        # Insert new user
+        try:
+            db.execute(
+                """
+                INSERT INTO users (username, password, emailAddress, name, dateJoined)
+                VALUES (:username, :password, :email, :name, :date_joined)
+                """,
+                username=username,
+                password=hashed_password,
+                email=email,
+                name=name,
+                date_joined=formatted_date
+            )
+            print("User created successfully")
+            
+            # Log the user in
+            session["name"] = username
+            session["email"] = email
+            return redirect('/tournament/')
+            
+        except Exception as insert_error:
+            print(f"Error inserting user: {str(insert_error)}")
+            return render_template("auth/signup.html", 
+                                error=f"Failed to create user: {str(insert_error)}")
         
     except Exception as e:
-        print(f"Error during registration: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error during registration: {error_details}")
         return render_template("auth/signup.html", 
-                             error="An error occurred during registration. Please try again.")
+                             error=f"An error occurred during registration. Please try again later.")
     
 @auth_blueprint.route("/logout")
 def logout():

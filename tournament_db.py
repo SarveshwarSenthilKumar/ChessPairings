@@ -1,58 +1,91 @@
 import sqlite3
 import os
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Optional, Dict, Any, List
 
 class TournamentDB:
     def __init__(self, db_path: str = 'tournament.db'):
-        """Initialize the database connection."""
         self.db_path = db_path
         self.conn = None
         self.cursor = None
-        self.connect()
+        self._initialize_db()
 
-    def connect(self):
-        """Establish a database connection."""
+    def _initialize_db(self):
+        """Initialize the database with required tables if they don't exist."""
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
         
         # Enable foreign key constraints
         self.cursor.execute("PRAGMA foreign_keys = ON")
+        
+        # Create tables if they don't exist
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tournaments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            location TEXT,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            rounds INTEGER DEFAULT 5,
+            time_control TEXT,
+            status TEXT DEFAULT 'upcoming',
+            created_at TEXT NOT NULL
+        )
+        """)
+        
         self.conn.commit()
-
+        
+    def get_all_tournaments(self):
+        """Get all tournaments from the database."""
+        try:
+            self.cursor.execute("""
+                SELECT id, name, location, start_date, end_date, 
+                       rounds, time_control, status, created_at
+                FROM tournaments
+                ORDER BY created_at DESC
+            """)
+            return [dict(row) for row in self.cursor.fetchall()]
+        except sqlite3.Error as e:
+            print(f"Error getting tournaments: {e}")
+            return []
+            
+    def create_tournament(self, name, start_date, end_date, **kwargs):
+        """Create a new tournament."""
+        try:
+            query = """
+            INSERT INTO tournaments (
+                name, start_date, end_date, location, 
+                rounds, time_control, status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            
+            params = (
+                name,
+                start_date,
+                end_date,
+                kwargs.get('location'),
+                kwargs.get('rounds', 5),
+                kwargs.get('time_control'),
+                kwargs.get('status', 'upcoming'),
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            
+            self.cursor.execute(query, params)
+            self.conn.commit()
+            return self.cursor.lastrowid
+            
+        except sqlite3.Error as e:
+            print(f"Error creating tournament: {e}")
+            self.conn.rollback()
+            return None
+            
     def close(self):
         """Close the database connection."""
         if self.conn:
             self.conn.close()
             self.conn = None
             self.cursor = None
-
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
-        self.close()
-
-    # Player operations
-    def add_player(self, username: str, name: str, rating: int = 1200, **kwargs) -> int:
-        """Add a new player to the database."""
-        query = """
-        INSERT INTO players (username, name, rating, title, federation, fide_id)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """
-        self.cursor.execute(query, (
-            username,
-            name,
-            rating,
-            kwargs.get('title'),
-            kwargs.get('federation'),
-            kwargs.get('fide_id')
-        ))
-        self.conn.commit()
-        return self.cursor.lastrowid
 
     def get_player(self, player_id: int) -> Optional[Dict[str, Any]]:
         """Get a player by ID."""
@@ -61,22 +94,46 @@ class TournamentDB:
         return dict(row) if row else None
 
     # Tournament operations
-    def create_tournament(self, name: str, rounds: int = 5, **kwargs) -> int:
-        """Create a new tournament."""
-        query = """
-        INSERT INTO tournaments (name, start_date, end_date, time_control, rounds, status)
-        VALUES (?, ?, ?, ?, ?, ?)
+    def create_tournament(self, name: str, start_date: str, end_date: str, rounds: int = 5, **kwargs) -> int:
+        """Create a new tournament.
+        
+        Args:
+            name: Tournament name
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            rounds: Number of rounds (default: 5)
+            **kwargs: Additional tournament fields (location, time_control, status, created_at)
+            
+        Returns:
+            int: ID of the created tournament
         """
-        self.cursor.execute(query, (
+        query = """
+        INSERT INTO tournaments (
+            name, start_date, end_date, time_control, 
+            rounds, status, location, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        # Prepare parameters
+        params = (
             name,
-            kwargs.get('start_date'),
-            kwargs.get('end_date'),
+            start_date,
+            end_date,
             kwargs.get('time_control'),
             rounds,
-            'pending'
-        ))
-        self.conn.commit()
-        return self.cursor.lastrowid
+            kwargs.get('status', 'upcoming'),
+            kwargs.get('location'),
+            kwargs.get('created_at', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        
+        try:
+            self.cursor.execute(query, params)
+            self.conn.commit()
+            return self.cursor.lastrowid
+        except sqlite3.Error as e:
+            print(f"Error creating tournament: {e}")
+            self.conn.rollback()
+            return None
 
     def add_player_to_tournament(self, tournament_id: int, player_id: int) -> bool:
         """Add a player to a tournament."""

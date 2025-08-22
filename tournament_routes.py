@@ -1,5 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, g
-from datetime import datetime
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g
 from functools import wraps
 from tournament_db import TournamentDB
 import os
@@ -10,7 +9,8 @@ tournament_bp = Blueprint('tournament', __name__, template_folder='templates')
 # Database connection
 def get_db():
     if 'db' not in g:
-        g.db = TournamentDB('tournament.db')
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tournament.db')
+        g.db = TournamentDB(db_path)
     return g.db
 
 # Login required decorator
@@ -28,35 +28,49 @@ def login_required(f):
 @login_required
 def index():
     """Show all tournaments."""
-    db = get_db()
-    tournaments = db.get_all_tournaments()
-    return render_template('tournament/index.html', tournaments=tournaments)
+    try:
+        db = get_db()
+        tournaments = db.get_all_tournaments()
+        return render_template('tournament/index.html', tournaments=tournaments or [])
+    except Exception as e:
+        print(f"Error in index route: {e}")
+        flash('An error occurred while loading tournaments.', 'error')
+        return render_template('tournament/index.html', tournaments=[])
 
 @tournament_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
     """Create a new tournament."""
     if request.method == 'POST':
-        name = request.form.get('name')
-        rounds = int(request.form.get('rounds', 5))
-        time_control = request.form.get('time_control')
-        start_date = request.form.get('start_date')
-        end_date = request.form.get('end_date')
-        
         try:
+            name = request.form.get('name')
+            start_date = request.form.get('start_date')
+            end_date = request.form.get('end_date')
+            
+            if not all([name, start_date, end_date]):
+                flash('Please fill in all required fields', 'error')
+                return redirect(url_for('tournament.create'))
+                
             db = get_db()
             tournament_id = db.create_tournament(
                 name=name,
-                rounds=rounds,
-                time_control=time_control,
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
+                location=request.form.get('location'),
+                rounds=int(request.form.get('rounds', 5)),
+                time_control=request.form.get('time_control')
             )
-            flash('Tournament created successfully!', 'success')
-            return redirect(url_for('tournament.view', tournament_id=tournament_id))
+            
+            if tournament_id:
+                flash('Tournament created successfully!', 'success')
+                return redirect(url_for('tournament.index'))
+            else:
+                flash('Failed to create tournament', 'error')
+                
         except Exception as e:
-            flash(f'Error creating tournament: {str(e)}', 'danger')
-    
+            print(f"Error creating tournament: {e}")
+            flash('An error occurred while creating the tournament', 'error')
+            
     return render_template('tournament/create.html')
 
 @tournament_bp.route('/<int:tournament_id>')
@@ -68,18 +82,7 @@ def view(tournament_id):
     if not tournament:
         flash('Tournament not found.', 'danger')
         return redirect(url_for('tournament.index'))
-    
-    standings = db.get_standings(tournament_id)
-    current_round = db.get_current_round(tournament_id)
-    pairings = db.get_pairings(current_round['id']) if current_round else []
-    
-    return render_template(
-        'tournament/view.html',
-        tournament=tournament,
-        standings=standings,
-        current_round=current_round,
-        pairings=pairings
-    )
+    return render_template('tournament/view.html', tournament=tournament)
 
 @tournament_bp.route('/<int:tournament_id>/players', methods=['GET', 'POST'])
 @login_required
@@ -216,6 +219,12 @@ def view_round(round_id):
     )
 
 # Teardown function to close database connection
+@tournament_bp.teardown_app_request
+def teardown_db(exception=None):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
 @tournament_bp.teardown_request
 def teardown_request(exception=None):
     db = g.pop('db', None)
