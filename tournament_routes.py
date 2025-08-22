@@ -31,11 +31,15 @@ def index():
     try:
         db = get_db()
         tournaments = db.get_all_tournaments()
-        return render_template('tournament/index.html', tournaments=tournaments or [])
+        return render_template('tournament/index.html', 
+                            tournaments=tournaments if tournaments else [],
+                            no_tournaments=not bool(tournaments))
     except Exception as e:
         print(f"Error in index route: {e}")
         flash('An error occurred while loading tournaments.', 'error')
-        return render_template('tournament/index.html', tournaments=[])
+        return render_template('tournament/index.html', 
+                            tournaments=[], 
+                            no_tournaments=True)
 
 @tournament_bp.route('/create', methods=['GET', 'POST'])
 @login_required
@@ -77,12 +81,17 @@ def create():
 @login_required
 def view(tournament_id):
     """View tournament details."""
-    db = get_db()
-    tournament = db.get_tournament(tournament_id)
-    if not tournament:
-        flash('Tournament not found.', 'danger')
+    try:
+        db = get_db()
+        tournament = db.get_tournament(tournament_id)
+        if not tournament:
+            flash('Tournament not found.', 'danger')
+            return redirect(url_for('tournament.index'))
+        return render_template('tournament/view.html', tournament=tournament)
+    except Exception as e:
+        print(f"Error viewing tournament {tournament_id}: {e}")
+        flash('An error occurred while loading the tournament.', 'error')
         return redirect(url_for('tournament.index'))
-    return render_template('tournament/view.html', tournament=tournament)
 
 @tournament_bp.route('/<int:tournament_id>/players', methods=['GET', 'POST'])
 @login_required

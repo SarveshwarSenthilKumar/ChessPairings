@@ -20,7 +20,7 @@ class TournamentDB:
         self.cursor.execute("PRAGMA foreign_keys = ON")
         
         # Create tables if they don't exist
-        self.cursor.execute("""
+        self.cursor.executescript("""
         CREATE TABLE IF NOT EXISTS tournaments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -31,7 +31,56 @@ class TournamentDB:
             time_control TEXT,
             status TEXT DEFAULT 'upcoming',
             created_at TEXT NOT NULL
-        )
+        );
+        
+        CREATE TABLE IF NOT EXISTS players (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            rating INTEGER DEFAULT 1200,
+            created_at TEXT NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS tournament_players (
+            tournament_id INTEGER,
+            player_id INTEGER,
+            initial_rating INTEGER,
+            score FLOAT DEFAULT 0.0,
+            tiebreak1 FLOAT DEFAULT 0.0,
+            tiebreak2 FLOAT DEFAULT 0.0,
+            tiebreak3 FLOAT DEFAULT 0.0,
+            PRIMARY KEY (tournament_id, player_id),
+            FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+        );
+        
+        CREATE TABLE IF NOT EXISTS rounds (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tournament_id INTEGER,
+            round_number INTEGER NOT NULL,
+            start_time TEXT,
+            end_time TEXT,
+            status TEXT DEFAULT 'pending',
+            FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+            UNIQUE(tournament_id, round_number)
+        );
+        
+        CREATE TABLE IF NOT EXISTS pairings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            round_id INTEGER,
+            white_player_id INTEGER,
+            black_player_id INTEGER,
+            board_number INTEGER,
+            result TEXT,
+            status TEXT DEFAULT 'pending',
+            FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE,
+            FOREIGN KEY (white_player_id) REFERENCES players(id),
+            FOREIGN KEY (black_player_id) REFERENCES players(id)
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_tournament_players_tournament ON tournament_players(tournament_id);
+        CREATE INDEX IF NOT EXISTS idx_tournament_players_player ON tournament_players(player_id);
+        CREATE INDEX IF NOT EXISTS idx_rounds_tournament ON rounds(tournament_id);
+        CREATE INDEX IF NOT EXISTS idx_pairings_round ON pairings(round_id);
         """)
         
         self.conn.commit()
