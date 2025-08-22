@@ -50,31 +50,38 @@ def create():
             name = request.form.get('name')
             start_date = request.form.get('start_date')
             end_date = request.form.get('end_date')
+            rounds = request.form.get('rounds', 5, type=int)
+            time_control = request.form.get('time_control')
+            location = request.form.get('location')
+            description = request.form.get('description')
             
+            # Basic validation
             if not all([name, start_date, end_date]):
                 flash('Please fill in all required fields', 'error')
-                return redirect(url_for('tournament.create'))
+                return render_template('tournament/create.html')
                 
             db = get_db()
             tournament_id = db.create_tournament(
                 name=name,
                 start_date=start_date,
                 end_date=end_date,
-                location=request.form.get('location'),
-                rounds=int(request.form.get('rounds', 5)),
-                time_control=request.form.get('time_control')
+                rounds=rounds,
+                time_control=time_control,
+                location=location,
+                description=description
             )
             
             if tournament_id:
                 flash('Tournament created successfully!', 'success')
-                return redirect(url_for('tournament.index'))
+                return redirect(url_for('tournament.view', tournament_id=tournament_id))
             else:
-                flash('Failed to create tournament', 'error')
+                flash('Failed to create tournament. Please try again.', 'error')
                 
         except Exception as e:
             print(f"Error creating tournament: {e}")
-            flash('An error occurred while creating the tournament', 'error')
-            
+            flash('An error occurred while creating the tournament. Please try again.', 'error')
+    
+    # For GET request or if there was an error
     return render_template('tournament/create.html')
 
 @tournament_bp.route('/<int:tournament_id>')
