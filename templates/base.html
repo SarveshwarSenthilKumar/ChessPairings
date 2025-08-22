@@ -29,7 +29,7 @@
                             <i class="fas fa-trophy me-1"></i> Tournaments
                         </a>
                     </li>
-                    {% if current_user.is_authenticated %}
+                    {% if session.get('name') %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('tournament.create') }}">
                             <i class="fas fa-plus-circle me-1"></i> New Tournament
@@ -38,10 +38,10 @@
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
-                    {% if current_user.is_authenticated %}
+                    {% if session.get('name') %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-1"></i> {{ current_user.username }}
+                            <i class="fas fa-user-circle me-1"></i> {{ session.name }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#"><i class="fas fa-user-cog me-2"></i>Profile</a></li>
@@ -88,7 +88,11 @@
     <!-- Footer -->
     <footer class="bg-dark text-white py-4 mt-5">
         <div class="container text-center">
-            <p class="mb-0">&copy; {{ now.year }} Chess Tournament Manager. All rights reserved.</p>
+            <p class="mb-0">&copy; <span id="current-year"></span> Chess Tournament Manager. All rights reserved.</p>
+    <script>
+        // Set the current year in the footer
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+    </script>
         </div>
     </footer>
 
