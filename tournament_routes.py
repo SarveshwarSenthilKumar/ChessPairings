@@ -16,7 +16,7 @@ tournament_bp = Blueprint('tournament', __name__, template_folder='templates')
 # Database connection
 def get_db():
     if 'db' not in g:
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tournament.db')
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tournament_new.db')
         g.db = TournamentDB(db_path)
     return g.db
 
@@ -24,9 +24,9 @@ def get_db():
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'name' not in session:
+        if not session.get('user_id'):
             flash('Please log in to access this page.', 'warning')
-            return redirect(f'/auth/login?next={request.url}')
+            return redirect(url_for('auth.login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -34,24 +34,22 @@ def login_required(f):
 @tournament_bp.route('/')
 @login_required
 def index():
-    """Show all tournaments."""
+    """Show tournaments created by the current user."""
     try:
         db = get_db()
-        tournaments = db.get_all_tournaments()
-        return render_template('tournament/index.html', 
-                            tournaments=tournaments if tournaments else [],
-                            no_tournaments=not bool(tournaments))
+        user_id = session.get('user_id')
+        tournaments = db.get_tournaments_by_creator(user_id) if user_id else []
+        return render_template('tournament/index.html', tournaments=tournaments)
     except Exception as e:
-        print(f"Error in index route: {e}")
-        flash('An error occurred while loading tournaments.', 'error')
-        return render_template('tournament/index.html', 
-                            tournaments=[], 
-                            no_tournaments=True)
+        print(f"Error retrieving tournaments: {e}")
+        flash('An error occurred while retrieving your tournaments.', 'error')
+        return render_template('tournament/index.html', tournaments=[])
 
 @tournament_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
     """Create a new tournament."""
+    db = get_db()
     if request.method == 'POST':
         try:
             name = request.form.get('name')
@@ -67,14 +65,15 @@ def create():
                 flash('Please fill in all required fields', 'error')
                 return render_template('tournament/create.html')
                 
-            db = get_db()
+            # Create the tournament
             tournament_id = db.create_tournament(
                 name=name,
+                location=location,
                 start_date=start_date,
                 end_date=end_date,
                 rounds=rounds,
                 time_control=time_control,
-                location=location,
+                creator_id=session.get('user_id'),
                 description=description
             )
             
@@ -98,9 +97,27 @@ def view(tournament_id):
     try:
         db = get_db()
         tournament = db.get_tournament(tournament_id)
+        
+        # Check if tournament exists
         if not tournament:
             flash('Tournament not found.', 'danger')
             return redirect(url_for('tournament.index'))
+            
+        # Ensure tournament is a dictionary
+        if not isinstance(tournament, dict):
+            tournament = dict(tournament)
+            
+        # Check if user is the creator of the tournament
+        creator_id = tournament.get('creator_id')
+        user_id = session.get('user_id')
+        
+        if creator_id != user_id:
+            flash('You do not have permission to view this tournament.', 'danger')
+            return redirect(url_for('tournament.index'))
+            
+        # Ensure prize_winners exists in tournament
+        if 'prize_winners' not in tournament:
+            tournament['prize_winners'] = 0
             
         # Get current round and its pairings
         current_round = db.get_current_round(tournament_id)
@@ -108,15 +125,10 @@ def view(tournament_id):
         if current_round:
             pairings = db.get_round_pairings(current_round['id'])
             
-        # Ensure tournament has prize_winners attribute with default value 0 if not set
-        if not hasattr(tournament, 'prize_winners'):
-            tournament.prize_winners = 0
-            
         return render_template('tournament/view.html', 
                             tournament=tournament,
                             current_round=current_round,
-                            pairings=pairings,
-                            prize_winners=tournament.prize_winners)
+                            pairings=pairings)
     except Exception as e:
         print(f"Error viewing tournament {tournament_id}: {e}")
         flash('An error occurred while loading the tournament.', 'error')

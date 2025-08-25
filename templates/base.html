@@ -70,18 +70,21 @@
     </nav>
 
     <!-- Flash Messages -->
-    <div class="container mt-3">
+    {% if request.endpoint != 'auth.login' %}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                    {% if not (category == 'warning' and 'log in' in message|lower) %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show mb-0 rounded-0" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endif %}
                 {% endfor %}
             {% endif %}
         {% endwith %}
-    </div>
+    {% endif %}
+    <!-- End Flash Messages -->
 
     <!-- Main Content -->
     <main class="container my-4">

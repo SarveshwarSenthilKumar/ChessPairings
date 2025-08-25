@@ -35,8 +35,9 @@ def login():
         user = users[0]
         if user["password"] == password_hash:
             session["name"] = username
+            session["user_id"] = user["id"]  # Store user_id in session
             next_page = request.args.get('next')
-            return redirect(next_page or '/tournament/')
+            return redirect(next_page or url_for('tournament.index'))
 
         return render_template("auth/login.html", error="Incorrect password!")
         
