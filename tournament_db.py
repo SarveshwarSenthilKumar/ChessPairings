@@ -200,6 +200,225 @@ class TournamentDB:
             print(f"Error getting players for tournament {tournament_id}: {e}")
             return []
             
+    def get_tournament_players_with_scores(self, tournament_id: int) -> List[Dict[str, Any]]:
+        """Get all players in a tournament with their current scores.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            
+        Returns:
+            A list of dictionaries containing player data and scores.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT p.id, p.name, p.rating, tp.score, tp.initial_rating,
+                       tp.tiebreak1, tp.tiebreak2, tp.tiebreak3
+                FROM players p
+                JOIN tournament_players tp ON p.id = tp.player_id
+                WHERE tp.tournament_id = ?
+                ORDER BY tp.score DESC, tp.tiebreak1 DESC, tp.tiebreak2 DESC, tp.tiebreak3 DESC, p.rating DESC
+            """, (tournament_id,))
+            
+            players = [dict(row) for row in self.cursor.fetchall()]
+            return players
+            
+        except sqlite3.Error as e:
+            print(f"Error getting tournament players: {e}")
+            return []
+            
+    def get_previous_pairings(self, tournament_id: int, player_id: int) -> List[int]:
+        """Get a list of player IDs that the given player has already played against.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            player_id: The ID of the player.
+            
+        Returns:
+            A list of player IDs that the player has already played against.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT DISTINCT 
+                    CASE 
+                        WHEN p.white_player_id = ? THEN p.black_player_id 
+                        ELSE p.white_player_id 
+                    END as opponent_id
+                FROM pairings p
+                JOIN rounds r ON p.round_id = r.id
+                WHERE r.tournament_id = ?
+                AND (p.white_player_id = ? OR p.black_player_id = ?)
+                AND p.status = 'completed'
+            """, (player_id, tournament_id, player_id, player_id))
+            
+            return [row[0] for row in self.cursor.fetchall() if row[0] is not None]
+            
+        except sqlite3.Error as e:
+            print(f"Error getting previous pairings: {e}")
+            return []
+            
+    def generate_pairings(self, tournament_id: int, round_id: int, method: str = 'swiss') -> bool:
+        """Generate pairings for a tournament round using the specified method.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            round_id: The ID of the round to generate pairings for.
+            method: The pairing method to use ('swiss' or 'round_robin').
+            
+        Returns:
+            bool: True if pairings were generated successfully, False otherwise.
+        """
+        try:
+            # Get all players ordered by score and rating
+            players = self.get_tournament_players_with_scores(tournament_id)
+            
+            if not players:
+                return False
+                
+            # Get the round number for tiebreak updates
+            self.cursor.execute("SELECT round_number FROM rounds WHERE id = ?", (round_id,))
+            round_number = self.cursor.fetchone()[0]
+            
+            # For the first round, pair by rating
+            if round_number == 1:
+                # Sort by rating for first round
+                players.sort(key=lambda x: x['rating'], reverse=True)
+                
+                # Split into top and bottom half
+                half = (len(players) + 1) // 2
+                top = players[:half]
+                bottom = players[half:]
+                
+                # Pair top half with bottom half
+                pairings = list(zip(top, bottom))
+                
+                # If odd number of players, give a bye to the lowest-rated player
+                if len(players) % 2 != 0:
+                    bye_player = players[-1]
+                    pairings.append((bye_player, None))
+                    
+            else:
+                # For subsequent rounds, use Swiss system
+                # Sort by score, then rating
+                players.sort(key=lambda x: (-x['score'], -x['rating']))
+                
+                # Track which players have been paired
+                paired = set()
+                pairings = []
+                
+                # First pass: Try to pair players with the same score who haven't played before
+                for i, player1 in enumerate(players):
+                    if player1['id'] in paired:
+                        continue
+                        
+                    # Find the highest-ranked opponent with the same score they haven't played yet
+                    for j in range(i + 1, len(players)):
+                        player2 = players[j]
+                        
+                        # Skip if already paired or different score groups
+                        if (player2['id'] in paired or 
+                            player2['score'] != player1['score']):
+                            continue
+                            
+                        # Check if they've played before
+                        if (player2['id'] not in self.get_previous_pairings(tournament_id, player1['id']) and
+                            player2['id'] != player1['id']):
+                            
+                            # Alternate colors based on rating (higher rated gets white)
+                            if player1['rating'] >= player2['rating']:
+                                pairings.append((player1, player2))  # player1 is white
+                            else:
+                                pairings.append((player2, player1))  # player2 is white
+                                
+                            paired.add(player1['id'])
+                            paired.add(player2['id'])
+                            break
+                
+                # Second pass: Try to pair remaining players with closest score
+                unpaired = [p for p in players if p['id'] not in paired]
+                
+                # If odd number of unpaired players, give a bye to the lowest-rated
+                if len(unpaired) % 2 != 0:
+                    # Sort unpaired by rating (lowest first)
+                    unpaired.sort(key=lambda x: x['rating'])
+                    bye_player = unpaired.pop(0)
+                    pairings.append((bye_player, None))
+                    paired.add(bye_player['id'])
+                
+                # Pair remaining players with closest score
+                i = 0
+                while i < len(unpaired):
+                    player1 = unpaired[i]
+                    if player1['id'] in paired:
+                        i += 1
+                        continue
+                        
+                    # Find closest available opponent
+                    best_opponent = None
+                    min_score_diff = float('inf')
+                    best_j = -1
+                    
+                    for j in range(i + 1, len(unpaired)):
+                        player2 = unpaired[j]
+                        if player2['id'] in paired:
+                            continue
+                            
+                        # Skip if they've played before
+                        if player2['id'] in self.get_previous_pairings(tournament_id, player1['id']):
+                            continue
+                            
+                        score_diff = abs(player2['score'] - player1['score'])
+                        if score_diff < min_score_diff:
+                            best_opponent = player2
+                            min_score_diff = score_diff
+                            best_j = j
+                    
+                    if best_opponent:
+                        # Alternate colors based on rating (higher rated gets white)
+                        if player1['rating'] >= best_opponent['rating']:
+                            pairings.append((player1, best_opponent))
+                        else:
+                            pairings.append((best_opponent, player1))
+                        paired.add(player1['id'])
+                        paired.add(best_opponent['id'])
+                        # Remove the paired opponent from unpaired list
+                        unpaired.pop(best_j)
+                    
+                    i += 1
+            
+            # Save pairings to database
+            for i, (white, black) in enumerate(pairings, 1):
+                if black is None:  # Bye
+                    # Create the pairing
+                    self.cursor.execute("""
+                        INSERT INTO pairings (round_id, white_player_id, black_player_id, board_number, status)
+                        VALUES (?, ?, NULL, ?, 'completed')
+                    """, (round_id, white['id'], i))
+                    
+                    # Record the bye result (1-0 win for the player)
+                    pairing_id = self.cursor.lastrowid
+                    self.record_result(pairing_id, '1-0')
+                else:
+                    self.cursor.execute("""
+                        INSERT INTO pairings (round_id, white_player_id, black_player_id, board_number, status)
+                        VALUES (?, ?, ?, ?, 'pending')
+                    """, (round_id, white['id'], black['id'], i))
+            
+            # Update round status
+            self.cursor.execute("""
+                UPDATE rounds 
+                SET status = 'in_progress', 
+                    start_time = datetime('now')
+                WHERE id = ?
+            """, (round_id,))
+            
+            self.conn.commit()
+            return True
+            
+        except sqlite3.Error as e:
+            print(f"Error generating pairings: {e}")
+            self.conn.rollback()
+            return False
+            
     def add_player_to_tournament(self, tournament_id: int, player_id: int) -> bool:
         """Add a player to a tournament.
         
@@ -476,6 +695,157 @@ class TournamentDB:
         """
         self.cursor.execute(query, (tournament_id,))
         return [dict(row) for row in self.cursor.fetchall()]
+    
+    def close(self):
+        """Close the database connection."""
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+            self.cursor = None
+
+    def get_player(self, player_id: int) -> Optional[Dict[str, Any]]:
+        """Get a player by ID."""
+        self.cursor.execute("SELECT * FROM players WHERE id = ?", (player_id,))
+        row = self.cursor.fetchone()
+        return dict(row) if row else None
+
+    # Tournament operations
+    def create_tournament(self, name: str, start_date: str, end_date: str, rounds: int = 5, **kwargs) -> int:
+        """Create a new tournament.
+        
+        Args:
+            name: Tournament name
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            rounds: Number of rounds (default: 5)
+            **kwargs: Additional tournament fields (location, time_control, status, created_at)
+            
+        Returns:
+            int: ID of the created tournament
+        """
+        query = """
+        INSERT INTO tournaments (
+            name, start_date, end_date, time_control, 
+            rounds, status, location, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        # Prepare parameters
+        params = (
+            name,
+            start_date,
+            end_date,
+            kwargs.get('time_control'),
+            rounds,
+            kwargs.get('status', 'upcoming'),
+            kwargs.get('location'),
+            kwargs.get('created_at', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        
+        try:
+            self.cursor.execute(query, params)
+            self.conn.commit()
+            return self.cursor.lastrowid
+        except sqlite3.Error as e:
+            print(f"Error creating tournament: {e}")
+            self.conn.rollback()
+            return None
+
+    # Pairing operations
+    def create_pairing(self, round_id: int, white_id: int, black_id: int, board_number: int) -> int:
+        """Create a new pairing for a round."""
+        query = """
+        INSERT INTO pairings (round_id, white_player_id, black_player_id, board_number, status)
+        VALUES (?, ?, ?, ?, 'pending')
+        """
+        self.cursor.execute(query, (round_id, white_id, black_id, board_number))
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def record_result(self, pairing_id: int, result: str) -> bool:
+        """Record the result of a game."""
+        try:
+            # Update the pairing with the result
+            self.cursor.execute(
+                "UPDATE pairings SET result = ?, status = 'completed' WHERE id = ?",
+                (result, pairing_id)
+            )
+            
+            # Update player scores based on the result
+            if result == '1-0':
+                # White wins
+                self.cursor.execute("""
+                    UPDATE tournament_players 
+                    SET score = score + 1 
+                    WHERE player_id = (
+                        SELECT white_player_id FROM pairings WHERE id = ?
+                    )
+                """, (pairing_id,))
+            elif result == '0-1':
+                # Black wins
+                self.cursor.execute("""
+                    UPDATE tournament_players 
+                    SET score = score + 1 
+                    WHERE player_id = (
+                        SELECT black_player_id FROM pairings WHERE id = ?
+                    )
+                """, (pairing_id,))
+            elif result == '0.5-0.5':
+                # Draw
+                self.cursor.execute("""
+                    UPDATE tournament_players 
+                    SET score = score + 0.5 
+                    WHERE player_id IN (
+                        SELECT white_player_id FROM pairings WHERE id = ?
+                        UNION
+                        SELECT black_player_id FROM pairings WHERE id = ?
+                    )
+                """, (pairing_id, pairing_id))
+        
+            self.conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error recording result: {e}")
+            self.conn.rollback()
+            return False
+
+    # Tournament state management
+    def start_round(self, tournament_id: int, round_number: int) -> int:
+        """Start a new round in the tournament."""
+        query = """
+        INSERT INTO rounds (tournament_id, round_number, start_time, status)
+        VALUES (?, ?, datetime('now'), 'ongoing')
+        """
+        self.cursor.execute(query, (tournament_id, round_number))
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def complete_round(self, round_id: int) -> bool:
+        """Mark a round as completed."""
+        try:
+            self.cursor.execute(
+                "UPDATE rounds SET status = 'completed', end_time = datetime('now') WHERE id = ?",
+                (round_id,)
+            )
+            self.conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error completing round: {e}")
+            self.conn.rollback()
+            return False
+
+    # Reporting
+    def get_standings(self, tournament_id: int) -> List[Dict[str, Any]]:
+        """Get current tournament standings."""
+        query = """
+        SELECT p.id, p.name, p.rating, tp.score, tp.tiebreak1, tp.tiebreak2, tp.tiebreak3
+        FROM players p
+        JOIN tournament_players tp ON p.id = tp.player_id
+        WHERE tp.tournament_id = ?
+        ORDER BY tp.score DESC, tp.tiebreak1 DESC, tp.tiebreak2 DESC, tp.tiebreak3 DESC, p.rating DESC
+        """
+        self.cursor.execute(query, (tournament_id,))
+        return [dict(row) for row in self.cursor.fetchall()]
 
     def get_pairings(self, round_id: int) -> List[Dict[str, Any]]:
         """Get all pairings for a round."""
@@ -524,75 +894,32 @@ class TournamentDB:
         self.cursor.execute(query, params)
         return [dict(row) for row in self.cursor.fetchall()]
 
-    # Swiss pairing algorithm
-    def generate_swiss_pairings(self, tournament_id: int, round_number: int) -> bool:
-        """Generate Swiss pairings for the next round."""
+    def add_player_to_tournament(self, tournament_id: int, player_id: int) -> bool:
+        """Add a player to a tournament."""
         try:
-            # Start a new round
-            round_id = self.start_round(tournament_id, round_number)
-            
-            # Get current standings
-            standings = self.get_standings(tournament_id)
-            
-            if not standings:
+            # Get player's current rating
+            self.cursor.execute("SELECT rating FROM players WHERE id = ?", (player_id,))
+            result = self.cursor.fetchone()
+            if not result:
                 return False
-                
-            # Sort players by score and rating
-            players = sorted(standings, key=lambda x: (-x['score'], -x['rating']))
-            
-            # Track paired player IDs
-            paired = set()
-            board_number = 1
-            
-            # Simple pairing algorithm (can be enhanced with more sophisticated logic)
-            for i in range(len(players)):
-                if players[i]['id'] in paired:
-                    continue
                     
-                # Try to find an opponent with the same score
-                for j in range(i + 1, len(players)):
-                    if (players[j]['id'] not in paired and 
-                        players[j]['score'] == players[i]['score'] and 
-                        not self.have_played_before(tournament_id, players[i]['id'], players[j]['id'])):
-                        
-                        # Alternate colors based on round number and player index
-                        if (i + round_number) % 2 == 0:
-                            white, black = players[i], players[j]
-                        else:
-                            white, black = players[j], players[i]
-                            
-                        self.create_pairing(round_id, white['id'], black['id'], board_number)
-                        paired.add(white['id'])
-                        paired.add(black['id'])
-                        board_number += 1
-                        break
+            rating = result[0]
             
-            # Handle any remaining players (bye if odd number)
-            for player in players:
-                if player['id'] not in paired:
-                    # Assign a bye (automatic 1-0 win)
-                    self.create_pairing(round_id, player['id'], None, board_number)
-                    self.record_result(self.cursor.lastrowid, '1-0')
-                    board_number += 1
+            # Try to insert the player
+            self.cursor.execute("""
+                INSERT INTO tournament_players (tournament_id, player_id, initial_rating)
+                VALUES (?, ?, ?)
+            """, (tournament_id, player_id, rating))
             
+            self.conn.commit()
             return True
             
-        except Exception as e:
-            print(f"Error generating pairings: {e}")
+        except sqlite3.IntegrityError:
+            # Player is already in the tournament
             self.conn.rollback()
             return False
-    
-    def have_played_before(self, tournament_id: int, player1_id: int, player2_id: int) -> bool:
-        """Check if two players have played against each other in this tournament."""
-        query = """
-        SELECT COUNT(*) as count
-        FROM pairings p
-        JOIN rounds r ON p.round_id = r.id
-        WHERE r.tournament_id = ?
-        AND (
-            (p.white_player_id = ? AND p.black_player_id = ?) OR
-            (p.white_player_id = ? AND p.black_player_id = ?)
-        )
-        """
-        self.cursor.execute(query, (tournament_id, player1_id, player2_id, player2_id, player1_id))
-        return self.cursor.fetchone()['count'] > 0
+            
+        except sqlite3.Error as e:
+            print(f"Error adding player to tournament: {e}")
+            self.conn.rollback()
+            return False

@@ -1,4 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app
+from flask_wtf import FlaskForm
+from wtforms import SelectField, BooleanField
+from wtforms.validators import DataRequired
 import os
 import pandas as pd
 from werkzeug.utils import secure_filename
@@ -181,7 +184,19 @@ def manage_players(tournament_id):
                          tournament_players=tournament_players,
                          available_players=available_players)
 
-@tournament_bp.route('/<int:tournament_id>/pairings', methods=['GET', 'POST'])
+# Form for generating pairings
+class PairingsForm(FlaskForm):
+    pairing_method = SelectField('Pairing Method', 
+                              choices=[
+                                  ('swiss', 'Swiss System (Default)'),
+                                  ('round_robin', 'Round Robin'),
+                                  ('manual', 'Manual Pairing')
+                              ],
+                              default='swiss')
+    check_color_balance = BooleanField('Try to balance colors', default=True)
+    avoid_same_pairings = BooleanField('Avoid previous pairings', default=True)
+
+@tournament_bp.route('/tournament/<int:tournament_id>/pairings', methods=['GET', 'POST'])
 @login_required
 def manage_pairings(tournament_id):
     """Manage tournament pairings."""
@@ -191,18 +206,33 @@ def manage_pairings(tournament_id):
         flash('Tournament not found.', 'danger')
         return redirect(url_for('tournament.index'))
     
+    form = PairingsForm()
     current_round = db.get_current_round(tournament_id)
     
-    if request.method == 'POST' and 'generate_pairings' in request.form:
-        if current_round and current_round['status'] != 'completed':
+    if request.method == 'POST' and form.validate():
+        if current_round and current_round.get('status') != 'completed':
             flash('Please complete the current round before generating new pairings.', 'warning')
         else:
-            next_round = (current_round['round_number'] + 1) if current_round else 1
-            if db.generate_swiss_pairings(tournament_id, next_round):
-                flash('Pairings generated successfully!', 'success')
-                return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
-            else:
-                flash('Error generating pairings. Please try again.', 'danger')
+            try:
+                next_round = (current_round['round_number'] + 1) if current_round else 1
+                method = form.pairing_method.data
+                
+                # Start a new round
+                round_id = db.start_round(tournament_id, next_round)
+                if not round_id:
+                    flash('Failed to create a new round.', 'error')
+                    return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+                
+                # Generate pairings
+                if db.generate_pairings(tournament_id, round_id, method):
+                    flash('Pairings generated successfully!', 'success')
+                    return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+                else:
+                    flash('Error generating pairings. Please try again.', 'error')
+            except Exception as e:
+                print(f"Error generating pairings: {e}")
+                flash('An error occurred while generating pairings.', 'error')
+                db.conn.rollback()
     
     pairings = db.get_pairings(current_round['id']) if current_round else []
     
@@ -210,7 +240,8 @@ def manage_pairings(tournament_id):
         'tournament/pairings.html',
         tournament=tournament,
         current_round=current_round,
-        pairings=pairings
+        pairings=pairings,
+        form=form
     )
 
 @tournament_bp.route('/pairing/<int:pairing_id>/result', methods=['POST'])

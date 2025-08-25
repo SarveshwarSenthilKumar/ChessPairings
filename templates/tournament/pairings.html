@@ -147,31 +147,24 @@
                 <h5 class="modal-title">Generate Pairings</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ url_for('tournament.generate_pairings', tournament_id=tournament.id, round_id=current_round.id) if current_round else '#' }}">
+            <form method="POST" action="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}">
+                {{ form.hidden_tag() }}
                 <div class="modal-body">
-                    <p>Generate pairings for <strong>Round {{ current_round.round_number }}</strong> using the following method:</p>
+                    <p>Generate pairings for <strong>Round {{ current_round.round_number if current_else 1 }}</strong> using the following method:</p>
                     
                     <div class="mb-3">
-                        <label class="form-label">Pairing Method</label>
-                        <select class="form-select" name="pairing_method">
-                            <option value="swiss">Swiss System (Default)</option>
-                            <option value="round_robin">Round Robin</option>
-                            <option value="manual">Manual Pairing</option>
-                        </select>
+                        {{ form.pairing_method.label(class_="form-label") }}
+                        {{ form.pairing_method(class_="form-select") }}
                     </div>
                     
                     <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="checkColorBalance" name="check_color_balance" checked>
-                        <label class="form-check-label" for="checkColorBalance">
-                            Try to balance colors
-                        </label>
+                        {{ form.check_color_balance(class_="form-check-input") }}
+                        {{ form.check_color_balance.label(class_="form-check-label") }}
                     </div>
                     
                     <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="avoidSamePairings" name="avoid_same_pairings" checked>
-                        <label class="form-check-label" for="avoidSamePairings">
-                            Avoid previous pairings
-                        </label>
+                        {{ form.avoid_same_pairings(class_="form-check-input") }}
+                        {{ form.avoid_same_pairings.label(class_="form-check-label") }}
                     </div>
                     
                     <div class="alert alert-info">
