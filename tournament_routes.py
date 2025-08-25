@@ -1,4 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app
+import os
+import pandas as pd
+from werkzeug.utils import secure_filename
 from functools import wraps
 from tournament_db import TournamentDB
 import os
@@ -296,3 +299,91 @@ def teardown_request(exception=None):
     db = g.pop('db', None)
     if db is not None:
         db.close()
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in {'xlsx', 'xls', 'csv'}
+
+@tournament_bp.route('/<int:tournament_id>/import', methods=['POST'])
+@login_required
+def import_players(tournament_id):
+    """Import players from a spreadsheet file."""
+    db = get_db()
+    tournament = db.get_tournament(tournament_id)
+    if not tournament:
+        flash('Tournament not found.', 'danger')
+        return redirect(url_for('tournament.index'))
+
+    if 'file' not in request.files:
+        flash('No file part', 'error')
+        return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('No selected file', 'error')
+        return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+    
+    if not allowed_file(file.filename):
+        flash('Invalid file type. Please upload an Excel (.xlsx, .xls) or CSV file.', 'error')
+        return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+
+    try:
+        # Read the file into a pandas DataFrame
+        if file.filename.lower().endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(file)
+        else:  # CSV
+            df = pd.read_csv(file)
+        
+        # Convert column names to lowercase for case-insensitive matching
+        df.columns = [col.lower() for col in df.columns]
+        
+        # Check if required columns exist
+        if 'name' not in df.columns:
+            flash('Spreadsheet must contain a "name" column', 'error')
+            return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+        
+        # Process each row
+        success_count = 0
+        error_messages = []
+        
+        for _, row in df.iterrows():
+            try:
+                name = str(row['name']).strip()
+                if not name:
+                    error_messages.append(f'Skipped: Empty name in row {_ + 2}')
+                    continue
+                    
+                rating = int(row.get('rating', 1200))
+                
+                # Create the new player with current timestamp
+                db.cursor.execute(
+                    "INSERT INTO players (name, rating, created_at) VALUES (?, ?, datetime('now'))",
+                    (name, rating)
+                )
+                player_id = db.cursor.lastrowid
+                
+                # Add to tournament
+                if db.add_player_to_tournament(tournament_id, player_id):
+                    success_count += 1
+                else:
+                    error_messages.append(f'Player "{name}" already in tournament')
+                
+            except ValueError as e:
+                error_messages.append(f'Error in row {_ + 2}: {str(e)}')
+            except Exception as e:
+                error_messages.append(f'Error processing row {_ + 2}: {str(e)}')
+        
+        db.conn.commit()
+        
+        if success_count > 0:
+            flash(f'Successfully imported {success_count} players!', 'success')
+        if error_messages:
+            flash('Some players could not be imported. ' + ' '.join(error_messages[:3]) + 
+                 ('...' if len(error_messages) > 3 else ''), 'warning')
+            
+    except Exception as e:
+        db.conn.rollback()
+        current_app.logger.error(f'Error importing players: {str(e)}', exc_info=True)
+        flash(f'Error processing file: {str(e)}', 'error')
+    
+    return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
