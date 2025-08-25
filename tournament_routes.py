@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from functools import wraps
 from tournament_db import TournamentDB
 import os
+import sqlite3
 
 # Create blueprint
 tournament_bp = Blueprint('tournament', __name__, template_folder='templates')
@@ -121,22 +122,61 @@ def manage_players(tournament_id):
         return redirect(url_for('tournament.index'))
     
     if request.method == 'POST':
-        player_id = request.form.get('player_id')
-        if player_id:
-            if db.add_player_to_tournament(tournament_id, player_id):
-                flash('Player added to tournament!', 'success')
+        if 'name' in request.form:  # Creating a new player
+            name = request.form.get('name', '').strip()
+            rating = request.form.get('rating', 1200, type=int)
+            
+            if not name:
+                flash('Player name is required.', 'error')
             else:
-                flash('Player is already in the tournament.', 'warning')
+                try:
+                    # Create the new player with current timestamp
+                    db.cursor.execute(
+                        "INSERT INTO players (name, rating, created_at) VALUES (?, ?, datetime('now'))",
+                        (name, rating)
+                    )
+                    player_id = db.cursor.lastrowid
+                    
+                    # Add the new player to the tournament
+                    if db.add_player_to_tournament(tournament_id, player_id):
+                        flash(f'Player {name} created and added to tournament!', 'success')
+                    else:
+                        flash(f'Player {name} was created but could not be added to the tournament.', 'warning')
+                    
+                    db.conn.commit()
+                except sqlite3.Error as e:
+                    db.conn.rollback()
+                    print(f"Error creating player: {e}")
+                    flash('An error occurred while creating the player.', 'error')
+                    
+        elif 'player_id' in request.form:  # Adding an existing player
+            player_id = request.form.get('player_id')
+            if player_id:
+                if db.add_player_to_tournament(tournament_id, int(player_id)):
+                    flash('Player added to tournament!', 'success')
+                else:
+                    flash('Player is already in the tournament.', 'warning')
+                    
+        elif 'remove_player_id' in request.form:  # Removing a player
+            player_id = request.form.get('remove_player_id')
+            if player_id:
+                if db.remove_player_from_tournament(tournament_id, int(player_id)):
+                    flash('Player removed from tournament!', 'success')
+                else:
+                    flash('Failed to remove player from tournament.', 'error')
     
-    players = db.get_all_players()
+    # Get all players and tournament players
+    all_players = db.get_all_players()
     tournament_players = db.get_tournament_players(tournament_id)
     
-    return render_template(
-        'tournament/players.html',
-        tournament=tournament,
-        players=players,
-        tournament_players=tournament_players
-    )
+    # Get player IDs already in the tournament for filtering
+    tournament_player_ids = {p['id'] for p in tournament_players}
+    available_players = [p for p in all_players if p['id'] not in tournament_player_ids]
+    
+    return render_template('tournament/manage_players.html',
+                         tournament=tournament,
+                         tournament_players=tournament_players,
+                         available_players=available_players)
 
 @tournament_bp.route('/<int:tournament_id>/pairings', methods=['GET', 'POST'])
 @login_required

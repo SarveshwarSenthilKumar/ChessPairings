@@ -160,6 +160,110 @@ class TournamentDB:
             print(f"Error getting pairings for round {round_id}: {e}")
             return []
             
+    def get_all_players(self) -> List[Dict[str, Any]]:
+        """Get all players in the database.
+        
+        Returns:
+            A list of dictionaries containing player data.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT id, name, rating, created_at
+                FROM players
+                ORDER BY name
+            """)
+            return [dict(row) for row in self.cursor.fetchall()]
+        except sqlite3.Error as e:
+            print(f"Error getting all players: {e}")
+            return []
+            
+    def get_tournament_players(self, tournament_id: int) -> List[Dict[str, Any]]:
+        """Get all players in a specific tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            
+        Returns:
+            A list of dictionaries containing player data with tournament-specific info.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT p.id, p.name, p.rating, 
+                       tp.initial_rating, tp.score, tp.tiebreak1, tp.tiebreak2, tp.tiebreak3
+                FROM players p
+                JOIN tournament_players tp ON p.id = tp.player_id
+                WHERE tp.tournament_id = ?
+                ORDER BY p.name
+            """, (tournament_id,))
+            return [dict(row) for row in self.cursor.fetchall()]
+        except sqlite3.Error as e:
+            print(f"Error getting players for tournament {tournament_id}: {e}")
+            return []
+            
+    def add_player_to_tournament(self, tournament_id: int, player_id: int) -> bool:
+        """Add a player to a tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            player_id: The ID of the player to add.
+            
+        Returns:
+            bool: True if the player was added, False if they were already in the tournament.
+        """
+        try:
+            # Get player's current rating
+            self.cursor.execute("SELECT rating FROM players WHERE id = ?", (player_id,))
+            result = self.cursor.fetchone()
+            if not result:
+                return False
+                
+            rating = result[0]
+            
+            # Try to insert the player
+            self.cursor.execute("""
+                INSERT INTO tournament_players (tournament_id, player_id, initial_rating)
+                VALUES (?, ?, ?)
+            """, (tournament_id, player_id, rating))
+            
+            self.conn.commit()
+            return True
+            
+        except sqlite3.IntegrityError:
+            # Player is already in the tournament
+            return False
+            
+        except sqlite3.Error as e:
+            print(f"Error adding player {player_id} to tournament {tournament_id}: {e}")
+            self.conn.rollback()
+            return False
+            
+    def remove_player_from_tournament(self, tournament_id: int, player_id: int) -> bool:
+        """Remove a player from a tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            player_id: The ID of the player to remove.
+            
+        Returns:
+            bool: True if the player was removed, False otherwise.
+        """
+        try:
+            self.cursor.execute("""
+                DELETE FROM tournament_players 
+                WHERE tournament_id = ? AND player_id = ?
+            """, (tournament_id, player_id))
+            
+            if self.cursor.rowcount == 0:
+                return False  # Player wasn't in the tournament
+                
+            self.conn.commit()
+            return True
+            
+        except sqlite3.Error as e:
+            print(f"Error removing player {player_id} from tournament {tournament_id}: {e}")
+            self.conn.rollback()
+            return False
+            
     def get_all_tournaments(self):
         """Get all tournaments from the database."""
         try:

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Players - {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i class="fas fa-users me-2"></i>Manage Players - {{ tournament.name }}
+    </h1>
+    <div>
+        <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Tournament
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Current Players -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-check me-2"></i>Current Players ({{ tournament_players|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if tournament_players %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Rating</th>
+                                    <th>Score</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for player in tournament_players %}
+                                <tr>
+                                    <td>{{ player.name }}</td>
+                                    <td>{{ player.rating }}</td>
+                                    <td>{{ player.score|default(0) }}</td>
+                                    <td>
+                                        <form method="POST" style="display: inline;">
+                                            <input type="hidden" name="remove_player_id" value="{{ player.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="return confirm('Remove {{ player.name }} from the tournament?')">
+                                                <i class="fas fa-user-minus"></i> Remove
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-user-slash fa-3x mb-3"></i>
+                        <p class="mb-0">No players have been added to this tournament yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Players -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Add Players
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if available_players %}
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="player_id" class="form-label">Select Player to Add</label>
+                            <div class="input-group">
+                                <select class="form-select" id="player_id" name="player_id" required>
+                                    <option value="" selected disabled>Choose a player...</option>
+                                    {% for player in available_players %}
+                                        <option value="{{ player.id }}">
+                                            {{ player.name }} ({{ player.rating }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i> Add Player
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                        <p class="mb-0">All available players are already in the tournament.</p>
+                    </div>
+                {% endif %}
+                
+                <div class="mt-4">
+                    <a href="#" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#newPlayerModal">
+                        <i class="fas fa-user-plus me-1"></i> Create New Player
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Player Modal -->
+<div class="modal fade" id="newPlayerModal" tabindex="-1" aria-labelledby="newPlayerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="newPlayerModalLabel">Create New Player</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('tournament.manage_players', tournament_id=tournament.id) }}">
+                <input type="hidden" name="tournament_id" value="{{ tournament.id }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="player_name" class="form-label">Player Name</label>
+                        <input type="text" class="form-control" id="player_name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="player_rating" class="form-label">Rating (optional)</label>
+                        <input type="number" class="form-control" id="player_rating" name="rating" min="0" value="1200">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Player</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Add any client-side JavaScript here if needed
+</script>
+{% endblock %}
