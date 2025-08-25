@@ -16,7 +16,7 @@ tournament_bp = Blueprint('tournament', __name__, template_folder='templates')
 # Database connection
 def get_db():
     if 'db' not in g:
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tournament_new.db')
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tournament.db')
         g.db = TournamentDB(db_path)
     return g.db
 
@@ -251,12 +251,20 @@ def manage_pairings(tournament_id):
                 flash('An error occurred while generating pairings.', 'error')
                 db.conn.rollback()
     
-    pairings = db.get_pairings(current_round['id']) if current_round else []
+    # Ensure current_round is properly formatted for the template
+    if current_round:
+        pairings = db.get_pairings(current_round['id'])
+        # Convert current_round to an object-like structure for dot notation in template
+        from types import SimpleNamespace
+        current_round_obj = SimpleNamespace(**current_round)
+    else:
+        pairings = []
+        current_round_obj = None
     
     return render_template(
         'tournament/pairings.html',
         tournament=tournament,
-        current_round=current_round,
+        current_round=current_round_obj,
         pairings=pairings,
         form=form
     )
