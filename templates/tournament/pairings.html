@@ -63,17 +63,39 @@
                             <td class="fw-medium">
                                 <span class="badge bg-primary">{{ pairing.board_number }}</span>
                             </td>
-                            <td>{{ pairing.white_name }} <small class="text-muted">({{ pairing.white_rating }})</small></td>
-                            <td class="text-muted fw-bold">vs</td>
-                            <td>{{ pairing.black_name }} <small class="text-muted">({{ pairing.black_rating }})</small></td>
                             <td>
-                                {% if pairing.result %}
+                                {% if pairing.black_player_id is none %}
+                                    <span class="badge bg-warning text-dark">BYE</span> {{ pairing.white_name }} 
+                                {% else %}
+                                    {{ pairing.white_name }}
+                                {% endif %}
+                                <small class="text-muted">({{ pairing.white_rating }})</small>
+                            </td>
+                            <td class="text-muted fw-bold">
+                                {% if pairing.black_player_id is none %}
+                                    (bye)
+                                {% else %}
+                                    vs
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pairing.black_player_id is not none %}
+                                    {{ pairing.black_name }} <small class="text-muted">({{ pairing.black_rating }})</small>
+                                {% else %}
+                                    <span class="text-muted">BYE</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pairing.black_player_id is none %}
+                                    <span class="badge bg-warning text-dark">1-0 (BYE)</span>
+                                {% elif pairing.result %}
                                     <span class="badge bg-success">{{ pairing.result }}</span>
                                 {% else %}
                                     <span class="badge bg-secondary">Pending</span>
                                 {% endif %}
                             </td>
                             <td class="text-end">
+                                {% if pairing.black_player_id is not none %}
                                 <button type="button" class="btn btn-sm btn-outline-primary" 
                                     data-bs-toggle="modal" 
                                     data-bs-target="#recordResultModal"
@@ -83,6 +105,9 @@
                                     data-result="{{ pairing.result or '' }}">
                                     <i class="fas fa-pen"></i> Record
                                 </button>
+                                {% else %}
+                                <span class="text-muted small">Auto-recorded</span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}

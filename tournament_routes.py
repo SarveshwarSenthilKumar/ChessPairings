@@ -6,6 +6,7 @@ import os
 import pandas as pd
 from werkzeug.utils import secure_filename
 from functools import wraps
+from types import SimpleNamespace
 from tournament_db import TournamentDB
 import os
 import sqlite3
@@ -253,13 +254,16 @@ def manage_pairings(tournament_id):
     
     # Ensure current_round is properly formatted for the template
     pairings = []
+    current_round_obj = None
+    
     if current_round:
-        pairings = db.get_pairings(current_round['id'])
+        pairings = db.get_pairings(current_round.get('id'))
         # Ensure all required fields are present
         current_round.setdefault('round_number', 0)
-    
-    # Convert current_round to an object-like structure for dot notation in template
-    current_round_obj = SimpleNamespace(**current_round) if current_round else None
+        # Create a copy of the dictionary to avoid modifying the original
+        round_data = dict(current_round)
+        # Convert to SimpleNamespace for dot notation in template
+        current_round_obj = SimpleNamespace(**round_data)
     
     return render_template(
         'tournament/pairings.html',
