@@ -252,14 +252,14 @@ def manage_pairings(tournament_id):
                 db.conn.rollback()
     
     # Ensure current_round is properly formatted for the template
+    pairings = []
     if current_round:
         pairings = db.get_pairings(current_round['id'])
-        # Convert current_round to an object-like structure for dot notation in template
-        from types import SimpleNamespace
-        current_round_obj = SimpleNamespace(**current_round)
-    else:
-        pairings = []
-        current_round_obj = None
+        # Ensure all required fields are present
+        current_round.setdefault('round_number', 0)
+    
+    # Convert current_round to an object-like structure for dot notation in template
+    current_round_obj = SimpleNamespace(**current_round) if current_round else None
     
     return render_template(
         'tournament/pairings.html',
