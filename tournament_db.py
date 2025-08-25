@@ -85,6 +85,81 @@ class TournamentDB:
         
         self.conn.commit()
         
+    def get_tournament(self, tournament_id: int) -> Optional[Dict[str, Any]]:
+        """Get a single tournament by ID.
+        
+        Args:
+            tournament_id: The ID of the tournament to retrieve.
+            
+        Returns:
+            A dictionary containing the tournament data, or None if not found.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT t.*, 
+                       (SELECT COUNT(*) FROM tournament_players WHERE tournament_id = t.id) as player_count
+                FROM tournaments t
+                WHERE t.id = ?
+            """, (tournament_id,))
+            
+            result = self.cursor.fetchone()
+            return dict(result) if result else None
+            
+        except sqlite3.Error as e:
+            print(f"Error getting tournament {tournament_id}: {e}")
+            return None
+            
+    def get_current_round(self, tournament_id: int) -> Optional[Dict[str, Any]]:
+        """Get the current round for a tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            
+        Returns:
+            A dictionary containing the current round data, or None if not found.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT * FROM rounds 
+                WHERE tournament_id = ? 
+                ORDER BY round_number DESC 
+                LIMIT 1
+            """, (tournament_id,))
+            
+            result = self.cursor.fetchone()
+            return dict(result) if result else None
+            
+        except sqlite3.Error as e:
+            print(f"Error getting current round for tournament {tournament_id}: {e}")
+            return None
+            
+    def get_round_pairings(self, round_id: int) -> List[Dict[str, Any]]:
+        """Get all pairings for a specific round.
+        
+        Args:
+            round_id: The ID of the round.
+            
+        Returns:
+            A list of dictionaries containing pairing data.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT p.*, 
+                       w.name as white_name, w.rating as white_rating,
+                       b.name as black_name, b.rating as black_rating
+                FROM pairings p
+                LEFT JOIN players w ON p.white_player_id = w.id
+                LEFT JOIN players b ON p.black_player_id = b.id
+                WHERE p.round_id = ?
+                ORDER BY p.board_number
+            """, (round_id,))
+            
+            return [dict(row) for row in self.cursor.fetchall()]
+            
+        except sqlite3.Error as e:
+            print(f"Error getting pairings for round {round_id}: {e}")
+            return []
+            
     def get_all_tournaments(self):
         """Get all tournaments from the database."""
         try:

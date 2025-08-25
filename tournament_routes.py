@@ -94,7 +94,17 @@ def view(tournament_id):
         if not tournament:
             flash('Tournament not found.', 'danger')
             return redirect(url_for('tournament.index'))
-        return render_template('tournament/view.html', tournament=tournament)
+            
+        # Get current round and its pairings
+        current_round = db.get_current_round(tournament_id)
+        pairings = []
+        if current_round:
+            pairings = db.get_round_pairings(current_round['id'])
+            
+        return render_template('tournament/view.html', 
+                            tournament=tournament,
+                            current_round=current_round,
+                            pairings=pairings)
     except Exception as e:
         print(f"Error viewing tournament {tournament_id}: {e}")
         flash('An error occurred while loading the tournament.', 'error')
