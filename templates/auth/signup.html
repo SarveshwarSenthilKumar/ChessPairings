@@ -39,7 +39,8 @@
                     {% endif %}
 
                     <!-- Signup Form -->
-                    <form id="signupForm" action="/auth/signup" method="post" class="mt-4">
+                    <form id="signupForm" action="{{ url_for('auth.register') }}" method="post" class="mt-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">

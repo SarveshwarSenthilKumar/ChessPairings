@@ -1,12 +1,13 @@
-from flask import Flask, render_template, request, redirect, session, url_for, Response, make_response
+from flask import Flask, render_template, request, redirect, session, url_for, Response, make_response, g
 from flask_session import Session
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from auth import auth_blueprint
 from tournament_routes import tournament_bp
 from SarvAuth import *
 from sql import *
 from datetime import datetime, date
 import simplejson as json
+import secrets
 
 # Custom JSON provider
 class CustomJSONProvider:
@@ -33,17 +34,27 @@ def json_response(data, status=200):
     return response
 
 # Configuration
-app.config['SECRET_KEY'] = 'your-secret-key-here'  # Change this to a secure secret key
+app.config['SECRET_KEY'] = 'your-secure-secret-key-123'  # Use a fixed key for development
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TYPE'] = 'filesystem'
-
-# Initialize session and CSRF protection
-Session(app)
-csrf = CSRFProtect(app)
-
-# Configure CSRF
 app.config['WTF_CSRF_ENABLED'] = True
-app.config['SECRET_KEY'] = 'your-secret-key-here'  # Make sure to set a secure secret key
+app.config['WTF_CSRF_SECRET_KEY'] = 'your-csrf-secret-key-123'  # Fixed key for development
+app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour
+
+# Initialize session
+Session(app)
+
+# Initialize CSRF protection
+csrf = CSRFProtect()
+csrf.init_app(app)
+
+# Make CSRF token available in all templates
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf)
+
+# Disable CSRF for API endpoints if needed
+csrf.exempt(json_response)
 
 def format_datetime(value, format='%Y-%m-%d %H:%M'):
     if value is None:

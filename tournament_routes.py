@@ -108,10 +108,15 @@ def view(tournament_id):
         if current_round:
             pairings = db.get_round_pairings(current_round['id'])
             
+        # Ensure tournament has prize_winners attribute with default value 0 if not set
+        if not hasattr(tournament, 'prize_winners'):
+            tournament.prize_winners = 0
+            
         return render_template('tournament/view.html', 
                             tournament=tournament,
                             current_round=current_round,
-                            pairings=pairings)
+                            pairings=pairings,
+                            prize_winners=tournament.prize_winners)
     except Exception as e:
         print(f"Error viewing tournament {tournament_id}: {e}")
         flash('An error occurred while loading the tournament.', 'error')
@@ -266,37 +271,66 @@ def submit_result(pairing_id):
 @login_required
 def standings(tournament_id):
     """View tournament standings."""
-    db = get_db()
-    tournament = db.get_tournament(tournament_id)
-    if not tournament:
-        flash('Tournament not found.', 'danger')
-        return redirect(url_for('tournament.index'))
-    
-    standings_data = db.get_standings(tournament_id)
-    
-    return render_template(
-        'tournament/standings.html',
-        tournament=tournament,
-        standings=standings_data
-    )
+    try:
+        db = get_db()
+        tournament = db.get_tournament(tournament_id)
+        if not tournament:
+            flash('Tournament not found.', 'danger')
+            return redirect(url_for('tournament.index'))
+        
+        # Ensure tournament has prize_winners attribute with default value 0 if not set
+        if not hasattr(tournament, 'prize_winners'):
+            tournament.prize_winners = 0
+        
+        # Safely get current round
+        current_round = 0
+        if hasattr(db, 'get_current_round'):
+            current_round = db.get_current_round(tournament_id) or 0
+        
+        # Get standings if the method exists
+        standings_data = []
+        if hasattr(db, 'get_standings'):
+            standings_data = db.get_standings(tournament_id) or []
+        
+        return render_template(
+            'tournament/standings.html',
+            tournament=tournament,
+            standings=standings_data,
+            current_round=current_round,
+            prize_winners=tournament.prize_winners
+        )
+    except Exception as e:
+        print(f"Error in standings route: {e}")
+        flash('An error occurred while loading the standings.', 'error')
+        return redirect(url_for('tournament.view', tournament_id=tournament_id))
 
 @tournament_bp.route('/<int:tournament_id>/rounds')
 @login_required
 def rounds(tournament_id):
     """View all rounds in the tournament."""
-    db = get_db()
-    tournament = db.get_tournament(tournament_id)
-    if not tournament:
-        flash('Tournament not found.', 'danger')
-        return redirect(url_for('tournament.index'))
-    
-    rounds = db.get_tournament_rounds(tournament_id)
-    
-    return render_template(
-        'tournament/rounds.html',
-        tournament=tournament,
-        rounds=rounds
-    )
+    try:
+        db = get_db()
+        tournament = db.get_tournament(tournament_id)
+        if not tournament:
+            flash('Tournament not found.', 'danger')
+            return redirect(url_for('tournament.index'))
+        
+        # Safely get rounds if the method exists
+        rounds_data = []
+        if hasattr(db, 'get_tournament_rounds'):
+            rounds_data = db.get_tournament_rounds(tournament_id) or []
+        
+        # Provide empty prize_winners list if used in the template
+        return render_template(
+            'tournament/rounds.html',
+            tournament=tournament,
+            rounds=rounds_data,
+            prize_winners=[]  # Add empty prize_winners list
+        )
+    except Exception as e:
+        print(f"Error in rounds route: {e}")
+        flash('An error occurred while loading the rounds.', 'error')
+        return redirect(url_for('tournament.view', tournament_id=tournament_id))
 
 @tournament_bp.route('/round/<int:round_id>')
 @login_required

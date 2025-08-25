@@ -132,7 +132,7 @@
                 </thead>
                 <tbody id="standingsTable">
                     {% for player in standings %}
-                    <tr class="{{ 'table-warning' if loop.index <= tournament.prize_winners and tournament.prize_winners > 0 }}">
+                    <tr class="{% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 %}table-warning{% endif %}">
                         <td class="text-center fw-bold">
                             {{ loop.index }}
                             {% if loop.index == 1 %}

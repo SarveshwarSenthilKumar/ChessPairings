@@ -336,11 +336,36 @@ class TournamentDB:
                 # Second pass: Try to pair remaining players with closest score
                 unpaired = [p for p in players if p['id'] not in paired]
                 
-                # If odd number of unpaired players, give a bye to the lowest-rated
+                # If odd number of unpaired players, find the best candidate for a bye
                 if len(unpaired) % 2 != 0:
-                    # Sort unpaired by rating (lowest first)
-                    unpaired.sort(key=lambda x: x['rating'])
-                    bye_player = unpaired.pop(0)
+                    # Sort unpaired by number of previous byes (ascending) and then by rating (ascending)
+                    unpaired.sort(key=lambda x: (
+                        len([p for p in self.get_player_pairing_history(tournament_id, x['id']) 
+                            if p['black_player_id'] is None]),  # Count previous byes
+                        x['rating']  # Then by rating
+                    ))
+                    
+                    # The best candidate for a bye is someone with the fewest byes (ideally 0)
+                    # and among those, the lowest-rated player
+                    bye_player = unpaired[0]
+                    
+                    # Check if this player already had a bye in this tournament
+                    previous_pairings = self.get_player_pairing_history(tournament_id, bye_player['id'])
+                    has_previous_bye = any(p['black_player_id'] is None for p in previous_pairings)
+                    
+                    if has_previous_bye:
+                        # Try to find another player who hasn't had a bye yet
+                        for i, player in enumerate(unpaired[1:], 1):
+                            previous_pairings = self.get_player_pairing_history(tournament_id, player['id'])
+                            if not any(p['black_player_id'] is None for p in previous_pairings):
+                                bye_player = unpaired.pop(i)
+                                break
+                        else:
+                            # If all players have had a bye, take the first one (with fewest byes)
+                            bye_player = unpaired.pop(0)
+                    else:
+                        unpaired.pop(0)
+                        
                     pairings.append((bye_player, None))
                     paired.add(bye_player['id'])
                 
