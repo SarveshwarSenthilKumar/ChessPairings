@@ -75,7 +75,7 @@
                     <div>
                         <h6 class="text-muted mb-1">Current Round</h6>
                         <h3 class="mb-0">
-                            {{ current_round.round_number if current_else }}/{{ tournament.rounds }}
+                            {{ current_round.round_number if current_round else '—' }}/{{ tournament.rounds }}
                         </h3>
                     </div>
                     <div class="avatar-lg bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
@@ -119,15 +119,15 @@
                         <th class="text-center" style="width: 60px;">#</th>
                         <th>Player</th>
                         <th class="text-center">Rating</th>
-                        <th class="text-center">Pts</th>
-                        <th class="text-center">TB1</th>
-                        <th class="text-center">TB2</th>
-                        <th class="text-center">TB3</th>
-                        <th class="text-center">+</th>
-                        <th class="text-center">-</th>
-                        <th class="text-center">=</th>
-                        <th class="text-center">Perf</th>
-                        <th class="text-center">Progress</th>
+                        <th class="text-center" data-bs-toggle="tooltip" title="Points: 1 for a win, 0.5 for a draw">Pts</th>
+                        <th class="text-center" data-bs-toggle="tooltip" title="Buchholz: Sum of opponents' scores. Higher is better.">Buchholz</th>
+                        <th class="text-center" data-bs-toggle="tooltip" title="Sonneborn-Berger: Sum of the scores of opponents you beat and half the scores of those you drew with.">S-B</th>
+                        <th class="text-center" data-bs-toggle="tooltip" title="Cumulative: The sum of your current score after each round.">Cumul.</th>
+                        <th class="text-center" data-bs-toggle="tooltip" title="Wins">+</th>
+                        <th class="text-center" data-bs-toggle="tooltip" title="Losses">-</th>
+                        <th class="text-center" data-bs-toggle="tooltip" title="Draws">=</th>
+                        <th class="text-center" data-bs-toggle="tooltip" title="Performance: Expected performance based on opponents' ratings">Perf</th>
+                        <th class="text-center" data-bs-toggle="tooltip" title="Trend: Performance trend over last 3 rounds">Trend</th>
                     </tr>
                 </thead>
                 <tbody id="standingsTable">
@@ -285,10 +285,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Add tooltips
+    // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            trigger: 'hover',
+            placement: 'top',
+            container: 'body'
+        });
     });
 });
 </script>
