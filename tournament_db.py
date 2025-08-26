@@ -735,27 +735,163 @@ class TournamentDB:
     # Tournament state management
     def start_round(self, tournament_id: int, round_number: int) -> int:
         """Start a new round in the tournament."""
-        query = """
-        INSERT INTO rounds (tournament_id, round_number, start_time, status)
-        VALUES (?, ?, datetime('now'), 'ongoing')
-        """
-        self.cursor.execute(query, (tournament_id, round_number))
-        self.conn.commit()
-        return self.cursor.lastrowid
+        try:
+            query = """
+            INSERT INTO rounds (tournament_id, round_number, start_time, status)
+            VALUES (?, ?, datetime('now'), 'ongoing')
+            """
+            self.cursor.execute(query, (tournament_id, round_number))
+            
+            # If this is the first round, update tournament status to 'ongoing'
+            if round_number == 1:
+                self.cursor.execute(
+                    "UPDATE tournaments SET status = 'ongoing' WHERE id = ? AND status = 'upcoming'",
+                    (tournament_id,)
+                )
+                
+            self.conn.commit()
+            return self.cursor.lastrowid
+            
+        except Exception as e:
+            print(f"Error starting round: {e}")
+            self.conn.rollback()
+            raise
 
     def complete_round(self, round_id: int) -> bool:
-        """Mark a round as completed."""
+        """Mark a round as completed and update tournament status if needed."""
         try:
-            self.cursor.execute(
-                "UPDATE rounds SET status = 'completed', end_time = datetime('now') WHERE id = ?",
-                (round_id,)
-            )
+            # First, get the tournament_id from the round
+            self.cursor.execute("SELECT tournament_id, round_number FROM rounds WHERE id = ?", (round_id,))
+            result = self.cursor.fetchone()
+            if not result:
+                return False
+                
+            tournament_id, round_number = result
+            
+            # Update the round status
+            query = """
+            UPDATE rounds 
+            SET status = 'completed', end_time = datetime('now')
+            WHERE id = ?
+            """
+            self.cursor.execute(query, (round_id,))
+            
+            # Update tournament status based on rounds
+            self._update_tournament_status(tournament_id)
             self.conn.commit()
             return True
+            
         except Exception as e:
             print(f"Error completing round: {e}")
             self.conn.rollback()
             return False
+        
+    def is_tournament_complete(self, tournament_id: int) -> bool:
+        """Check if a tournament is complete (all rounds finished with results)."""
+        # Get tournament info
+        self.cursor.execute("""
+            SELECT t.rounds, COUNT(r.id) as completed_rounds
+            FROM tournaments t
+            LEFT JOIN rounds r ON t.id = r.tournament_id AND r.status = 'completed'
+            WHERE t.id = ?
+            GROUP BY t.id, t.rounds
+        """, (tournament_id,))
+        
+        result = self.cursor.fetchone()
+        if not result or result[0] == 0:  # No rounds configured or no tournament found
+            return False
+            
+        total_rounds, completed_rounds = result
+        
+        # Check if all rounds are completed
+        if completed_rounds < total_rounds:
+            return False
+            
+        # Check if all pairings have results
+        self.cursor.execute("""
+            SELECT COUNT(*) 
+            FROM pairings p
+            JOIN rounds r ON p.round_id = r.id
+            WHERE r.tournament_id = ? 
+            AND p.result IS NULL 
+            AND p.black_player_id IS NOT NULL
+        """, (tournament_id,))
+        
+        incomplete_pairings = self.cursor.fetchone()[0]
+        return incomplete_pairings == 0
+        
+    def _update_tournament_status(self, tournament_id: int):
+        """Update the tournament status based on its rounds and pairings.
+        
+        Status can be:
+        - 'upcoming': No rounds started yet
+        - 'ongoing': At least one round has started but not all rounds are complete
+        - 'completed': All rounds are complete and all pairings have results
+        """
+        # Get tournament info
+        self.cursor.execute("SELECT rounds FROM tournaments WHERE id = ?", (tournament_id,))
+        result = self.cursor.fetchone()
+        if not result:
+            return
+            
+        total_rounds = result[0]
+        
+        # Get all rounds for this tournament
+        self.cursor.execute("""
+            SELECT id, status, round_number 
+            FROM rounds 
+            WHERE tournament_id = ? 
+            ORDER BY round_number
+        """, (tournament_id,))
+        rounds = self.cursor.fetchall()
+        
+        if not rounds:
+            # No rounds yet, set to 'upcoming' if not already
+            self.cursor.execute("""
+                UPDATE tournaments 
+                SET status = 'upcoming' 
+                WHERE id = ? AND status != 'upcoming'
+            """, (tournament_id,))
+            return
+            
+        # Check if all rounds are complete
+        all_rounds_complete = all(round_data[1] == 'completed' for round_data in rounds)
+        
+        if all_rounds_complete:
+            # Check if all pairings have results
+            for round_data in rounds:
+                round_id = round_data[0]
+                self.cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM pairings 
+                    WHERE round_id = ? 
+                    AND result IS NULL 
+                    AND black_player_id IS NOT NULL
+                """, (round_id,))
+                incomplete_pairings = self.cursor.fetchone()[0]
+                
+                if incomplete_pairings > 0:
+                    # Found incomplete pairings, can't mark as completed
+                    all_rounds_complete = False
+                    break
+                    
+            if all_rounds_complete:
+                # All rounds and pairings complete, update status to 'completed'
+                self.cursor.execute("""
+                    UPDATE tournaments 
+                    SET status = 'completed', 
+                        end_date = COALESCE(end_date, date('now'))
+                    WHERE id = ?
+                """, (tournament_id,))
+                return
+                
+        # If we get here, either not all rounds are complete or not all pairings have results
+        # Check if we need to update to 'ongoing' status
+        self.cursor.execute("""
+            UPDATE tournaments 
+            SET status = 'ongoing' 
+            WHERE id = ? AND status = 'upcoming'
+        """, (tournament_id,))
 
     # Reporting
     def get_players_with_bye_requests(self, tournament_id: int, round_number: int) -> List[Dict[str, Any]]:
