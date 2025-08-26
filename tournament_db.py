@@ -70,6 +70,7 @@ class TournamentDB:
             start_time TEXT,
             end_time TEXT,
             status TEXT DEFAULT 'pending',
+            last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
             UNIQUE(tournament_id, round_number)
         );
@@ -683,48 +684,96 @@ class TournamentDB:
         self.conn.commit()
         return self.cursor.lastrowid
 
-    def record_result(self, pairing_id: int, result: str) -> bool:
-        """Record the result of a game."""
-        try:
-            # Update the pairing with the result
-            self.cursor.execute(
-                "UPDATE pairings SET result = ?, status = 'completed' WHERE id = ?",
-                (result, pairing_id)
-            )
-            
-            # Update player scores based on the result
-            if result == '1-0':
-                # White wins
-                self.cursor.execute("""
-                    UPDATE tournament_players 
-                    SET score = score + 1 
-                    WHERE player_id = (
-                        SELECT white_player_id FROM pairings WHERE id = ?
-                    )
-                """, (pairing_id,))
-            elif result == '0-1':
-                # Black wins
-                self.cursor.execute("""
-                    UPDATE tournament_players 
-                    SET score = score + 1 
-                    WHERE player_id = (
-                        SELECT black_player_id FROM pairings WHERE id = ?
-                    )
-                """, (pairing_id,))
-            elif result == '0.5-0.5':
-                # Draw
-                self.cursor.execute("""
-                    UPDATE tournament_players 
-                    SET score = score + 0.5 
-                    WHERE player_id IN (
-                        SELECT white_player_id FROM pairings WHERE id = ?
-                        UNION
-                        SELECT black_player_id FROM pairings WHERE id = ?
-                    )
-                """, (pairing_id, pairing_id))
+    def record_result(self, pairing_id: int, result: Optional[str]) -> bool:
+        """
+        Record the result of a game.
         
+        Args:
+            pairing_id: The ID of the pairing
+            result: The game result ('1-0', '0-1', '0.5-0.5', or None to clear the result)
+            
+        Returns:
+            bool: True if the result was recorded successfully, False otherwise
+        """
+        try:
+            # Get the current result to handle score adjustments correctly
+            current_result = self.cursor.execute(
+                "SELECT result, white_player_id, black_player_id, round_id FROM pairings WHERE id = ?",
+                (pairing_id,)
+            ).fetchone()
+            
+            if not current_result:
+                return False
+                
+            current_result = dict(current_result)
+            
+            # Start a transaction
+            self.cursor.execute("BEGIN TRANSACTION")
+            
+            # Clear previous result's impact on scores if it exists
+            if current_result['result']:
+                if current_result['result'] == '1-0':
+                    # Remove white's win
+                    self.cursor.execute("""
+                        UPDATE tournament_players 
+                        SET score = score - 1 
+                        WHERE player_id = ?
+                    """, (current_result['white_player_id'],))
+                elif current_result['result'] == '0-1':
+                    # Remove black's win
+                    self.cursor.execute("""
+                        UPDATE tournament_players 
+                        SET score = score - 1 
+                        WHERE player_id = ?
+                    """, (current_result['black_player_id'],))
+                elif current_result['result'] == '0.5-0.5':
+                    # Remove draw points
+                    self.cursor.execute("""
+                        UPDATE tournament_players 
+                        SET score = score - 0.5 
+                        WHERE player_id IN (?, ?)
+                    """, (current_result['white_player_id'], current_result['black_player_id']))
+            
+            # Update the pairing with the new result
+            if result is None:
+                # Clear the result
+                self.cursor.execute(
+                    "UPDATE pairings SET result = NULL, status = 'scheduled' WHERE id = ?",
+                    (pairing_id,)
+                )
+            else:
+                # Set the new result
+                self.cursor.execute(
+                    "UPDATE pairings SET result = ?, status = 'completed' WHERE id = ?",
+                    (result, pairing_id)
+                )
+                
+                # Update player scores based on the new result
+                if result == '1-0':
+                    # White wins
+                    self.cursor.execute("""
+                        UPDATE tournament_players 
+                        SET score = score + 1 
+                        WHERE player_id = ?
+                    """, (current_result['white_player_id'],))
+                elif result == '0-1':
+                    # Black wins
+                    self.cursor.execute("""
+                        UPDATE tournament_players 
+                        SET score = score + 1 
+                        WHERE player_id = ?
+                    """, (current_result['black_player_id'],))
+                elif result == '0.5-0.5':
+                    # Draw
+                    self.cursor.execute("""
+                        UPDATE tournament_players 
+                        SET score = score + 0.5 
+                        WHERE player_id IN (?, ?)
+                    """, (current_result['white_player_id'], current_result['black_player_id']))
+            
             self.conn.commit()
             return True
+            
         except Exception as e:
             print(f"Error recording result: {e}")
             self.conn.rollback()

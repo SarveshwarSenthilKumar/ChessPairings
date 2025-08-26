@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app, jsonify
+from flask_wtf.csrf import generate_csrf
 from flask_wtf import FlaskForm
 from wtforms import SelectField, BooleanField
 from wtforms.validators import DataRequired
@@ -273,23 +274,119 @@ def manage_pairings(tournament_id):
         form=form
     )
 
-@tournament_bp.route('/pairing/<int:pairing_id>/result', methods=['POST'])
+@tournament_bp.route('/<int:tournament_id>/pairing/<int:pairing_id>/result', methods=['POST'])
 @login_required
-def submit_result(pairing_id):
+def submit_result(tournament_id, pairing_id):
     """Submit a game result."""
-    db = get_db()
-    result = request.form.get('result')
+    print(f"Received request to submit result for tournament {tournament_id}, pairing {pairing_id}")
+    print(f"Form data: {request.form}")
     
-    if result not in ['1-0', '0-1', '0.5-0.5']:
-        flash('Invalid result.', 'danger')
-        return redirect(request.referrer)
-    
-    if db.record_result(pairing_id, result):
-        flash('Result recorded successfully!', 'success')
-    else:
-        flash('Error recording result. Please try again.', 'danger')
-    
-    return redirect(request.referrer)
+    try:
+        db = get_db()
+        
+        # Get form data
+        result = request.form.get('result')
+        csrf_token = request.form.get('csrf_token')
+        
+        # Verify CSRF token using Flask-WTF's built-in validation
+        try:
+            from flask_wtf.csrf import validate_csrf
+            validate_csrf(csrf_token)
+        except Exception as e:
+            print(f"CSRF validation error: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': 'Invalid or expired security token. Please refresh the page and try again.',
+                'error': 'invalid_csrf_token'
+            }), 403
+        
+        # Check if the tournament exists and user has access
+        tournament = db.get_tournament(tournament_id)
+        if not tournament:
+            return jsonify({
+                'success': False,
+                'message': 'Tournament not found.'
+            }), 404
+            
+        # Check if the current user is the tournament creator or admin
+        if tournament['creator_id'] != session.get('user_id') and not session.get('is_admin', False):
+            return jsonify({
+                'success': False,
+                'message': 'You are not authorized to record results for this tournament.'
+            }), 403
+        
+        # Check if the pairing exists and belongs to this tournament
+        pairing = db.cursor.execute(
+            """
+            SELECT p.* 
+            FROM pairings p
+            JOIN rounds r ON p.round_id = r.id
+            WHERE p.id = ? AND r.tournament_id = ?
+            """, (pairing_id, tournament_id)
+        ).fetchone()
+        
+        if not pairing:
+            return jsonify({
+                'success': False,
+                'message': 'Pairing not found in this tournament.'
+            }), 404
+        
+        # Record the result
+        result_to_save = result if result != '*' else None
+        print(f"Attempting to record result: {result_to_save}")
+        
+        try:
+            success = db.record_result(pairing_id, result_to_save)
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'message': 'Failed to record the result. Please try again.',
+                    'error': 'record_failed'
+                }), 500
+                
+            # Generate a new CSRF token for the next request
+            new_csrf_token = generate_csrf()
+            session['csrf_token'] = new_csrf_token
+            
+            # Make sure the session is saved
+            session.modified = True
+            
+            return jsonify({
+                'success': True,
+                'message': 'Result recorded successfully!',
+                'new_csrf_token': new_csrf_token
+            })
+            
+        except Exception as e:
+            error_msg = f"Error in record_result: {str(e)}"
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                'success': False,
+                'message': 'An error occurred while recording the result.',
+                'error': 'server_error',
+                'details': str(e)
+            }), 500
+            
+    except sqlite3.Error as e:
+        error_msg = f"Database error recording result: {str(e)}"
+        print(error_msg)
+        return jsonify({
+            'success': False,
+            'message': 'A database error occurred while recording the result.',
+            'error': str(e)
+        }), 500
+    except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': str(e) or 'An error occurred while recording the result.',
+            'error': str(e)
+        }), 500
 
 @tournament_bp.route('/<int:tournament_id>/standings')
 @login_required

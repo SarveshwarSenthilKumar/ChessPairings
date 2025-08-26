@@ -44,17 +44,17 @@ app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour
 # Initialize session
 Session(app)
 
-# Initialize CSRF protection
+# Configure CSRF protection
 csrf = CSRFProtect()
 csrf.init_app(app)
 
 # Make CSRF token available in all templates
 @app.context_processor
 def inject_csrf_token():
-    return dict(csrf_token=generate_csrf)
+    return {'csrf_token': generate_csrf}
 
-# Disable CSRF for API endpoints if needed
-csrf.exempt(json_response)
+# Disable CSRF for specific endpoints if needed
+# csrf.exempt(json_response)
 
 def format_datetime(value, format='%Y-%m-%d %H:%M'):
     if value is None:

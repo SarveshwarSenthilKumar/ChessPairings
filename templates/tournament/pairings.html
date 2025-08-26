@@ -138,7 +138,7 @@
                 <h5 class="modal-title">Record Game Result</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="resultForm" method="POST">
+            <form id="resultForm">
                 <div class="modal-body">
                     <div class="text-center mb-4">
                         <h6 id="pairingTitle">White vs Black</h6>
@@ -163,7 +163,10 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Result</button>
+                    <button type="submit" class="btn btn-primary" id="saveResultBtn">
+                        <span class="spinner-border spinner-border-sm d-none" id="saveSpinner" role="status" aria-hidden="true"></span>
+                        <span id="saveText">Save Result</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -281,20 +284,153 @@ document.addEventListener('DOMContentLoaded', function() {
         if (resultForm) {
             resultForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                const formData = new FormData(this);
+                const form = e.target;
+                const pairingId = document.getElementById('pairingId').value;
+                const result = document.getElementById('gameResult').value;
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 
-                // Here you would typically make an AJAX call to save the result
-                console.log('Saving result:', {
-                    pairing_id: formData.get('pairing_id'),
-                    result: formData.get('result')
+                if (!pairingId) {
+                    showToast('error', 'Error', 'Invalid pairing ID');
+                    return;
+                }
+                
+                if (!result) {
+                    showToast('error', 'Error', 'Please select a result');
+                    return;
+                }
+                
+                // Show loading state
+                const submitBtn = document.getElementById('saveResultBtn');
+                const spinner = document.getElementById('saveSpinner');
+                const saveText = document.getElementById('saveText');
+                
+                submitBtn.disabled = true;
+                spinner.classList.remove('d-none');
+                saveText.textContent = 'Saving...';
+                
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    resetButtonState();
+                    showToast('error', 'Error', 'Security token missing. Please refresh the page.');
+                    return;
+                }
+                
+                // Get the tournament ID from the URL
+                const urlMatch = window.location.pathname.match(/\/tournament\/(\d+)\/?/);
+                if (!urlMatch || !urlMatch[1]) {
+                    console.error('Could not determine tournament ID from URL');
+                    showToast('error', 'Error', 'Could not determine tournament ID');
+                    resetButtonState();
+                    return;
+                }
+                
+                const tournamentId = urlMatch[1];
+                const url = `/tournament/${tournamentId}/pairing/${pairingId}/result`;
+                
+                // Create form data with CSRF token
+                const formData = new URLSearchParams();
+                formData.append('result', result);
+                formData.append('csrf_token', csrfToken);
+                
+                // Make the request with CSRF token in headers
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', 'Success', 'Result saved successfully');
+                        // Close the modal and refresh the page
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('recordResultModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        // Refresh the page to show updated results
+                        window.location.reload();
+                    } else {
+                        throw new Error(data.message || 'Failed to save result');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('error', 'Error', error.message || 'Failed to save result. Please try again.');
+                    
+                    // Handle CSRF token issues specifically
+                    if (error.message && error.message.includes('CSRF')) {
+                        // Force a page reload to get a fresh CSRF token
+                        showToast('error', 'Session Expired', 'Your session has expired. Refreshing the page...');
+                        setTimeout(() => window.location.reload(), 2000);
+                    }
+                })
+                .finally(() => {
+                    resetButtonState();
                 });
                 
-                // For now, just close the modal and reload the page
-                const modal = bootstrap.Modal.getInstance(recordResultModal);
-                modal.hide();
-                window.location.reload();
+                // Helper function to reset button state
+                function resetButtonState() {
+                    const submitBtn = document.getElementById('saveResultBtn');
+                    const spinner = document.getElementById('saveSpinner');
+                    const saveText = document.getElementById('saveText');
+                    
+                    if (submitBtn && spinner && saveText) {
+                        submitBtn.disabled = false;
+                        spinner.classList.add('d-none');
+                        saveText.textContent = 'Save Result';
+                    }
+                }
             });
         }
+    }
+    
+    // Helper function to show toast messages
+    function showToast(type, title, message) {
+        const toastContainer = document.createElement('div');
+        toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = '1100';
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast show';
+        toast.role = 'alert';
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+        
+        toast.innerHTML = `
+            <div class="toast-header ${bgClass} text-white">
+                <strong class="me-auto">${title}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        document.body.appendChild(toastContainer);
+        
+        // Auto-remove toast after 5 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+            setTimeout(() => {
+                if (toastContainer.parentNode) {
+                    toastContainer.parentNode.removeChild(toastContainer);
+                }
+            }, 300);
+        }, 5000);
     }
     
     // Handle pairing search
