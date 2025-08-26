@@ -38,6 +38,22 @@
             <i class="fas fa-list-ol me-2"></i>Pairings
             <span class="badge bg-light text-dark ms-2">{{ pairings|length }}</span>
         </h5>
+        {% if current_round %}
+            {% set all_results_in = pairings|selectattr('result')|list|length == pairings|length %}
+            {% if all_results_in and current_round.round_number <= tournament.rounds %}
+                <form action="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="complete_round" value="True">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-success" id="completeRoundBtn">
+                        <i class="fas fa-check-circle me-1"></i> Complete Round {{ current_round.round_number }}
+                    </button>
+                </form>
+            {% elif current_round.is_completed and current_round.round_number < tournament.rounds %}
+                <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id, generate_next='True') }}" class="btn btn-success" id="generateNextRoundBtn">
+                    <i class="fas fa-arrow-right me-1"></i> Next Round ({{ current_round.round_number + 1 }}/{{ tournament.rounds }})
+                </a>
+            {% endif %}
+        {% endif %}
         <div class="input-group input-group-sm" style="width: 250px;">
             <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
             <input type="text" id="pairingSearch" class="form-control" placeholder="Search pairings...">

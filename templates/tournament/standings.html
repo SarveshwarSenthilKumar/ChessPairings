@@ -31,8 +31,44 @@
                 <li><a class="dropdown-item" href="#"><i class="fas fa-print me-2"></i>Print</a></li>
             </ul>
         </div>
+        {% if is_round_complete and has_next_round %}
+        <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id, generate_next='True') }}" 
+           class="btn btn-success ms-2" 
+           id="generateNextRoundBtn"
+           data-bs-toggle="modal" 
+           data-bs-target="#confirmNextRoundModal">
+            <i class="fas fa-arrow-right me-1"></i> Next Round ({{ current_round.round_number + 1 if current_round else 1 }}/{{ tournament.rounds }})
+        </a>
+        {% endif %}
     </div>
 </div>
+
+{% if is_round_complete and has_next_round %}
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmNextRoundModal" tabindex="-1" aria-labelledby="confirmNextRoundModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmNextRoundModalLabel">Generate Next Round</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to generate pairings for the next round?</p>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    This will create a new round with pairings based on the current standings.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id, generate_next=True) }}" class="btn btn-success" id="confirmGenerateBtn">
+                    <i class="fas fa-check me-1"></i> Generate Round
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="row mb-4">
     <div class="col-md-4">
@@ -267,6 +303,16 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Handle next round generation
+    const generateBtn = document.getElementById('generateNextRoundBtn');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const modal = new bootstrap.Modal(document.getElementById('confirmNextRoundModal'));
+            modal.show();
+        });
+    }
+    
     // Search functionality
     const searchInput = document.getElementById('searchStandings');
     if (searchInput) {

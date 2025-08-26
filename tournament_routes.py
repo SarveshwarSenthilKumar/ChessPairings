@@ -215,7 +215,7 @@ class PairingsForm(FlaskForm):
     check_color_balance = BooleanField('Try to balance colors', default=True)
     avoid_same_pairings = BooleanField('Avoid previous pairings', default=True)
 
-@tournament_bp.route('/tournament/<int:tournament_id>/pairings', methods=['GET', 'POST'])
+@tournament_bp.route('/<int:tournament_id>/pairings', methods=['GET', 'POST'])
 @login_required
 def manage_pairings(tournament_id):
     """Manage tournament pairings."""
@@ -225,33 +225,148 @@ def manage_pairings(tournament_id):
         flash('Tournament not found.', 'danger')
         return redirect(url_for('tournament.index'))
     
-    form = PairingsForm()
-    current_round = db.get_current_round(tournament_id)
+    # Ensure tournament is a dictionary
+    if isinstance(tournament, dict):
+        tournament = SimpleNamespace(**tournament)
     
-    if request.method == 'POST' and form.validate():
-        if current_round and current_round.get('status') != 'completed':
-            flash('Please complete the current round before generating new pairings.', 'warning')
+    current_round = db.get_current_round(tournament_id)
+    form = PairingsForm()
+    
+    # Load pairings for the current round if it exists
+    pairings = []
+    if current_round:
+        pairings = db.get_pairings(current_round.get('id'))
+    
+    # Handle form submission for completing the current round
+    if request.method == 'POST' and 'complete_round' in request.form:
+        if not current_round:
+            flash('No active round to complete.', 'warning')
+            return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+            
+        # Verify all results are in
+        all_results_in = all(p.get('result') for p in pairings if p.get('black_player_id') is not None)
+        if not all_results_in:
+            flash('Cannot complete round: not all results have been recorded.', 'warning')
+            return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+            
+        # Mark current round as completed
+        db.complete_round(current_round['id'])
+        current_round_num = current_round['round_number']
+        
+        # If this was the last round, redirect to standings
+        if current_round_num >= tournament.rounds:
+            flash('Tournament completed successfully!', 'success')
+            return redirect(url_for('tournament.standings', tournament_id=tournament_id))
+            
+        # Create next round
+        next_round_num = current_round_num + 1
+        db.start_round(tournament_id, next_round_num)
+        next_round = db.get_current_round(tournament_id)
+        
+        # Process any bye requests for the new round
+        players_needing_byes = db.get_players_with_bye_requests(tournament_id, next_round_num)
+        for player in players_needing_byes:
+            db.create_pairing(next_round['id'], player['player_id'], None, 0)  # Board 0 for byes
+            flash(f'Assigned bye to {player["name"]} for round {next_round_num}', 'info')
+        
+        # Generate pairings for the remaining players
+        method = 'swiss'  # Default to Swiss system
+        success = db.generate_pairings(tournament_id, next_round['id'], method=method)
+        
+        if success:
+            flash(f'Round {next_round_num} has been created and pairings generated!', 'success')
         else:
-            try:
-                next_round = (current_round['round_number'] + 1) if current_round else 1
-                method = form.pairing_method.data
-                
-                # Start a new round
-                round_id = db.start_round(tournament_id, next_round)
-                if not round_id:
-                    flash('Failed to create a new round.', 'error')
-                    return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
-                
-                # Generate pairings
-                if db.generate_pairings(tournament_id, round_id, method):
-                    flash('Pairings generated successfully!', 'success')
-                    return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
-                else:
-                    flash('Error generating pairings. Please try again.', 'error')
-            except Exception as e:
-                print(f"Error generating pairings: {e}")
-                flash('An error occurred while generating pairings.', 'error')
-                db.conn.rollback()
+            flash('Failed to generate pairings for the next round.', 'danger')
+            
+        return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+        
+    # Handle form submission for generating pairings (initial generation)
+    elif form.validate_on_submit():
+        if not current_round:
+            # If no current round, create the first round
+            round_num = 1
+            db.start_round(tournament_id, round_num)
+            current_round = db.get_current_round(tournament_id)
+            if not current_round:
+                flash('Failed to create a new round.', 'danger')
+                return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+        
+        # Generate pairings using the selected method
+        method = form.pairing_method.data
+        success = db.generate_pairings(
+            tournament_id,
+            current_round['id'],
+            method=method
+        )
+        
+        if success:
+            flash(f'Pairings generated successfully using {method} method!', 'success')
+        else:
+            flash('Failed to generate pairings. Please try again.', 'danger')
+        
+        return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+    
+    # Ensure pairings are loaded for the current round
+    pairings = []
+    if current_round:
+        pairings = db.get_pairings(current_round.get('id'))
+        
+    # Handle round completion and next round generation
+    elif (request.args.get('generate_next') == 'True' or request.args.get('complete_round') == 'True') and current_round:
+        # If completing the current round, verify all results are in
+        if request.args.get('complete_round') == 'True':
+            all_results_in = all(p.get('result') for p in pairings if p.get('black_player_id') is not None)
+            if not all_results_in:
+                flash('Cannot complete round: not all results have been recorded.', 'warning')
+                return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+            
+            # Mark current round as completed
+            db.complete_round(current_round['id'])
+            flash(f'Round {current_round["round_number"]} has been completed successfully!', 'success')
+            
+            # If this was the last round, redirect to standings
+            if current_round['round_number'] >= tournament.rounds:
+                flash('Tournament has been completed!', 'success')
+                return redirect(url_for('tournament.standings', tournament_id=tournament_id))
+            
+            # If not the last round, proceed to generate next round
+            next_round_num = current_round['round_number'] + 1
+        else:
+            # For direct next round generation (backward compatibility)
+            next_round_num = current_round['round_number'] + 1
+        
+        # Create new round if we haven't reached the maximum
+        if next_round_num > tournament.rounds:
+            flash('Tournament has reached the maximum number of rounds.', 'warning')
+            return redirect(url_for('tournament.standings', tournament_id=tournament_id))
+            
+        # Create new round
+        db.start_round(tournament_id, next_round_num)
+        current_round = db.get_current_round(tournament_id)
+        
+        # Process any bye requests for this round
+        players_needing_byes = db.get_players_with_bye_requests(tournament_id, next_round_num)
+        for player in players_needing_byes:
+            db.create_pairing(current_round['id'], player['player_id'], None, 0)  # Board 0 for byes
+            flash(f'Assigned bye to {player["name"]} for round {next_round_num}', 'info')
+        
+        # Generate pairings for the remaining players using the selected method
+        method = 'swiss'  # Default to Swiss system
+        if hasattr(request, 'form') and request.form.get('pairing_method'):
+            method = request.form.get('pairing_method')
+            
+        success = db.generate_pairings(
+            tournament_id,
+            current_round['id'],
+            method=method
+        )
+        
+        if success:
+            flash(f'Round {next_round_num} has been created and pairings generated!', 'success')
+        else:
+            flash('Failed to generate pairings for the next round.', 'danger')
+            
+        return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
     
     # Ensure current_round is properly formatted for the template
     pairings = []
@@ -263,6 +378,8 @@ def manage_pairings(tournament_id):
         current_round.setdefault('round_number', 0)
         # Create a copy of the dictionary to avoid modifying the original
         round_data = dict(current_round)
+        # Ensure is_completed is set
+        round_data['is_completed'] = bool(round_data.get('is_completed', 0))
         # Convert to SimpleNamespace for dot notation in template
         current_round_obj = SimpleNamespace(**round_data)
     
@@ -403,25 +520,23 @@ def standings(tournament_id):
         if isinstance(tournament, dict):
             tournament = SimpleNamespace(**tournament)
             
-        if not hasattr(tournament, 'prize_winners'):
-            tournament.prize_winners = 0
-        
-        # Safely get current round
-        current_round = 0
-        if hasattr(db, 'get_current_round'):
-            current_round = db.get_current_round(tournament_id) or 0
-        
-        # Get standings if the method exists
+        current_round = db.get_current_round(tournament_id)
         standings_data = []
         if hasattr(db, 'get_standings'):
             standings_data = db.get_standings(tournament_id) or []
+            
+        # Check if current round is complete and if there are more rounds to play
+        is_round_complete = db.is_current_round_complete(tournament_id) if current_round else False
+        has_next_round = current_round and current_round['round_number'] < tournament.rounds if current_round else False
         
         return render_template(
             'tournament/standings.html',
             tournament=tournament,
             standings=standings_data,
             current_round=current_round,
-            prize_winners=tournament.prize_winners
+            prize_winners=tournament.prize_winners,
+            is_round_complete=is_round_complete,
+            has_next_round=has_next_round
         )
     except Exception as e:
         print(f"Error in standings route: {e}")
