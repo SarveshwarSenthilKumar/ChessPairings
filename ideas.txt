@@ -6,3 +6,4 @@ add ability to give byes
 add option to add teams to the players
 make it so that other people can see the results
 make it so other people can edit the pairings
+update readme and add details of how to initialize everything
