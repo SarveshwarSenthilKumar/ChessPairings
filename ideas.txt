@@ -1,6 +1,3 @@
-Have it automatically connect with excel spreadsheets, as well as Google Forms for easy input
-fix standings on overview page
-update upcoming to in progress when first round is paired
 add dark mode
 add ability to give byes
 add option to add teams to the players
@@ -10,3 +7,4 @@ update readme and add details of how to initialize everything
 add ability to conclude the tournament at any point
 add ability to change the number of rounds at any point and give full reign at beginning
 add ability to edit other features at any point
+go back at the end and refresh the ui and make sure it looks good
