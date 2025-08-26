@@ -127,10 +127,14 @@ def view(tournament_id):
         if current_round:
             pairings = db.get_round_pairings(current_round['id'])
             
+        # Get current standings
+        standings = db.get_standings(tournament_id)
+        
         return render_template('tournament/view.html', 
                             tournament=tournament,
                             current_round=current_round,
-                            pairings=pairings)
+                            pairings=pairings,
+                            standings=standings)
     except Exception as e:
         print(f"Error viewing tournament {tournament_id}: {e}")
         flash('An error occurred while loading the tournament.', 'error')

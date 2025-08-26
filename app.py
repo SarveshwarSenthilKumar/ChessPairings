@@ -70,8 +70,16 @@ def format_datetime(value, format='%Y-%m-%d %H:%M'):
                 return value
     return value.strftime(format)
 
-# Register the filter with Jinja2
+def ordinal(n):
+    if 11 <= (n % 100) <= 13:
+        suffix = 'th'
+    else:
+        suffix = ['th', 'st', 'nd', 'rd', 'th'][min(n % 10, 4)]
+    return f"{n}{suffix}"
+
+# Register the filters with Jinja2
 app.jinja_env.filters['datetimeformat'] = format_datetime
+app.jinja_env.filters['ordinal'] = ordinal
 
 # Register blueprints
 app.register_blueprint(auth_blueprint, url_prefix='/auth')
