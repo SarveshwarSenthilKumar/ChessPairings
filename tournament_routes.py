@@ -399,7 +399,10 @@ def standings(tournament_id):
             flash('Tournament not found.', 'danger')
             return redirect(url_for('tournament.index'))
         
-        # Ensure tournament has prize_winners attribute with default value 0 if not set
+        # Ensure tournament is a dictionary and has prize_winners key with default value 0 if not set
+        if isinstance(tournament, dict):
+            tournament = SimpleNamespace(**tournament)
+            
         if not hasattr(tournament, 'prize_winners'):
             tournament.prize_winners = 0
         

@@ -806,16 +806,107 @@ class TournamentDB:
 
     # Reporting
     def get_standings(self, tournament_id: int) -> List[Dict[str, Any]]:
-        """Get current tournament standings."""
+        """Get current tournament standings with all required fields for the standings page."""
+        # First get all players in the tournament
         query = """
-        SELECT p.id, p.name, p.rating, tp.score, tp.tiebreak1, tp.tiebreak2, tp.tiebreak3
+        SELECT p.id, p.name, p.rating
         FROM players p
         JOIN tournament_players tp ON p.id = tp.player_id
         WHERE tp.tournament_id = ?
-        ORDER BY tp.score DESC, tp.tiebreak1 DESC, tp.tiebreak2 DESC, tp.tiebreak3 DESC, p.rating DESC
         """
         self.cursor.execute(query, (tournament_id,))
-        return [dict(row) for row in self.cursor.fetchall()]
+        players = [dict(row) for row in self.cursor.fetchall()]
+        
+        # Get all completed pairings for this tournament
+        query = """
+        SELECT 
+            pr.white_player_id, 
+            pr.black_player_id, 
+            pr.result,
+            r.round_number
+        FROM pairings pr
+        JOIN rounds r ON pr.round_id = r.id
+        WHERE r.tournament_id = ? AND pr.result IS NOT NULL
+        """
+        self.cursor.execute(query, (tournament_id,))
+        pairings = self.cursor.fetchall()
+        
+        # Initialize player stats
+        for player in players:
+            player['wins'] = 0
+            player['losses'] = 0
+            player['draws'] = 0
+            player['points'] = 0.0
+            player['games_played'] = 0
+            player['opponents'] = []
+            player['opponents_score'] = 0.0
+            player['buchholz'] = 0.0
+            player['performance'] = 0.0
+        
+        # Calculate basic stats (wins, losses, draws, points)
+        player_map = {p['id']: p for p in players}
+        
+        for pairing in pairings:
+            white_id = pairing['white_player_id']
+            black_id = pairing['black_player_id']
+            result = pairing['result']
+            
+            if white_id in player_map and black_id in player_map:
+                white = player_map[white_id]
+                black = player_map[black_id]
+                
+                # Record opponents for tiebreaks
+                white['opponents'].append(black_id)
+                black['opponents'].append(white_id)
+                
+                # Update games played
+                white['games_played'] += 1
+                black['games_played'] += 1
+                
+                # Update results
+                if result == '1-0':
+                    white['wins'] += 1
+                    white['points'] += 1.0
+                    black['losses'] += 1
+                elif result == '0-1':
+                    black['wins'] += 1
+                    black['points'] += 1.0
+                    white['losses'] += 1
+                elif result == '0.5-0.5':
+                    white['draws'] += 1
+                    black['draws'] += 1
+                    white['points'] += 0.5
+                    black['points'] += 0.5
+        
+        # Calculate tiebreaks (Buchholz, etc.)
+        for player in players:
+            # Calculate performance rating (simplified)
+            total_games = player['wins'] + player['losses'] + player['draws']
+            if total_games > 0:
+                player['performance'] = round((player['wins'] + (player['draws'] * 0.5)) / total_games * 100)
+            
+            # Calculate Buchholz (sum of opponents' scores)
+            buchholz = 0.0
+            for opp_id in player['opponents']:
+                if opp_id in player_map:
+                    buchholz += player_map[opp_id]['points']
+            player['buchholz'] = buchholz
+            
+            # Add trend (same as performance for now)
+            player['trend'] = player['performance']
+            
+            # Add tiebreak fields for sorting
+            player['tiebreak1'] = player['points']  # Primary sort by points
+            player['tiebreak2'] = buchholz  # Secondary sort by Buchholz
+            player['tiebreak3'] = player['performance']  # Tertiary sort by performance
+        
+        # Sort standings
+        standings = sorted(
+            players, 
+            key=lambda x: (-x['points'], -x['buchholz'], -x['performance'], -x['rating'])
+        )
+        
+        return standings
 
     def get_pairings(self, round_id: int) -> List[Dict[str, Any]]:
         """Get all pairings for a round."""
