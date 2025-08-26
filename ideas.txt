@@ -1,1 +1,8 @@
 Have it automatically connect with excel spreadsheets, as well as Google Forms for easy input
+fix standings on overview page
+update upcoming to in progress when first round is paired
+add dark mode
+add ability to give byes
+add option to add teams to the players
+make it so that other people can see the results
+make it so other people can edit the pairings
