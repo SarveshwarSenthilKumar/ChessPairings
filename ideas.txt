@@ -7,3 +7,6 @@ add option to add teams to the players
 make it so that other people can see the results
 make it so other people can edit the pairings
 update readme and add details of how to initialize everything
+add ability to conclude the tournament at any point
+add ability to change the number of rounds at any point and give full reign at beginning
+add ability to edit other features at any point
