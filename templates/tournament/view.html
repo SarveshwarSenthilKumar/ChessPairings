@@ -169,9 +169,9 @@
                                             {% endif %}
                                         </a>
                                     </td>
-                                    <td class="text-center fw-bold">{{ player.score }}</td>
-                                    <td class="text-center">{{ "%.2f"|format(player.tiebreak1) }}</td>
-                                    <td class="text-center">{{ "%.2f"|format(player.tiebreak2) }}</td>
+                                    <td class="text-center fw-bold">{{ "%.1f"|format(player.points) }}</td>
+                                    <td class="text-center">{{ "%.1f"|format(player.buchholz) }}</td>
+                                    <td class="text-center">{{ "%.1f"|format(player.performance) }}</td>
                                     <td class="text-center">{{ player.rating }}</td>
                                 </tr>
                                 {% endfor %}
