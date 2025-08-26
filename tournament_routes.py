@@ -591,6 +591,36 @@ def view_round(round_id):
         pairings=pairings
     )
 
+@tournament_bp.route('/<int:tournament_id>/delete', methods=['POST'])
+@login_required
+def delete_tournament(tournament_id):
+    """Delete a tournament and all its data."""
+    db = get_db()
+    user_id = session.get('user_id')
+    
+    if not user_id:
+        flash('You must be logged in to delete a tournament.', 'error')
+        return redirect(url_for('auth.login'))
+    
+    # Get the tournament to verify it exists and get creator_id
+    tournament = db.get_tournament(tournament_id)
+    if not tournament:
+        flash('Tournament not found.', 'error')
+        return redirect(url_for('tournament.index'))
+    
+    # Only allow the creator to delete
+    if tournament['creator_id'] != user_id:
+        flash('You do not have permission to delete this tournament.', 'error')
+        return redirect(url_for('tournament.view', tournament_id=tournament_id))
+    
+    # Delete the tournament
+    if db.delete_tournament(tournament_id, user_id):
+        flash('Tournament deleted successfully.', 'success')
+        return redirect(url_for('tournament.index'))
+    else:
+        flash('Failed to delete tournament. Please try again.', 'error')
+        return redirect(url_for('tournament.view', tournament_id=tournament_id))
+
 # Teardown function to close database connection
 @tournament_bp.teardown_app_request
 def teardown_db(exception=None):

@@ -317,7 +317,57 @@
         </div>
     </div>
 </div>
-{% endblock %}
+
+<!-- Danger Zone - Only show to creator -->
+{% if session.get('user_id') == tournament.creator_id %}
+<div class="card border-danger mb-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Danger Zone</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-danger">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading">Delete This Tournament</h6>
+                    <p class="mb-0">This action cannot be undone. All tournament data including players, rounds, and pairings will be permanently deleted.</p>
+                </div>
+                <button type="button" class="btn btn-outline-danger ms-3" data-bs-toggle="modal" data-bs-target="#deleteTournamentModal">
+                    <i class="fas fa-trash-alt me-1"></i> Delete Tournament
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteTournamentModal" tabindex="-1" aria-labelledby="deleteTournamentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteTournamentModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the tournament <strong>{{ tournament.name }}</strong>? This action cannot be undone.</p>
+                <p class="text-danger"><strong>Warning:</strong> All tournament data including players, rounds, and pairings will be permanently deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <form action="{{ url_for('tournament.delete_tournament', tournament_id=tournament.id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt me-1"></i> Delete Permanently
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% block extra_js %}
 <script>
@@ -358,4 +408,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+{% endblock %}
 {% endblock %}

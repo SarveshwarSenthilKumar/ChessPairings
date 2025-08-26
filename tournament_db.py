@@ -786,6 +786,61 @@ class TournamentDB:
             self.conn.rollback()
             return False
         
+    def delete_tournament(self, tournament_id: int, creator_id: int) -> bool:
+        """
+        Delete a tournament and all its related data.
+        
+        Args:
+            tournament_id: The ID of the tournament to delete
+            creator_id: The ID of the user attempting to delete (must be the creator)
+            
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        try:
+            # First verify the user is the creator
+            self.cursor.execute(
+                "SELECT creator_id FROM tournaments WHERE id = ?",
+                (tournament_id,)
+            )
+            result = self.cursor.fetchone()
+            
+            if not result or result[0] != creator_id:
+                return False
+                
+            # Delete all related data in the correct order to maintain referential integrity
+            # 1. Delete pairings
+            self.cursor.execute("""
+                DELETE FROM pairings 
+                WHERE round_id IN (SELECT id FROM rounds WHERE tournament_id = ?)
+            """, (tournament_id,))
+            
+            # 2. Delete rounds
+            self.cursor.execute(
+                "DELETE FROM rounds WHERE tournament_id = ?",
+                (tournament_id,)
+            )
+            
+            # 3. Delete tournament players
+            self.cursor.execute(
+                "DELETE FROM tournament_players WHERE tournament_id = ?",
+                (tournament_id,)
+            )
+            
+            # 4. Finally delete the tournament
+            self.cursor.execute(
+                "DELETE FROM tournaments WHERE id = ?",
+                (tournament_id,)
+            )
+            
+            self.conn.commit()
+            return True
+            
+        except Exception as e:
+            print(f"Error deleting tournament: {e}")
+            self.conn.rollback()
+            return False
+            
     def is_tournament_complete(self, tournament_id: int) -> bool:
         """Check if a tournament is complete (all rounds finished with results)."""
         # Get tournament info
