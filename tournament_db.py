@@ -537,6 +537,48 @@ class TournamentDB:
             self.conn.rollback()
             return False
             
+    def get_player(self, player_id: int) -> Optional[Dict[str, Any]]:
+        """Get a player by ID.
+        
+        Args:
+            player_id: The ID of the player to retrieve.
+            
+        Returns:
+            A dictionary containing the player data, or None if not found.
+        """
+        try:
+            self.cursor.execute("SELECT * FROM players WHERE id = ?", (player_id,))
+            result = self.cursor.fetchone()
+            return dict(result) if result else None
+            
+        except sqlite3.Error as e:
+            print(f"Error getting player {player_id}: {e}")
+            return None
+            
+    def update_player(self, player_id: int, name: str, rating: int) -> bool:
+        """Update a player's details.
+        
+        Args:
+            player_id: The ID of the player to update.
+            name: The new name for the player.
+            rating: The new rating for the player.
+            
+        Returns:
+            True if the update was successful, False otherwise.
+        """
+        try:
+            self.cursor.execute(
+                "UPDATE players SET name = ?, rating = ? WHERE id = ?",
+                (name, rating, player_id)
+            )
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+            
+        except sqlite3.Error as e:
+            print(f"Error updating player {player_id}: {e}")
+            self.conn.rollback()
+            return False
+            
     def generate_pairings(self, tournament_id: int, round_id: int, method: str = 'swiss') -> bool:
         """Generate pairings for a tournament round using the specified method.
         

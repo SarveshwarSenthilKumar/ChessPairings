@@ -44,13 +44,19 @@
                                     <td>{{ player.rating }}</td>
                                     <td>{{ player.score|default(0) }}</td>
                                     <td>
-                                        <form method="POST" style="display: inline;">
-                                            <input type="hidden" name="remove_player_id" value="{{ player.id }}">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" 
-                                                    onclick="return confirm('Remove {{ player.name }} from the tournament?')">
-                                                <i class="fas fa-user-minus"></i> Remove
-                                            </button>
-                                        </form>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('tournament.edit_player', tournament_id=tournament.id, player_id=player.id) }}" 
+                                               class="btn btn-outline-primary">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </a>
+                                            <form method="POST" style="display: inline;">
+                                                <input type="hidden" name="remove_player_id" value="{{ player.id }}">
+                                                <button type="submit" class="btn btn-outline-danger" 
+                                                        onclick="return confirm('Remove {{ player.name }} from the tournament?')">
+                                                    <i class="fas fa-user-minus"></i> Remove
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}

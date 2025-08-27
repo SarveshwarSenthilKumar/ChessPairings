@@ -29,7 +29,3 @@ Prevent removing a bye once the round has concluded
 Clicking on a player reveals their matchups and results
 
 Prevent requesting a bye once the round has concluded
-
-Add the ability to change the details of the player even if the tournament has started
-
-Fix and fully implement the show all rounds feature

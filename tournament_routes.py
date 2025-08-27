@@ -145,6 +145,40 @@ def view(tournament_id):
         flash('An error occurred while loading the tournament.', 'error')
         return redirect(url_for('tournament.index'))
 
+@tournament_bp.route('/<int:tournament_id>/players/<int:player_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_player(tournament_id, player_id):
+    """Edit a player's details."""
+    db = get_db()
+    tournament = db.get_tournament(tournament_id)
+    if not tournament:
+        flash('Tournament not found.', 'danger')
+        return redirect(url_for('tournament.index'))
+    
+    player = db.get_player(player_id)
+    if not player:
+        flash('Player not found.', 'danger')
+        return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+    
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        rating = request.form.get('rating', 0, type=int)
+        
+        if not name:
+            flash('Name is required.', 'danger')
+        elif rating < 0:
+            flash('Rating must be a positive number.', 'danger')
+        else:
+            if db.update_player(player_id, name, rating):
+                flash('Player updated successfully!', 'success')
+                return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+            else:
+                flash('Failed to update player. Please try again.', 'error')
+    
+    return render_template('tournament/edit_player.html', 
+                         tournament=tournament, 
+                         player=player)
+
 @tournament_bp.route('/<int:tournament_id>/players', methods=['GET', 'POST'])
 @login_required
 def manage_players(tournament_id):
