@@ -128,14 +128,18 @@ def view(tournament_id):
         if current_round:
             pairings = db.get_round_pairings(current_round['id'])
             
-        # Get current standings
-        standings = db.get_standings(tournament_id)
+        # Get view type (individual or team)
+        view_type = request.args.get('view', 'individual')
+        
+        # Get standings based on view type
+        standings = db.get_standings(tournament_id, view_type=view_type)
         
         return render_template('tournament/view.html', 
                             tournament=tournament,
                             current_round=current_round,
                             pairings=pairings,
-                            standings=standings)
+                            standings=standings,
+                            view_type=view_type)
     except Exception as e:
         print(f"Error viewing tournament {tournament_id}: {e}")
         flash('An error occurred while loading the tournament.', 'error')
@@ -658,6 +662,9 @@ def standings(tournament_id):
             flash('Tournament not found.', 'danger')
             return redirect(url_for('tournament.index'))
         
+        # Get view type (individual or team)
+        view_type = request.args.get('view', 'individual')
+        
         # Ensure tournament is a dictionary and has prize_winners key with default value 0 if not set
         if isinstance(tournament, dict):
             tournament = SimpleNamespace(**tournament)
@@ -665,7 +672,7 @@ def standings(tournament_id):
         current_round = db.get_current_round(tournament_id)
         standings_data = []
         if hasattr(db, 'get_standings'):
-            standings_data = db.get_standings(tournament_id) or []
+            standings_data = db.get_standings(tournament_id, view_type=view_type) or []
             
         # Check if current round is complete and if there are more rounds to play
         is_round_complete = db.is_current_round_complete(tournament_id) if current_round else False
@@ -678,7 +685,8 @@ def standings(tournament_id):
             current_round=current_round,
             prize_winners=tournament.prize_winners,
             is_round_complete=is_round_complete,
-            has_next_round=has_next_round
+            has_next_round=has_next_round,
+            view_type=view_type
         )
     except Exception as e:
         print(f"Error in standings route: {e}")

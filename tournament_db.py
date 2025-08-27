@@ -1197,8 +1197,62 @@ class TournamentDB:
             print(f"Error getting players with bye requests: {e}")
             return []
 
-    def get_standings(self, tournament_id: int) -> List[Dict[str, Any]]:
-        """Get current tournament standings with all required fields for the standings page."""
+    def get_team_standings(self, tournament_id: int) -> List[Dict[str, Any]]:
+        """Get current tournament standings grouped by team."""
+        # First get all players with their teams and points
+        query = """
+        SELECT p.team, SUM(pp.points) as total_points, COUNT(DISTINCT p.id) as player_count,
+               AVG(pp.points) as avg_points_per_player
+        FROM players p
+        JOIN (
+            SELECT tp.player_id, 
+                   COALESCE(
+                       (SELECT SUM(
+                           CASE 
+                               WHEN p.result = '1-0' AND p.white_player_id = tp.player_id THEN 1
+                               WHEN p.result = '0-1' AND p.black_player_id = tp.player_id THEN 1
+                               WHEN p.result = '0.5-0.5' AND (p.white_player_id = tp.player_id OR p.black_player_id = tp.player_id) THEN 0.5
+                               ELSE 0
+                           END
+                       )
+                       FROM pairings p
+                       JOIN rounds r ON p.round_id = r.id
+                       WHERE r.tournament_id = ? AND p.result IS NOT NULL
+                   ), 0) as points
+            FROM tournament_players tp
+            WHERE tp.tournament_id = ?
+        ) pp ON p.id = pp.player_id
+        WHERE p.team IS NOT NULL AND p.team != ''
+        GROUP BY p.team
+        ORDER BY total_points DESC, avg_points_per_player DESC, player_count DESC
+        """
+        self.cursor.execute(query, (tournament_id, tournament_id))
+        
+        standings = []
+        for i, row in enumerate(self.cursor.fetchall(), 1):
+            standings.append({
+                'position': i,
+                'team': row['team'],
+                'total_points': row['total_points'] or 0,
+                'player_count': row['player_count'],
+                'avg_points_per_player': row['avg_points_per_player'] or 0
+            })
+            
+        return standings
+
+    def get_standings(self, tournament_id: int, view_type: str = 'individual') -> List[Dict[str, Any]]:
+        """Get current tournament standings with all required fields for the standings page.
+        
+        Args:
+            tournament_id: ID of the tournament
+            view_type: Either 'individual' or 'team' to specify the type of standings to return
+            
+        Returns:
+            List of dictionaries containing player or team standings
+        """
+        if view_type == 'team':
+            return self.get_team_standings(tournament_id)
+            
         # First get all players in the tournament
         query = """
         SELECT p.id, p.name, p.rating, p.team

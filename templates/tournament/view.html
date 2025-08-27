@@ -139,10 +139,18 @@
     <!-- Top Standings -->
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="fas fa-trophy me-2"></i>Current Standings
                 </h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="?view=individual" class="btn btn-sm {% if view_type == 'individual' %}btn-light{% else %}btn-outline-light{% endif %}">
+                        <i class="fas fa-user me-1"></i> Players
+                    </a>
+                    <a href="?view=team" class="btn btn-sm {% if view_type == 'team' %}btn-light{% else %}btn-outline-light{% endif %}">
+                        <i class="fas fa-users me-1"></i> Teams
+                    </a>
+                </div>
             </div>
             <div class="card-body p-0">
                 {% if standings %}
@@ -151,33 +159,52 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>Player</th>
-                                    <th class="text-center">Team</th>
+                                    <th>{% if view_type == 'team' %}Team{% else %}Player{% endif %}</th>
+                                    {% if view_type != 'team' %}
+                                        <th class="text-center">Team</th>
+                                    {% endif %}
                                     <th class="text-center">Pts</th>
-                                    <th class="text-center">TB1</th>
-                                    <th class="text-center">TB2</th>
-                                    <th class="text-center">Rating</th>
+                                    {% if view_type == 'team' %}
+                                        <th class="text-center">Players</th>
+                                        <th class="text-center">Avg Pts</th>
+                                    {% else %}
+                                        <th class="text-center">TB1</th>
+                                        <th class="text-center">TB2</th>
+                                        <th class="text-center">Rating</th>
+                                    {% endif %}
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for player in standings[:10] %}
+                                {% for item in standings[:10] %}
                                 <tr class="{% if loop.index <= 3 %}table-{{ ['success', 'info', 'warning'][loop.index0] }}{% endif %}">
                                     <td>{{ loop.index }}</td>
                                     <td>
                                         <a href="#" class="text-decoration-none">
-                                            {{ player.name }}
+                                            {{ item.team if view_type == 'team' else item.name }}
                                             {% if loop.index <= 3 %}
                                                 <span class="badge bg-{{ ['success', 'info', 'warning'][loop.index0] }} ms-1">
                                                     {{ loop.index|ordinal }}
                                                 </span>
                                             {% endif %}
+                                            {% if view_type == 'team' and item.player_count %}
+                                                <span class="badge bg-secondary ms-2">{{ item.player_count }} player{% if item.player_count != 1 %}s{% endif %}</span>
+                                            {% endif %}
                                         </a>
                                     </td>
-                                    <td class="text-center">{{ player.team or '—' }}</td>
-                                    <td class="text-center fw-bold">{{ "%.1f"|format(player.points) }}</td>
-                                    <td class="text-center">{{ "%.1f"|format(player.buchholz) }}</td>
-                                    <td class="text-center">{{ "%.1f"|format(player.performance) }}</td>
-                                    <td class="text-center">{{ player.rating }}</td>
+                                    {% if view_type != 'team' %}
+                                        <td class="text-center">{{ item.team or '—' }}</td>
+                                    {% endif %}
+                                    <td class="text-center fw-bold">
+                                        {{ "%.1f"|format(item.total_points if view_type == 'team' else item.points) }}
+                                    </td>
+                                    {% if view_type == 'team' %}
+                                        <td class="text-center">{{ item.player_count or '—' }}</td>
+                                        <td class="text-center">{{ "%.2f"|format(item.avg_points_per_player) if item.avg_points_per_player is defined else '—' }}</td>
+                                    {% else %}
+                                        <td class="text-center">{{ "%.1f"|format(item.buchholz) if item.buchholz is defined else '—' }}</td>
+                                        <td class="text-center">{{ "%.1f"|format(item.performance) if item.performance is defined else '—' }}</td>
+                                        <td class="text-center">{{ item.rating if item.rating is defined else '—' }}</td>
+                                    {% endif %}
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -185,8 +212,8 @@
                     </div>
                     {% if standings|length > 10 %}
                         <div class="text-center py-2 border-top">
-                            <a href="{{ url_for('tournament.standings', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-primary">
-                                View Full Standings <i class="fas fa-arrow-right ms-1"></i>
+                            <a href="{{ url_for('tournament.standings', tournament_id=tournament.id, view=view_type) }}" class="btn btn-sm btn-outline-primary">
+                                View Full {{ 'Team' if view_type == 'team' else 'Player' }} Standings <i class="fas fa-arrow-right ms-1"></i>
                             </a>
                         </div>
                     {% endif %}

@@ -125,13 +125,23 @@
 
 <div class="card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-        <h5 class="mb-0">
-            <i class="fas fa-list-ol me-2"></i>Standings
-        </h5>
+        <div class="d-flex align-items-center">
+            <h5 class="mb-0 me-3">
+                <i class="fas fa-list-ol me-2"></i>Standings
+            </h5>
+            <div class="btn-group" role="group">
+                <a href="?view=individual" class="btn btn-sm {% if view_type == 'individual' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+                    <i class="fas fa-user me-1"></i> Individual
+                </a>
+                <a href="?view=team" class="btn btn-sm {% if view_type == 'team' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+                    <i class="fas fa-users me-1"></i> Teams
+                </a>
+            </div>
+        </div>
         <div class="d-flex
             <div class="input-group input-group-sm" style="width: 250px;">
                 <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                <input type="text" id="searchStandings" class="form-control" placeholder="Search players...">
+                <input type="text" id="searchStandings" class="form-control" placeholder="Search {% if view_type == 'team' %}teams{% else %}players{% endif %}...">
             </div>
             <div class="dropdown ms-2">
                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -153,22 +163,30 @@
                 <thead class="table-light">
                     <tr>
                         <th class="text-center" style="width: 60px;">#</th>
-                        <th>Player</th>
-                        <th class="text-center">Team</th>
-                        <th class="text-center">Rating</th>
+                        <th>{% if view_type == 'team' %}Team{% else %}Player{% endif %}</th>
+                        {% if view_type != 'team' %}
+                            <th class="text-center">Team</th>
+                            <th class="text-center">Rating</th>
+                        {% else %}
+                            <th class="text-center">Players</th>
+                        {% endif %}
                         <th class="text-center" data-bs-toggle="tooltip" title="Points: 1 for a win, 0.5 for a draw">Pts</th>
-                        <th class="text-center" data-bs-toggle="tooltip" title="Buchholz: Sum of opponents' scores. Higher is better.">Buchholz</th>
-                        <th class="text-center" data-bs-toggle="tooltip" title="Sonneborn-Berger: Sum of the scores of opponents you beat and half the scores of those you drew with.">S-B</th>
-                        <th class="text-center" data-bs-toggle="tooltip" title="Cumulative: The sum of your current score after each round.">Cumul.</th>
-                        <th class="text-center" data-bs-toggle="tooltip" title="Wins">+</th>
-                        <th class="text-center" data-bs-toggle="tooltip" title="Losses">-</th>
-                        <th class="text-center" data-bs-toggle="tooltip" title="Draws">=</th>
-                        <th class="text-center" data-bs-toggle="tooltip" title="Performance: Expected performance based on opponents' ratings">Perf</th>
-                        <th class="text-center" data-bs-toggle="tooltip" title="Trend: Performance trend over last 3 rounds">Trend</th>
+                        {% if view_type != 'team' %}
+                            <th class="text-center" data-bs-toggle="tooltip" title="Buchholz: Sum of opponents' scores. Higher is better.">Buchholz</th>
+                            <th class="text-center" data-bs-toggle="tooltip" title="Sonneborn-Berger: Sum of the scores of opponents you beat and half the scores of those you drew with.">S-B</th>
+                            <th class="text-center" data-bs-toggle="tooltip" title="Cumulative: The sum of your current score after each round.">Cumul.</th>
+                            <th class="text-center" data-bs-toggle="tooltip" title="Wins">+</th>
+                            <th class="text-center" data-bs-toggle="tooltip" title="Losses">-</th>
+                            <th class="text-center" data-bs-toggle="tooltip" title="Draws">=</th>
+                            <th class="text-center" data-bs-toggle="tooltip" title="Performance: Expected performance based on opponents' ratings">Perf</th>
+                            <th class="text-center" data-bs-toggle="tooltip" title="Trend: Performance trend over last 3 rounds">Trend</th>
+                        {% else %}
+                            <th class="text-center" data-bs-toggle="tooltip" title="Average points per player">Avg Pts</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody id="standingsTable">
-                    {% for player in standings %}
+                    {% for item in standings %}
                     <tr class="{% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 %}table-warning{% endif %}">
                         <td class="text-center fw-bold">
                             {{ loop.index }}
@@ -182,39 +200,65 @@
                         </td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                                    <i class="fas fa-chess-king"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-medium">{{ player.name }}</div>
-                                    <small class="text-muted">{{ player.federation or '—' }}</small>
+                                <div class="ms-2">
+                                    <div class="fw-medium">
+                                        {% if view_type == 'team' %}
+                                            {{ item.team }}
+                                        {% else %}
+                                            {{ item.name }}
+                                        {% endif %}
+                                    </div>
+                                    {% if view_type != 'team' and item.team %}
+                                    <div class="text-muted small">{{ item.team }}</div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
-                        <td class="text-center">{{ player.team or '—' }}</td>
-                        <td class="text-center">{{ player.rating }}</td>
-                        <td class="text-center fw-bold">{{ player.points }}</td>
-                        <td class="text-center">{{ player.tiebreak1|default('—') }}</td>
-                        <td class="text-center">{{ player.tiebreak2|default('—') }}</td>
-                        <td class="text-center">{{ player.tiebreak3|default('—') }}</td>
-                        <td class="text-center text-success">{{ player.wins }}</td>
-                        <td class="text-center text-danger">{{ player.losses }}</td>
-                        <td class="text-center">{{ player.draws }}</td>
-                        <td class="text-center">{{ player.performance|default('—') }}</td>
-                        <td>
-                            <div class="progress" style="height: 6px;">
-                                <div class="progress-bar bg-{{ 'success' if player.trend > 0 else 'danger' }}" 
-                                     role="progressbar" 
-                                     style="width: {{ player.trend|abs }}%" 
-                                     aria-valuenow="{{ player.trend|abs }}" 
-                                     aria-valuemin="0" 
-                                     aria-valuemax="100">
-                                </div>
-                            </div>
-                            <small class="text-{{ 'success' if player.trend > 0 else 'danger' }}">
-                                {{ player.trend|abs }}% {{ '▲' if player.trend > 0 else '▼' if player.trend < 0 else '—' }}
-                            </small>
+                        <td class="text-center">
+                            {% if view_type == 'team' %}
+                                {{ item.player_count or '—' }}
+                            {% else %}
+                                {{ item.team or '—' }}
+                            {% endif %}
                         </td>
+                        <td class="text-center">
+                            {% if view_type != 'team' %}
+                                {{ item.rating }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="text-center fw-bold">
+                            {% if view_type == 'team' %}
+                                {{ "%.1f"|format(item.total_points) }}
+                            {% else %}
+                                {{ "%.1f"|format(item.points) }}
+                            {% endif %}
+                        </td>
+                        {% if view_type != 'team' %}
+                            <td class="text-center">{{ "%.1f"|format(item.buchholz) if item.buchholz is defined else '—' }}</td>
+                            <td class="text-center">{{ "%.1f"|format(item.sonneborn_berger) if item.sonneborn_berger is defined else '—' }}</td>
+                            <td class="text-center">{{ "%.1f"|format(item.cumulative) if item.cumulative is defined else '—' }}</td>
+                            <td class="text-center">{{ item.wins or 0 }}</td>
+                            <td class="text-center">{{ item.losses or 0 }}</td>
+                            <td class="text-center">{{ item.draws or 0 }}</td>
+                            <td class="text-center">{{ item.performance|round if item.performance is defined else '—' }}</td>
+                            <td class="text-center">
+                                {% if item.trend is defined and item.trend %}
+                                    {% if item.trend > 0 %}
+                                        <span class="text-success">↗ {{ item.trend|abs }}</span>
+                                    {% elif item.trend < 0 %}
+                                        <span class="text-danger">↘ {{ item.trend|abs }}</span>
+                                    {% else %}
+                                        <span class="text-muted">→</span>
+                                    {% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        {% else %}
+                            <td class="text-center">{{ "%.2f"|format(item.avg_points_per_player) if item.avg_points_per_player is defined else '—' }}</td>
+                        {% endif %}
                     </tr>
                     {% else %}
                     <tr>
@@ -233,7 +277,7 @@
     <div class="card-footer bg-white">
         <div class="d-flex justify-content-between align-items-center">
             <div class="text-muted small">
-                Showing <strong>{{ standings|length }}</strong> of <strong>{{ standings|length }}</strong> players
+                Showing <strong>{{ standings|length }}</strong> {% if view_type == 'team' %}teams{% else %}players{% endif %}
             </div>
             <nav aria-label="Standings pagination">
                 <ul class="pagination pagination-sm mb-0">
@@ -283,16 +327,32 @@
             <div class="card-body p-3">
                 <div class="d-flex justify-content-around text-center">
                     <div>
-                        <div class="h4 mb-0">{{ (standings|sum(attribute='points') / (standings|length or 1))|round(1) }}</div>
-                        <small class="text-muted">Avg. Pts</small>
+                            <div class="h4 mb-0">
+                                {% if view_type == 'team' %}
+                                    {{ (standings|sum(attribute='total_points') / (standings|length or 1))|round(1) }}
+                                {% else %}
+                                    {{ (standings|sum(attribute='points') / (standings|length or 1))|round(1) }}
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">Avg. Pts</small>
                     </div>
                     <div>
-                        <div class="h4 mb-0">{{ (standings|sum(attribute='rating') / (standings|length or 1))|round(0) }}</div>
-                        <small class="text-muted">Avg. Rating</small>
+                            {% if view_type != 'team' %}
+                                <div class="h4 mb-0">{{ (standings|sum(attribute='rating') / (standings|length or 1))|round(0) }}</div>
+                                <small class="text-muted">Avg. Rating</small>
+                            {% else %}
+                                <div class="h4 mb-0">{{ standings|sum(attribute='player_count') or 0 }}</div>
+                                <small class="text-muted">Total Players</small>
+                            {% endif %}
                     </div>
                     <div>
-                        <div class="h4 mb-0">{{ (standings|selectattr('wins')|map(attribute='wins')|sum / (standings|length or 1))|round(1) }}</div>
-                        <small class="text-muted">Avg. Wins</small>
+                            {% if view_type != 'team' %}
+                                <div class="h4 mb-0">{{ (standings|selectattr('wins')|map(attribute='wins')|sum / (standings|length or 1))|round(1) }}</div>
+                                <small class="text-muted">Avg. Wins</small>
+                            {% else %}
+                                <div class="h4 mb-0">{{ (standings|sum(attribute='total_points') / (standings|sum(attribute='player_count') or 1))|round(2) }}</div>
+                                <small class="text-muted">Pts/Player</small>
+                            {% endif %}
                     </div>
                 </div>
             </div>
