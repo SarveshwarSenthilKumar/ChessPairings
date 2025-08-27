@@ -31,5 +31,3 @@ Prevent requesting a bye once the round has concluded
 Create an ai synopsys for rounds and the entire tournament as well
 
 Make sure that the pairings are printable
-
-If there are previous players that got removed, make sure they appear in the standings as well

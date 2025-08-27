@@ -1755,14 +1755,27 @@ class TournamentDB:
         if view_type == 'team':
             return self.get_team_standings(tournament_id)
             
-        # First get all players in the tournament
+        # First get all players who have ever been in the tournament
         query = """
-        SELECT p.id, p.name, p.rating, p.team
-        FROM players p
-        JOIN tournament_players tp ON p.id = tp.player_id
-        WHERE tp.tournament_id = ?
+        SELECT DISTINCT p.id, p.name, p.rating, p.team,
+               CASE WHEN tp2.player_id IS NOT NULL THEN 1 ELSE 0 END as is_active
+        FROM (
+            -- Current tournament players
+            SELECT player_id FROM tournament_players WHERE tournament_id = ?
+            UNION
+            -- Players who were in pairings but may have been removed
+            SELECT DISTINCT white_player_id as player_id FROM pairings p
+            JOIN rounds r ON p.round_id = r.id
+            WHERE r.tournament_id = ?
+            UNION
+            SELECT DISTINCT black_player_id as player_id FROM pairings p
+            JOIN rounds r ON p.round_id = r.id
+            WHERE r.tournament_id = ? AND black_player_id IS NOT NULL
+        ) all_players
+        JOIN players p ON all_players.player_id = p.id
+        LEFT JOIN tournament_players tp2 ON p.id = tp2.player_id AND tp2.tournament_id = ?
         """
-        self.cursor.execute(query, (tournament_id,))
+        self.cursor.execute(query, (tournament_id, tournament_id, tournament_id, tournament_id))
         players = [dict(row) for row in self.cursor.fetchall()]
         
         # Get all completed pairings for this tournament
@@ -1848,10 +1861,20 @@ class TournamentDB:
             player['tiebreak2'] = buchholz  # Secondary sort by Buchholz
             player['tiebreak3'] = player['performance']  # Tertiary sort by performance
         
-        # Sort standings
+        # Add status to each player
+        for player in players:
+            player['status'] = 'active' if player.get('is_active', 1) else 'withdrawn'
+            
+        # Sort standings - active players first, then by points
         standings = sorted(
             players, 
-            key=lambda x: (-x['points'], -x['buchholz'], -x['performance'], -x['rating'])
+            key=lambda x: (
+                0 if x.get('is_active', 1) else 1,  # Active players first
+                -x['points'], 
+                -x['buchholz'], 
+                -x['performance'], 
+                -x['rating']
+            )
         )
         
         return standings

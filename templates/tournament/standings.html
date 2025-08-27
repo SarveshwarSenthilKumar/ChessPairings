@@ -2,6 +2,35 @@
 
 {% block title %}Standings - {{ tournament.name }} - Chess Tournament Manager{% endblock %}
 
+{% block extra_css %}
+<style>
+    .player-removed {
+        background-color: #fff0f0 !important;  /* Light red background */
+        position: relative;
+    }
+    .player-removed::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: #dc3545;  /* Red border on the left */
+    }
+    .player-removed .player-name {
+        position: relative;
+        padding-left: 10px;
+    }
+    .player-removed .player-name::after {
+        content: "(Removed)";
+        font-size: 0.8em;
+        color: #dc3545;
+        margin-left: 8px;
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -187,7 +216,7 @@
                 </thead>
                 <tbody id="standingsTable">
                     {% for item in standings %}
-                    <tr class="{% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 %}table-warning{% endif %}">
+                    <tr class="{% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 %}table-warning{% endif %} {% if item.status == 'withdrawn' %}player-removed{% endif %}" {% if item.status == 'withdrawn' %}title="Player has been removed from the tournament"{% endif %}>
                         <td class="text-center fw-bold">
                             {{ loop.index }}
                             {% if loop.index == 1 %}
@@ -197,25 +226,22 @@
                             {% elif loop.index == 3 %}
                                 <i class="fas fa-award text-bronze ms-1"></i>
                             {% endif %}
+                            {% if item.status == 'withdrawn' %}
+                                <span class="badge bg-danger ms-1" title="Removed from tournament">X</span>
+                            {% endif %}
                         </td>
-                        <td>
+                        <td class="{% if item.status == 'withdrawn' %}player-removed{% endif %}">
                             <div class="d-flex align-items-center">
                                 <div class="ms-2">
                                     <div class="fw-medium">
                                         {% if view_type == 'team' %}
                                             {{ item.team }}
                                         {% else %}
-                                            <a href="#" class="text-decoration-none player-name" 
-                                               data-tournament-id="{{ tournament.id }}"
-                                               data-player-id="{{ item.id }}"
-                                               data-player-name="{{ item.name|e }}">
+                                            <span class="player-name">
                                                 {{ item.name }}
-                                            </a>
+                                            </span>
                                         {% endif %}
                                     </div>
-                                    {% if view_type != 'team' and item.team %}
-                                    <div class="text-muted small">{{ item.team }}</div>
-                                    {% endif %}
                                 </div>
                             </div>
                         </td>

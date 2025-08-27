@@ -2,6 +2,28 @@
 
 {% block title %}{{ tournament.name }} - Chess Tournament Manager{% endblock %}
 
+{% block extra_css %}
+<style>
+    .player-removed {
+        background-color: #fff0f0 !important;  /* Light red background */
+        position: relative;
+    }
+    .player-removed::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: #dc3545;  /* Red border on the left */
+    }
+    .player-removed .player-name {
+        position: relative;
+        padding-left: 10px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     {% if tournament.status == 'completed' %}
@@ -199,9 +221,13 @@
                             </thead>
                             <tbody>
                                 {% for item in standings[:10] %}
-                                <tr class="{% if loop.index <= 3 %}table-{{ ['success', 'info', 'warning'][loop.index0] }}{% endif %}">
-                                    <td>{{ loop.index }}</td>
-                                    <td>
+                                <tr class="{% if loop.index <= 3 %}table-{{ ['success', 'info', 'warning'][loop.index0] }}{% endif %} {% if item.status == 'withdrawn' %}player-removed{% endif %}">
+                                    <td>{{ loop.index }}
+                                        {% if item.status == 'withdrawn' %}
+                                            <span class="badge bg-danger ms-1" title="Removed from tournament">X</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="{% if item.status == 'withdrawn' %}text-muted{% endif %}">
                                         {% if view_type == 'team' %}
                                             <a href="#" class="text-decoration-none">
                                                 {{ item.team }}
