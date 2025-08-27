@@ -4,6 +4,36 @@
 
 {% block extra_css %}
 <style>
+    /* Print styles */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .print-section, .print-section * {
+            visibility: visible;
+        }
+        .print-section {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .print-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .print-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.8em;
+            color: #666;
+        }
+    }
+
+    /* Player removed styles */
     .player-removed {
         background-color: #fff0f0 !important;  /* Light red background */
         position: relative;
@@ -51,8 +81,11 @@
             <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" class="btn btn-primary me-2">
                 <i class="fas fa-chess-board me-1"></i> Manage Pairings
             </a>
-            <a href="{{ url_for('tournament.manage_byes', tournament_id=tournament.id) }}" class="btn btn-outline-info">
+            <a href="{{ url_for('tournament.manage_byes', tournament_id=tournament.id) }}" class="btn btn-outline-info me-2">
                 <i class="fas fa-user-clock me-1"></i> Manage Byes
+            </a>
+            <a href="{{ url_for('tournament.rounds', tournament_id=tournament.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-list-ol me-1"></i> View All Rounds
             </a>
         {% else %}
             <button class="btn btn-outline-secondary me-2" disabled>
@@ -61,9 +94,12 @@
             <button class="btn btn-secondary me-2" disabled>
                 <i class="fas fa-chess-board me-1"></i> Manage Pairings
             </button>
-            <button class="btn btn-outline-secondary" disabled>
+            <button class="btn btn-outline-secondary me-2" disabled>
                 <i class="fas fa-user-clock me-1"></i> Manage Byes
             </button>
+            <a href="{{ url_for('tournament.rounds', tournament_id=tournament.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-list-ol me-1"></i> View All Rounds
+            </a>
         {% endif %}
     </div>
 </div>
@@ -291,13 +327,39 @@
                     </div>
                 {% endif %}
             </div>
-            <div class="card-footer bg-transparent">
+            <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
                 <a href="{{ url_for('tournament.standings', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-list-ol me-1"></i> View Full Standings
                 </a>
-                <a href="{{ url_for('tournament.rounds', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-secondary ms-2">
-                    <i class="fas fa-history me-1"></i> View All Rounds
-                </a>
+                <div>
+                    <div class="btn-group" role="group">
+                        {% if current_round %}
+                            <a href="{{ url_for('tournament.export_pairings', tournament_id=tournament.id, round_id=current_round.id, format='csv') }}" class="btn btn-sm btn-outline-secondary me-2" title="Export Current Round (CSV)">
+                                <i class="fas fa-file-csv me-1"></i> Export Round
+                            </a>
+                            <a href="{{ url_for('tournament.export_pairings', tournament_id=tournament.id, round_id=current_round.id, format='xlsx') }}" class="btn btn-sm btn-outline-secondary me-2" title="Export Current Round (Excel)">
+                                <i class="fas fa-file-excel me-1"></i>
+                            </a>
+                            <a href="#" onclick="window.print()" class="btn btn-sm btn-outline-secondary me-2" title="Print Current Round">
+                                <i class="fas fa-print"></i>
+                            </a>
+                        {% endif %}
+                        {% if tournament.status != 'completed' %}
+                            <a href="{{ url_for('tournament.export_players', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-secondary me-2" title="Export Players">
+                                <i class="fas fa-users me-1"></i> Players
+                            </a>
+                        {% endif %}
+                        <a href="{{ url_for('tournament.export_results', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-secondary me-2" title="Export All Results (CSV)">
+                            <i class="fas fa-file-csv me-1"></i> Results
+                        </a>
+                        <a href="{{ url_for('tournament.export_results', tournament_id=tournament.id, format='xlsx') }}" class="btn btn-sm btn-outline-secondary me-2" title="Export All Results (Excel)">
+                            <i class="fas fa-file-excel"></i>
+                        </a>
+                        <a href="{{ url_for('tournament.standings', tournament_id=tournament.id, print=1) }}" class="btn btn-sm btn-outline-secondary" target="_blank" title="Print Standings">
+                            <i class="fas fa-print"></i> Standings
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

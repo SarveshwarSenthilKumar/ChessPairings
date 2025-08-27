@@ -2,6 +2,60 @@
 
 {% block title %}Manage Pairings - {{ tournament.name }} - Chess Tournament Manager{% endblock %}
 
+{% block extra_css %}
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .print-section, .print-section * {
+            visibility: visible;
+        }
+        .print-section {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .print-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .print-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .print-header p {
+            margin: 5px 0 0;
+            color: #666;
+        }
+        .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .print-table th, .print-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .print-table th {
+            background-color: #f2f2f2;
+        }
+        .print-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .result-input {
+            width: 60px;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -49,17 +103,67 @@
                     </button>
                 </form>
             {% elif current_round.is_completed and current_round.round_number < tournament.rounds %}
-                <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id, generate_next='True') }}" class="btn btn-success" id="generateNextRoundBtn">
+                <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id, generate_next='True') }}" class="btn btn-success me-2" id="generateNextRoundBtn">
                     <i class="fas fa-arrow-right me-1"></i> Next Round ({{ current_round.round_number + 1 }}/{{ tournament.rounds }})
                 </a>
             {% endif %}
+            {% if current_round %}
+                <a href="{{ url_for('tournament.export_pairings', tournament_id=tournament.id, round_id=current_round.id, format='csv') }}" class="btn btn-outline-secondary me-2">
+                    <i class="fas fa-file-export me-1"></i> Export CSV
+                </a>
+                <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                    <i class="fas fa-print me-1"></i> Print
+                </button>
+            {% endif %}
         {% endif %}
-        <div class="input-group input-group-sm" style="width: 250px;">
+        <div class="input-group input-group-sm ms-2" style="width: 250px;">
             <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
             <input type="text" id="pairingSearch" class="form-control" placeholder="Search pairings...">
         </div>
     </div>
-    <div class="card-body p-0">
+    <!-- Print Section -->
+<div class="print-section d-none">
+    <div class="print-header">
+        <h2>{{ tournament.name }}</h2>
+        <p>Round {{ current_round.round_number if current_round else '' }} - {{ current_round.status|title if current_round else '' }}</p>
+        <p>Generated on: {{ now.strftime('%Y-%m-%d %H:%M') }}</p>
+    </div>
+    <table class="print-table">
+        <thead>
+            <tr>
+                <th>Board</th>
+                <th>White Player</th>
+                <th>Rating</th>
+                <th>vs</th>
+                <th>Black Player</th>
+                <th>Rating</th>
+                <th>Result</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pairing in pairings %}
+            <tr>
+                <td>{{ pairing.board_number if pairing.board_number > 0 else 'BYE' }}</td>
+                <td>{{ pairing.white_name if pairing.white_name else 'BYE' }}</td>
+                <td>{{ pairing.white_rating if pairing.white_rating else '' }}</td>
+                <td>vs</td>
+                <td>{{ pairing.black_name if pairing.black_name else 'BYE' }}</td>
+                <td>{{ pairing.black_rating if pairing.black_rating else '' }}</td>
+                <td class="text-center">
+                    {% if pairing.result %}
+                        {{ pairing.result }}
+                    {% else %}
+                        <input type="text" class="result-input" placeholder="0-1">
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Main Content -->
+<div class="card-body p-0">
         {% if pairings %}
             <div class="table-responsive">
                 <table class="table table-hover mb-0">

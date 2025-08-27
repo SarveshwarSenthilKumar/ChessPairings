@@ -583,6 +583,19 @@ class TournamentDB:
             print(f"Error getting players for tournament {tournament_id}: {e}")
             return []
             
+    def get_players(self, tournament_id: int) -> List[Dict[str, Any]]:
+        """Get all players in a tournament with their details.
+        
+        This is an alias for get_tournament_players for backward compatibility.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            
+        Returns:
+            A list of dictionaries containing player data.
+        """
+        return self.get_tournament_players(tournament_id)
+            
     def get_tournament_players_with_scores(self, tournament_id: int) -> List[Dict[str, Any]]:
         """Get all players in a tournament with their current scores.
         
@@ -1699,6 +1712,45 @@ class TournamentDB:
             print(f"Error getting players with bye requests: {e}")
             return []
 
+    def get_rounds(self, tournament_id: int) -> List[Dict[str, Any]]:
+        """Get all rounds for a tournament.
+        
+        Args:
+            tournament_id: ID of the tournament
+            
+        Returns:
+            List of rounds with their details
+        """
+        try:
+            self.cursor.execute("""
+                SELECT id, tournament_id, round_number, status, 
+                       start_time, end_time
+                FROM rounds
+                WHERE tournament_id = ?
+                ORDER BY round_number
+            """, (tournament_id,))
+            
+            rounds = []
+            for row in self.cursor.fetchall():
+                rounds.append(dict(row))
+                
+            return rounds
+            
+        except Exception as e:
+            print(f"Error getting rounds for tournament {tournament_id}: {e}")
+            return []
+            
+    def get_player_standings(self, tournament_id: int) -> List[Dict[str, Any]]:
+        """Get player standings for a tournament.
+        
+        Args:
+            tournament_id: ID of the tournament
+            
+        Returns:
+            List of player standings with scores and tiebreaks
+        """
+        return self.get_standings(tournament_id, 'individual')
+    
     def get_team_standings(self, tournament_id: int) -> List[Dict[str, Any]]:
         """Get current tournament standings grouped by team."""
         # First get all players with their teams and points
@@ -1713,14 +1765,26 @@ class TournamentDB:
                            CASE 
                                WHEN p.result = '1-0' AND p.white_player_id = tp.player_id THEN 1
                                WHEN p.result = '0-1' AND p.black_player_id = tp.player_id THEN 1
-                               WHEN p.result = '0.5-0.5' AND (p.white_player_id = tp.player_id OR p.black_player_id = tp.player_id) THEN 0.5
+                               WHEN p.result = '½-½' AND (p.white_player_id = tp.player_id OR p.black_player_id = tp.player_id) THEN 0.5
+                               WHEN p.result = '1-0' AND p.black_player_id = tp.player_id THEN 0
+                               WHEN p.result = '0-1' AND p.white_player_id = tp.player_id THEN 0
+                               WHEN p.result = '½-½' AND p.white_player_id = tp.player_id THEN 0.5
+                               WHEN p.result = '½-½' AND p.black_player_id = tp.player_id THEN 0.5
+                               WHEN p.result = '+' AND p.white_player_id = tp.player_id THEN 1
+                               WHEN p.result = '+' AND p.black_player_id = tp.player_id THEN 0
+                               WHEN p.result = '-' AND p.white_player_id = tp.player_id THEN 0
+                               WHEN p.result = '-' AND p.black_player_id = tp.player_id THEN 1
+                               WHEN p.result = '=' AND (p.white_player_id = tp.player_id OR p.black_player_id = tp.player_id) THEN 0.5
                                ELSE 0
                            END
-                       )
-                       FROM pairings p
-                       JOIN rounds r ON p.round_id = r.id
-                       WHERE r.tournament_id = ? AND p.result IS NOT NULL
-                   ), 0) as points
+                        )
+                        FROM pairings p
+                        JOIN rounds r ON p.round_id = r.id
+                        WHERE r.tournament_id = ?
+                        AND (p.white_player_id = tp.player_id OR p.black_player_id = tp.player_id)
+                        AND p.status = 'completed'
+                       ), 0
+                   ) as points
             FROM tournament_players tp
             WHERE tp.tournament_id = ?
         ) pp ON p.id = pp.player_id
@@ -1755,7 +1819,7 @@ class TournamentDB:
         if view_type == 'team':
             return self.get_team_standings(tournament_id)
             
-        # First get all players who have ever been in the tournament
+        # Get all players who have ever been in the tournament
         query = """
         SELECT DISTINCT p.id, p.name, p.rating, p.team,
                CASE WHEN tp2.player_id IS NOT NULL THEN 1 ELSE 0 END as is_active

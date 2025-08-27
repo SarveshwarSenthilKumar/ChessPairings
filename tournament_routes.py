@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app, jsonify, send_file
 from flask_wtf.csrf import generate_csrf
 from flask_wtf import FlaskForm
 from wtforms import SelectField, BooleanField, IntegerField, StringField
@@ -182,12 +182,15 @@ def view(tournament_id):
         # Get standings based on view type
         standings = db.get_standings(tournament_id, view_type=view_type)
         
+        from datetime import datetime
+        
         return render_template('tournament/view.html', 
                             tournament=tournament,
                             current_round=current_round,
                             pairings=pairings,
                             standings=standings,
-                            view_type=view_type)
+                            view_type=view_type,
+                            now=datetime.utcnow())
     except Exception as e:
         print(f"Error viewing tournament {tournament_id}: {e}")
         flash('An error occurred while loading the tournament.', 'error')
@@ -614,12 +617,15 @@ def manage_pairings(tournament_id):
         # Convert to SimpleNamespace for dot notation in template
         current_round_obj = SimpleNamespace(**round_data)
     
+    from datetime import datetime
+    
     return render_template(
         'tournament/pairings.html',
         tournament=tournament,
         current_round=current_round_obj,
         pairings=pairings,
-        form=form
+        form=form,
+        now=datetime.utcnow()
     )
 
 @tournament_bp.route('/<int:tournament_id>/pairing/<int:pairing_id>/result', methods=['POST'])
@@ -747,35 +753,67 @@ def standings(tournament_id):
             flash('Tournament not found.', 'danger')
             return redirect(url_for('tournament.index'))
         
-        # Get view type (individual or team)
-        view_type = request.args.get('view', 'individual')
+        # Check if this is a print view
+        print_view = request.args.get('print') == '1'
         
-        # Ensure tournament is a dictionary and has prize_winners key with default value 0 if not set
-        if isinstance(tournament, dict):
-            tournament = SimpleNamespace(**tournament)
-            
+        # Get the view type (team or individual)
+        view_type = request.args.get('view', 'player')
+        
+        # Get the standings based on view type
+        if view_type == 'team':
+            standings_data = db.get_team_standings(tournament_id)
+            template_name = 'team_standings.html'
+        else:
+            standings_data = db.get_player_standings(tournament_id)
+            template_name = 'standings.html'
+        
+        if not standings_data:
+            flash('No standings data available yet.', 'info')
+            return redirect(url_for('tournament.view', tournament_id=tournament_id))
+        
+        # Add position numbers and format data
+        for i, entry in enumerate(standings_data, 1):
+            entry['position'] = i
+            # Ensure all required fields have default values
+            entry.setdefault('points', 0)
+            entry.setdefault('buchholz', 0)
+            entry.setdefault('sonneborn_berger', 0)
+            entry.setdefault('rating', 0)
+            entry.setdefault('team', '')
+        
+        # Get the current round number for display
         current_round = db.get_current_round(tournament_id)
-        standings_data = []
-        if hasattr(db, 'get_standings'):
-            standings_data = db.get_standings(tournament_id, view_type=view_type) or []
-            
-        # Check if current round is complete and if there are more rounds to play
-        is_round_complete = db.is_current_round_complete(tournament_id) if current_round else False
-        has_next_round = current_round and current_round['round_number'] < tournament.rounds if current_round else False
+        current_round_num = current_round['round_number'] if current_round else 0
         
+        # Get current datetime for print view
+        from datetime import datetime
+        now = datetime.utcnow()
+        
+        if print_view:
+            return render_template(
+                'tournament/print_standings.html',
+                tournament=tournament,
+                standings=standings_data,
+                current_round=current_round_num,
+                view_type=view_type,
+                now=now
+            )
+            
         return render_template(
-            'tournament/standings.html',
+            f'tournament/{template_name}',
             tournament=tournament,
             standings=standings_data,
-            current_round=current_round,
-            prize_winners=tournament.prize_winners,
-            is_round_complete=is_round_complete,
-            has_next_round=has_next_round,
-            view_type=view_type
+            view_type=view_type,
+            current_round=current_round_num,
+            now=now
         )
+        
     except Exception as e:
         print(f"Error in standings route: {e}")
+        import traceback
+        traceback.print_exc()
         flash('An error occurred while loading the standings.', 'error')
+        return redirect(url_for('tournament.view', tournament_id=tournament_id))
         return redirect(url_for('tournament.view', tournament_id=tournament_id))
 
 @tournament_bp.route('/<int:tournament_id>/rounds')
@@ -927,11 +965,114 @@ def teardown_request(exception=None):
     if db is not None:
         db.close()
 
+@tournament_bp.route('/<int:tournament_id>/export-pairings/<int:round_id>/<format>')
+@login_required
+def export_pairings(tournament_id, round_id, format):
+    """Export pairings to CSV or Excel."""
+    try:
+        db = get_db()
+        
+        # Get tournament and round information
+        tournament = db.get_tournament(tournament_id)
+        if not tournament:
+            flash('Tournament not found.', 'danger')
+            return redirect(url_for('tournament.index'))
+            
+        # Get pairings for the round
+        pairings = db.get_pairings(round_id)
+        if not pairings:
+            flash('No pairings found for this round.', 'warning')
+            return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+            
+        # Convert to a list of dictionaries for easier processing
+        pairings_data = []
+        for p in pairings:
+            pairings_data.append({
+                'board': p.get('board_number', ''),
+                'white_name': p.get('white_name', 'BYE') if p.get('white_player_id') else 'BYE',
+                'white_rating': p.get('white_rating', ''),
+                'black_name': p.get('black_name', 'BYE') if p.get('black_player_id') else 'BYE',
+                'black_rating': p.get('black_rating', ''),
+                'result': p.get('result', '')
+            })
+        
+        # Create a DataFrame
+        import pandas as pd
+        from io import BytesIO
+        
+        df = pd.DataFrame(pairings_data)
+        
+        # Create output based on format
+        if format.lower() == 'xlsx':
+            output = BytesIO()
+            
+            # Create a simple Excel file with just the data
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                # Write the data to Excel
+                df.to_excel(writer, index=False, sheet_name='Pairings')
+                
+                # Get the xlsxwriter objects
+                workbook = writer.book
+                worksheet = writer.sheets['Pairings']
+                
+                # Add a simple header format
+                header_format = workbook.add_format({
+                    'bold': True,
+                    'bg_color': '#C6E2FF',
+                    'border': 1
+                })
+                
+                # Write the column headers with the defined format
+                for col_num, value in enumerate(df.columns.values):
+                    worksheet.write(0, col_num, value, header_format)
+                
+                # Auto-adjust column widths
+                for i, col in enumerate(df.columns):
+                    max_length = max(
+                        df[col].astype(str).apply(len).max(),
+                        len(str(col))
+                    ) + 2
+                    worksheet.set_column(i, i, min(max_length, 30))
+                
+                # Save the workbook
+                writer.close()
+            
+            # Rewind the buffer
+            output.seek(0)
+            
+            # Send the file
+            filename = f"{tournament['name'].replace(' ', '_')}_Round_{pairings[0].get('round_number', '')}_Pairings.xlsx"
+            response = send_file(
+                output,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name=filename
+            )
+            
+            # Make sure to close the output buffer after sending
+            response.call_on_close(output.close)
+            return response
+        else:  # Default to CSV
+            output = BytesIO()
+            df.to_csv(output, index=False)
+            output.seek(0)
+            return send_file(
+                output,
+                mimetype='text/csv',
+                as_attachment=True,
+                download_name=f"{tournament['name'].replace(' ', '_')}_Round_{pairings[0].get('round_number', '')}_Pairings.csv"
+            )
+            
+    except Exception as e:
+        current_app.logger.error(f'Error exporting pairings: {str(e)}')
+        flash(f'Error exporting pairings: {str(e)}', 'error')
+        return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in {'xlsx', 'xls', 'csv'}
 
-@tournament_bp.route('/<int:tournament_id>/export')
+@tournament_bp.route('/<int:tournament_id>/export-players')
 @login_required
 def export_players(tournament_id):
     """Export players to a CSV or Excel file."""
@@ -981,14 +1122,103 @@ def export_players(tournament_id):
     
     output.seek(0)
     
-    # Create a response with the file
-    from flask import send_file
     return send_file(
         output,
         mimetype=mimetype,
         as_attachment=True,
         download_name=f"{tournament['name'].replace(' ', '_')}_players.{extension}"
     )
+
+@tournament_bp.route('/<int:tournament_id>/export-results')
+@login_required
+def export_results(tournament_id):
+    """Export all tournament results to a CSV or Excel file."""
+    db = get_db()
+    tournament = db.get_tournament(tournament_id)
+    if not tournament:
+        flash('Tournament not found.', 'danger')
+        return redirect(url_for('tournament.index'))
+    
+    try:
+        # Get all rounds and their pairings
+        rounds = db.get_rounds(tournament_id)
+        if not rounds:
+            flash('No rounds found for this tournament.', 'warning')
+            return redirect(url_for('tournament.view', tournament_id=tournament_id))
+            
+        all_pairings = []
+        
+        for round_obj in rounds:
+            pairings = db.get_pairings(round_obj['id'])
+            if not pairings:
+                continue
+                
+            for p in pairings:
+                # Get player names, handling byes
+                white_name = 'BYE'
+                black_name = 'BYE'
+                
+                if p.get('white_player_id'):
+                    white_player = db.get_player(p['white_player_id'])
+                    white_name = white_player['name'] if white_player else 'Unknown Player'
+                if p.get('black_player_id'):
+                    black_player = db.get_player(p['black_player_id'])
+                    black_name = black_player['name'] if black_player else 'Unknown Player'
+                
+                all_pairings.append({
+                    'Round': round_obj['round_number'],
+                    'Board': p.get('board_number', ''),
+                    'White Player': white_name,
+                    'Black Player': black_name,
+                    'Result': p.get('result', '')
+                })
+        
+        if not all_pairings:
+            flash('No pairings found to export.', 'warning')
+            return redirect(url_for('tournament.view', tournament_id=tournament_id))
+        
+        # Convert to DataFrame
+        import pandas as pd
+        from io import BytesIO
+        
+        df = pd.DataFrame(all_pairings)
+        
+        # Get the requested format (default to CSV)
+        export_format = request.args.get('format', 'csv').lower()
+        output = BytesIO()
+        
+        if export_format == 'xlsx':
+            # Export to Excel
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='Results')
+                
+                # Auto-adjust column widths
+                worksheet = writer.sheets['Results']
+                for i, col in enumerate(df.columns):
+                    max_length = max(df[col].astype(str).apply(len).max(), len(col)) + 2
+                    worksheet.set_column(i, i, max_length)
+                    
+            mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            extension = 'xlsx'
+        else:
+            # Default to CSV
+            df.to_csv(output, index=False)
+            mimetype = 'text/csv'
+            extension = 'csv'
+        
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=f"{tournament['name'].replace(' ', '_')}_results.{extension}"
+        )
+    
+    except Exception as e:
+        current_app.logger.error(f"Error exporting results: {str(e)}")
+        flash('An error occurred while exporting results.', 'danger')
+        return redirect(url_for('tournament.view', tournament_id=tournament_id))
 
 @tournament_bp.route('/<int:tournament_id>/import', methods=['POST'])
 @login_required
