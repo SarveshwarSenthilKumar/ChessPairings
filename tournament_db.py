@@ -108,8 +108,49 @@ class TournamentDB:
         CREATE INDEX IF NOT EXISTS idx_manual_byes_player ON manual_byes(player_id);
         """)
         
+        # Add requested_bye_round column if it doesn't exist
+        try:
+            # First, check if the column exists
+            self.cursor.execute("""
+                SELECT 1 FROM pragma_table_info('tournament_players') 
+                WHERE name = 'requested_bye_round'
+            """)
+            if not self.cursor.fetchone():
+                # If column doesn't exist, add it
+                self.cursor.execute("""
+                    ALTER TABLE tournament_players 
+                    ADD COLUMN requested_bye_round INTEGER DEFAULT NULL
+                """)
+                self.conn.commit()
+        except sqlite3.Error as e:
+            print(f"Warning: Could not check/add requested_bye_round column: {e}")
+            # Continue execution even if there's an error
+        
         self.conn.commit()
         
+    def update_tournament_status(self, tournament_id: int, status: str) -> bool:
+        """Update the status of a tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament to update.
+            status: The new status ('upcoming', 'in_progress', 'completed').
+            
+        Returns:
+            True if the update was successful, False otherwise.
+        """
+        try:
+            self.cursor.execute(
+                "UPDATE tournaments SET status = ? WHERE id = ?",
+                (status, tournament_id)
+            )
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+            
+        except sqlite3.Error as e:
+            print(f"Error updating tournament status: {e}")
+            self.conn.rollback()
+            return False
+            
     def get_tournament(self, tournament_id: int) -> Optional[Dict[str, Any]]:
         """Get a single tournament by ID.
         
@@ -253,30 +294,86 @@ class TournamentDB:
             return []
             
     def get_round_pairings(self, round_id: int) -> List[Dict[str, Any]]:
-        """Get all pairings for a specific round.
+        """Get all pairings for a specific round, including byes.
         
         Args:
             round_id: The ID of the round.
             
         Returns:
-            A list of dictionaries containing pairing data.
+            A list of pairings with player details, including byes
         """
         try:
-            self.cursor.execute("""
-                SELECT p.*, 
-                       w.name as white_name, w.rating as white_rating,
-                       b.name as black_name, b.rating as black_rating
-                FROM pairings p
-                LEFT JOIN players w ON p.white_player_id = w.id
-                LEFT JOIN players b ON p.black_player_id = b.id
-                WHERE p.round_id = ?
-                ORDER BY p.board_number
-            """, (round_id,))
+            query = """
+            SELECT 
+                p.id, 
+                p.white_player_id, 
+                p.black_player_id, 
+                p.board_number, 
+                p.result, 
+                p.status,
+                w.name as white_name, 
+                w.rating as white_rating,
+                b.name as black_name, 
+                b.rating as black_rating,
+                CASE WHEN p.black_player_id IS NULL THEN 1 ELSE 0 END as is_bye
+            FROM pairings p
+            LEFT JOIN players w ON p.white_player_id = w.id
+            LEFT JOIN players b ON p.black_player_id = b.id
+            WHERE p.round_id = ?
+            ORDER BY p.board_number
+            """
+            self.cursor.execute(query, (round_id,))
+            pairings = [dict(row) for row in self.cursor.fetchall()]
             
-            return [dict(row) for row in self.cursor.fetchall()]
+            # Also get any manual byes for this round
+            query = """
+            SELECT 
+                NULL as id,
+                mb.player_id as white_player_id,
+                NULL as black_player_id,
+                (SELECT COALESCE(MAX(board_number), 0) FROM pairings WHERE round_id = ?) + ROW_NUMBER() OVER () as board_number,
+                '1-0' as result,
+                'completed' as status,
+                pl.name as white_name,
+                pl.rating as white_rating,
+                NULL as black_name,
+                NULL as black_rating,
+                1 as is_bye
+            FROM manual_byes mb
+            JOIN players pl ON mb.player_id = pl.id
+            WHERE mb.round_number = (SELECT round_number FROM rounds WHERE id = ?)
+            AND mb.tournament_id = (SELECT tournament_id FROM rounds WHERE id = ?)
+            AND NOT EXISTS (
+                SELECT 1 FROM pairings p2 
+                WHERE p2.round_id = ? 
+                AND (p2.white_player_id = mb.player_id OR p2.black_player_id = mb.player_id)
+            )
+            """
+            self.cursor.execute(query, (round_id, round_id, round_id, round_id))
+            manual_byes = [dict(row) for row in self.cursor.fetchall()]
+            
+            # Separate regular pairings and byes
+            regular_pairings = [p for p in pairings if p.get('black_player_id') is not None]
+            bye_pairings = [p for p in pairings if p.get('black_player_id') is None]
+            
+            # Sort regular pairings by board number
+            regular_pairings.sort(key=lambda x: x['board_number'])
+            
+            # Reassign board numbers to be sequential for regular pairings only
+            for i, pairing in enumerate(regular_pairings, 1):
+                pairing['board_number'] = i
+                
+            # Add byes at the end with board number 0 (will be displayed as 'BYE' in the UI)
+            for pairing in bye_pairings:
+                pairing['board_number'] = 0
+                
+            # Combine them back with byes at the end
+            all_pairings = regular_pairings + bye_pairings
+                
+            return all_pairings
             
         except sqlite3.Error as e:
-            print(f"Error getting pairings for round {round_id}: {e}")
+            print(f"Error getting round pairings: {e}")
             return []
             
     def get_all_players(self) -> List[Dict[str, Any]]:
@@ -762,10 +859,10 @@ class TournamentDB:
                 if black is not None:
                     # Regular pairing
                     self.create_pairing(round_id, white['id'], black['id'], board_number)
-                    board_number += 1
                 else:
-                    # Bye - already handled in the manual byes section
-                    pass
+                    # Player with a bye - create a pairing with black_player_id as None
+                    self.create_pairing(round_id, white['id'], None, board_number)
+                board_number += 1
             
             # Update round status
             self.cursor.execute("""
@@ -1218,78 +1315,25 @@ class TournamentDB:
         
         Status can be:
         - 'upcoming': No rounds started yet
-        - 'ongoing': At least one round has started but not all rounds are complete, or not all pairings have results
-        - 'completed': All rounds are complete and all pairings have results
+        - 'ongoing': At least one round has started
+        - 'completed': Only set when explicitly concluded via the conclude_tournament endpoint
         """
-        # Get tournament info
+        # Check if we need to update from 'upcoming' to 'ongoing'
         self.cursor.execute("""
-            SELECT t.rounds, 
-                   (SELECT COUNT(*) FROM rounds r WHERE r.tournament_id = t.id AND r.status = 'completed') as completed_rounds
-            FROM tournaments t
-            WHERE t.id = ?
+            SELECT 1 FROM rounds 
+            WHERE tournament_id = ? AND status = 'ongoing'
+            LIMIT 1
         """, (tournament_id,))
-        result = self.cursor.fetchone()
-        if not result:
-            return
-            
-        total_rounds, completed_rounds = result
         
-        # Get all rounds for this tournament
-        self.cursor.execute("""
-            SELECT id, status, round_number 
-            FROM rounds 
-            WHERE tournament_id = ? 
-            ORDER BY round_number
-        """, (tournament_id,))
-        rounds = self.cursor.fetchall()
+        has_ongoing_round = self.cursor.fetchone() is not None
         
-        if not rounds:
-            # No rounds yet, set to 'upcoming' if not already
+        # If there are any ongoing or completed rounds, mark as ongoing
+        if has_ongoing_round:
             self.cursor.execute("""
                 UPDATE tournaments 
-                SET status = 'upcoming' 
-                WHERE id = ? AND status != 'upcoming'
+                SET status = 'ongoing' 
+                WHERE id = ? AND status = 'upcoming'
             """, (tournament_id,))
-            return
-            
-        # Check if all rounds are complete
-        all_rounds_complete = all(round_data[1] == 'completed' for round_data in rounds)
-        
-        if all_rounds_complete:
-            # Check if all pairings have results
-            for round_data in rounds:
-                round_id = round_data[0]
-                self.cursor.execute("""
-                    SELECT COUNT(*) 
-                    FROM pairings 
-                    WHERE round_id = ? 
-                    AND result IS NULL 
-                    AND black_player_id IS NOT NULL
-                """, (round_id,))
-                incomplete_pairings = self.cursor.fetchone()[0]
-                
-                if incomplete_pairings > 0:
-                    # Found incomplete pairings, can't mark as completed
-                    all_rounds_complete = False
-                    break
-                    
-            if all_rounds_complete:
-                # All rounds and pairings complete, update status to 'completed'
-                self.cursor.execute("""
-                    UPDATE tournaments 
-                    SET status = 'completed', 
-                        end_date = COALESCE(end_date, date('now'))
-                    WHERE id = ?
-                """, (tournament_id,))
-                return
-                
-        # If we get here, either not all rounds are complete or not all pairings have results
-        # Check if we need to update to 'ongoing' status
-        self.cursor.execute("""
-            UPDATE tournaments 
-            SET status = 'ongoing' 
-            WHERE id = ? AND status = 'upcoming'
-        """, (tournament_id,))
 
     # Reporting
     def get_players_with_bye_requests(self, tournament_id: int, round_number: int) -> List[Dict[str, Any]]:
@@ -1306,9 +1350,9 @@ class TournamentDB:
             self.cursor.execute("""
                 SELECT p.id as player_id, p.name, p.rating
                 FROM players p
-                JOIN tournament_players tp ON p.id = tp.player_id
-                WHERE tp.tournament_id = ? 
-                AND tp.requested_bye_round = ?
+                JOIN manual_byes mb ON p.id = mb.player_id
+                WHERE mb.tournament_id = ? 
+                AND mb.round_number = ?
             """, (tournament_id, round_number))
             return [dict(row) for row in self.cursor.fetchall()]
         except sqlite3.Error as e:

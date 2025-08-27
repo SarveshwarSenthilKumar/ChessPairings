@@ -77,7 +77,11 @@
                         {% for pairing in pairings %}
                         <tr class="align-middle {{ 'table-warning' if not pairing.result and current_round.status == 'ongoing' }}">
                             <td class="fw-medium">
-                                <span class="badge bg-primary">{{ pairing.board_number }}</span>
+                                {% if pairing.board_number > 0 %}
+                                    <span class="badge bg-primary">{{ pairing.board_number }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">BYE</span>
+                                {% endif %}
                             </td>
                             <td>
                                 {% if pairing.black_player_id is none %}

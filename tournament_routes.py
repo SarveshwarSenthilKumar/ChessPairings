@@ -775,6 +775,30 @@ def view_round(round_id):
         pairings=pairings
     )
 
+@tournament_bp.route('/<int:tournament_id>/conclude', methods=['POST'])
+@login_required
+def conclude_tournament(tournament_id):
+    """Conclude a tournament."""
+    db = get_db()
+    tournament = db.get_tournament(tournament_id)
+    
+    # Check if tournament exists and user is the creator
+    if not tournament:
+        flash('Tournament not found.', 'danger')
+        return redirect(url_for('tournament.index'))
+        
+    if tournament['creator_id'] != session.get('user_id'):
+        flash('You do not have permission to conclude this tournament.', 'danger')
+        return redirect(url_for('tournament.view', tournament_id=tournament_id))
+    
+    # Update tournament status to completed
+    if db.update_tournament_status(tournament_id, 'completed'):
+        flash('Tournament has been concluded successfully!', 'success')
+    else:
+        flash('Failed to conclude tournament. Please try again.', 'danger')
+    
+    return redirect(url_for('tournament.view', tournament_id=tournament_id))
+
 @tournament_bp.route('/<int:tournament_id>/delete', methods=['POST'])
 @login_required
 def delete_tournament(tournament_id):
