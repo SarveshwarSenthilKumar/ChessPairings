@@ -3,23 +3,46 @@
 {% block title %}{{ tournament.name }} - Chess Tournament Manager{% endblock %}
 
 {% block content %}
+<div class="container mt-4">
+    {% if tournament.status == 'completed' %}
+    <div class="alert alert-info">
+        <i class="fas fa-trophy me-2"></i>
+        <strong>Tournament Completed</strong> - This tournament has been concluded and is now read-only.
+    </div>
+    {% endif %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>
         <i class="fas fa-trophy me-2"></i>{{ tournament.name }}
         <span class="badge bg-{{ 'success' if tournament.status == 'ongoing' else 'secondary' }} ms-2">
+            {% if tournament.status == 'completed' %}
+                <i class="fas fa-trophy me-1"></i>
+            {% endif %}
             {{ tournament.status|title }}
         </span>
     </h1>
     <div>
-        <a href="{{ url_for('tournament.manage_players', tournament_id=tournament.id) }}" class="btn btn-outline-primary me-2">
-            <i class="fas fa-users me-1"></i> Manage Players
-        </a>
-        <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" class="btn btn-primary me-2">
-            <i class="fas fa-chess-board me-1"></i> Manage Pairings
-        </a>
-        <a href="{{ url_for('tournament.manage_byes', tournament_id=tournament.id) }}" class="btn btn-outline-info">
-            <i class="fas fa-user-clock me-1"></i> Manage Byes
-        </a>
+        {% if tournament.status != 'completed' %}
+            <a href="{{ url_for('tournament.manage_players', tournament_id=tournament.id) }}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-users me-1"></i> Manage Players
+            </a>
+            <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" class="btn btn-primary me-2">
+                <i class="fas fa-chess-board me-1"></i> Manage Pairings
+            </a>
+            <a href="{{ url_for('tournament.manage_byes', tournament_id=tournament.id) }}" class="btn btn-outline-info">
+                <i class="fas fa-user-clock me-1"></i> Manage Byes
+            </a>
+        {% else %}
+            <button class="btn btn-outline-secondary me-2" disabled>
+                <i class="fas fa-users me-1"></i> Manage Players
+            </button>
+            <button class="btn btn-secondary me-2" disabled>
+                <i class="fas fa-chess-board me-1"></i> Manage Pairings
+            </button>
+            <button class="btn btn-outline-secondary" disabled>
+                <i class="fas fa-user-clock me-1"></i> Manage Byes
+            </button>
+        {% endif %}
     </div>
 </div>
 

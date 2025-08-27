@@ -12,6 +12,7 @@ from tournament_db import TournamentDB
 import os
 import sqlite3
 from datetime import datetime
+from decorators import check_tournament_active
 
 # Create blueprint
 tournament_bp = Blueprint('tournament', __name__, template_folder='templates')
@@ -181,6 +182,7 @@ def edit_player(tournament_id, player_id):
 
 @tournament_bp.route('/<int:tournament_id>/players', methods=['GET', 'POST'])
 @login_required
+@check_tournament_active
 def manage_players(tournament_id):
     """Manage tournament players."""
     db = get_db()
@@ -264,8 +266,9 @@ class ByeForm(FlaskForm):
     player_id = SelectField('Player', coerce=int, validators=[DataRequired()])
     round_number = SelectField('Round', coerce=int, validators=[DataRequired()])
 
-@tournament_bp.route('/<int:tournament_id>/byes', methods=['GET'])
+@tournament_bp.route('/<int:tournament_id>/byes', methods=['GET', 'POST'])
 @login_required
+@check_tournament_active
 def manage_byes(tournament_id):
     """Manage byes for a tournament."""
     try:
@@ -397,6 +400,7 @@ def remove_bye(tournament_id, bye_id):
 
 @tournament_bp.route('/<int:tournament_id>/pairings', methods=['GET', 'POST'])
 @login_required
+@check_tournament_active
 def manage_pairings(tournament_id):
     """Manage tournament pairings."""
     db = get_db()
@@ -778,7 +782,7 @@ def view_round(round_id):
 @tournament_bp.route('/<int:tournament_id>/conclude', methods=['POST'])
 @login_required
 def conclude_tournament(tournament_id):
-    """Conclude a tournament."""
+    """Conclude a tournament and freeze all data."""
     db = get_db()
     tournament = db.get_tournament(tournament_id)
     
@@ -791,10 +795,44 @@ def conclude_tournament(tournament_id):
         flash('You do not have permission to conclude this tournament.', 'danger')
         return redirect(url_for('tournament.view', tournament_id=tournament_id))
     
-    # Update tournament status to completed
-    if db.update_tournament_status(tournament_id, 'completed'):
-        flash('Tournament has been concluded successfully!', 'success')
-    else:
+    try:
+        # Start transaction
+        db.conn.execute('BEGIN TRANSACTION')
+        
+        # 1. Mark all incomplete rounds as completed
+        db.cursor.execute("""
+            UPDATE rounds 
+            SET status = 'completed', 
+                end_time = datetime('now')
+            WHERE tournament_id = ? 
+            AND status != 'completed'
+        """, (tournament_id,))
+        
+        # 2. Update all pending pairings to draw if they don't have a result
+        db.cursor.execute("""
+            UPDATE pairings 
+            SET status = 'completed',
+                result = '0.5-0.5'
+            WHERE status = 'pending'
+            AND round_id IN (SELECT id FROM rounds WHERE tournament_id = ?)
+            AND result IS NULL
+        """, (tournament_id,))
+        
+        # 3. Update tournament status to completed
+        db.cursor.execute("""
+            UPDATE tournaments 
+            SET status = 'completed',
+                end_date = date('now')
+            WHERE id = ?
+        """, (tournament_id,))
+        
+        # Commit all changes
+        db.conn.commit()
+        flash('Tournament has been concluded successfully! All rounds are now finalized.', 'success')
+        
+    except Exception as e:
+        db.conn.rollback()
+        print(f"Error concluding tournament: {e}")
         flash('Failed to conclude tournament. Please try again.', 'danger')
     
     return redirect(url_for('tournament.view', tournament_id=tournament_id))

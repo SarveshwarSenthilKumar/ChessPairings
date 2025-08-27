@@ -6,7 +6,7 @@ Make it so other people can edit the pairings
 
 Update README and add details of how to initialize everything
 
-Add ability to conclude the tournament at any point
+Add ability to add new rounds in the last round or whenever
 
 Add ability to change the number of rounds at any point and give full reign at beginning
 
@@ -29,3 +29,7 @@ Prevent removing a bye once the round has concluded
 Clicking on a player reveals their matchups and results
 
 Prevent requesting a bye once the round has concluded
+
+Create an ai synopsys for rounds and the entire tournament as well
+
+Make sure that the pairings are pritnable
