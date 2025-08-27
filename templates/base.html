@@ -7,9 +7,7 @@
     <title>{% block title %}Chess Tournament Manager{% endblock %}</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -103,6 +101,114 @@
     </footer>
 
     <!-- jQuery -->
+    <!-- Player History Modal -->
+    <div class="modal fade" id="playerHistoryModal" tabindex="-1" aria-labelledby="playerHistoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-chess-king me-2"></i>
+                        <h5 class="modal-title mb-0" id="playerHistoryModalLabel">Player Match History</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="playerInfo" class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h3 id="playerName" class="mb-1"></h3>
+                                <div id="playerRating" class="text-muted"></div>
+                            </div>
+                            <div id="tournamentInfo" class="text-end">
+                                <div class="text-muted small">Tournament</div>
+                                <div id="tournamentName" class="fw-bold"></div>
+                                <div id="tournamentStatus" class="badge bg-secondary"></div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                <div class="card border-success h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Wins</h6>
+                                        <h2 id="wins" class="text-success mb-0">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-warning h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Draws</h6>
+                                        <h2 id="draws" class="text-warning mb-0">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-danger h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Losses</h6>
+                                        <h2 id="losses" class="text-danger mb-0">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Score</h6>
+                                        <h3 id="totalScore" class="text-primary mb-0">0.0</h3>
+                                        <small class="text-muted" id="winPercentage">0% win rate</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Performance Rating</h6>
+                                        <h3 id="performanceRating" class="text-primary mb-0">-</h3>
+                                        <small class="text-muted">Based on opponent ratings</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Avg. Opponent Rating</h6>
+                                        <h3 id="avgOpponentRating" class="text-primary mb-0">-</h3>
+                                        <small class="text-muted">From rated games</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mb-3">Match History</h5>
+                    <div class="table-responsive border rounded">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center">#</th>
+                                    <th>Opponent</th>
+                                    <th class="text-center">Rating</th>
+                                    <th class="text-center">Color</th>
+                                    <th class="text-center">Result</th>
+                                    <th class="text-center">Points</th>
+                                    <th class="text-end">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="matchHistoryBody">
+                                <!-- Match history will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Bootstrap 5 JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -110,6 +216,230 @@
     <script src="{{ url_for('static', filename='js/csrf.js') }}"></script>
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script>
+    // Format rating with leading zero if needed
+    function formatRating(rating) {
+        return rating ? Math.round(rating) : '-';
+    }
+    
+    // Format date
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+    
+    // Get result badge class
+    function getResultClass(result) {
+        if (result === '1-0') return 'bg-success';
+        if (result === '½-½') return 'bg-warning';
+        if (result === 'Bye') return 'bg-info';
+        return 'bg-secondary';
+    }
+    
+    // Player history modal functionality
+    function showPlayerHistory(tournamentId, playerId, playerName, playerRating) {
+        // Update modal title and clear previous data
+        $('#playerName').text(playerName);
+        $('#playerRating').html(`<i class="fas fa-chess-king me-1"></i> Rating: ${formatRating(playerRating)}`);
+        
+        // Reset all stats
+        $('#totalGames, #wins, #draws, #losses, #byes').text('0');
+        $('#totalScore').text('0.0');
+        $('#winPercentage').text('0% win rate');
+        $('#performanceRating, #avgOpponentRating').text('-');
+        
+        // Show loading state
+        $('#matchHistoryBody').html(`
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="spinner-border text-primary me-2" role="status"></div>
+                        <span>Loading match history...</span>
+                    </div>
+                </td>
+            </tr>
+        `);
+        
+        // Fetch player history
+        fetch(`/tournament/${tournamentId}/player/${playerId}/history`)
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { 
+                        throw new Error(err.error || 'Failed to fetch player history'); 
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Update tournament info
+                if (data.tournament) {
+                    $('#tournamentName').text(data.tournament.name || 'N/A');
+                    
+                    // Set tournament status badge
+                    const status = data.tournament.status || 'upcoming';
+                    const statusClasses = {
+                        'upcoming': 'bg-secondary',
+                        'in_progress': 'bg-primary',
+                        'completed': 'bg-success'
+                    };
+                    const statusText = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    $('#tournamentStatus')
+                        .text(statusText)
+                        .removeClass('bg-secondary bg-primary bg-success')
+                        .addClass(statusClasses[status] || 'bg-secondary');
+                }
+                
+                // Update stats
+                if (data.stats) {
+                    $('#totalGames').text(data.stats.total_games || 0);
+                    $('#wins').text(data.stats.wins || 0);
+                    $('#draws').text(data.stats.draws || 0);
+                    $('#losses').text(data.stats.losses || 0);
+                    $('#byes').text(data.stats.byes || 0);
+                    
+                    const score = data.stats.score || 0;
+                    $('#totalScore').text(score.toFixed(1));
+                    
+                    if (data.stats.win_percentage !== undefined) {
+                        $('#winPercentage').text(`${data.stats.win_percentage}% win rate`);
+                    }
+                    
+                    if (data.stats.performance_rating) {
+                        $('#performanceRating').text(Math.round(data.stats.performance_rating));
+                    }
+                    
+                    // Calculate and show average opponent rating
+                    if (data.matches && data.matches.length > 0) {
+                        const ratedGames = data.matches.filter(m => m.opponent_rating && !m.is_bye);
+                        if (ratedGames.length > 0) {
+                            const totalRating = ratedGames.reduce((sum, m) => sum + (m.opponent_rating || 0), 0);
+                            const avgRating = Math.round(totalRating / ratedGames.length);
+                            $('#avgOpponentRating').text(avgRating);
+                        }
+                    }
+                }
+                
+                // Update match history
+                if (data.matches && data.matches.length > 0) {
+                    if (data.matches.length === 0) {
+                        $('#matchHistoryBody').html(`
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    <i class="fas fa-inbox me-2"></i> No matches played yet
+                                </td>
+                            </tr>
+                        `);
+                        return;
+                    }
+                    
+                    const matchesHtml = data.matches.map((match, index) => {
+                        const isBye = match.is_bye || !match.opponent_name || match.opponent_name === 'Bye';
+                        const roundNum = match.round_number ? `Round ${match.round_number}` : 'N/A';
+                        const opponentName = isBye ? 'Bye' : (match.opponent_name || 'Unknown');
+                        const opponentRating = isBye ? '-' : formatRating(match.opponent_rating);
+                        
+                        // For byes, show a special color badge
+                        const colorBadge = isBye ? 
+                            '<span class="badge bg-secondary">Bye</span>' :
+                            (match.color ? 
+                                `<span class="badge ${match.color === 'White' ? 'bg-light text-dark' : 'bg-dark'}">${match.color}</span>` : 
+                                '<span class="text-muted">-</span>');
+                        
+                        // Handle result display
+                        let resultBadge = '';
+                        let resultText = 'Pending';
+                        
+                        if (isBye) {
+                            // For byes, show the result based on points_earned if available
+                            if (match.points_earned !== undefined && match.points_earned > 0) {
+                                resultText = '1-0';
+                            } else {
+                                resultText = 'Bye';
+                            }
+                            resultBadge = `<span class="badge bg-info">${resultText}</span>`;
+                        } else {
+                            // For regular matches
+                            resultText = match.result || 'Pending';
+                            const resultClass = getResultClass(resultText);
+                            resultBadge = `<span class="badge ${resultClass}">${resultText}</span>`;
+                            
+                            // If round is completed but no result, show it as a loss (0-1)
+                            if (match.round_status === 'completed' && (!match.result || match.result === 'Pending')) {
+                                resultText = '0-1';
+                                resultBadge = `<span class="badge bg-danger">${resultText}</span>`;
+                            }
+                        }
+                        
+                        return `
+                            <tr>
+                                <td class="text-center fw-medium">${roundNum}</td>
+                                <td>${opponentName}</td>
+                                <td class="text-center">${opponentRating}</td>
+                                <td class="text-center">${colorBadge}</td>
+                                <td class="text-center">${resultBadge}</td>
+                                <td class="text-center fw-medium">${match.points_earned !== undefined ? match.points_earned.toFixed(1) : '0.0'}</td>
+                                <td class="text-end">${formatDate(match.game_date)}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                    
+                    $('#matchHistoryBody').html(matchesHtml);
+                } else {
+                    $('#matchHistoryBody').html(`
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="fas fa-inbox me-2"></i> No match history available
+                            </td>
+                        </tr>
+                    `);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching player history:', error);
+                $('#matchHistoryBody').html(`
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${error.message || 'Error loading match history'}
+                        </td>
+                    </tr>
+                `);
+            })
+            .finally(() => {
+                // Always show the modal, even if there was an error
+                const modal = new bootstrap.Modal(document.getElementById('playerHistoryModal'));
+                modal.show();
+                
+                // Add tooltips
+                $('[data-bs-toggle="tooltip"]').tooltip();
+            });
+    }
+    
+    // Make the function available globally
+    window.showPlayerHistory = showPlayerHistory;
+    
+    // Handle player name clicks using event delegation
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.addEventListener('click', function(e) {
+            const playerLink = e.target.closest('.player-name');
+            if (playerLink) {
+                e.preventDefault();
+                const tournamentId = playerLink.dataset.tournamentId;
+                const playerId = playerLink.dataset.playerId;
+                const playerName = playerLink.dataset.playerName;
+                const playerRating = parseInt(playerLink.dataset.playerRating) || 0;
+                showPlayerHistory(tournamentId, playerId, playerName, playerRating);
+            }
+        });
+    });
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>

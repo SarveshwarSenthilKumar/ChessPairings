@@ -393,6 +393,144 @@ class TournamentDB:
             print(f"Error getting all players: {e}")
             return []
             
+    def get_player_match_history(self, tournament_id: int, player_id: int) -> List[Dict[str, Any]]:
+        """Get a player's match history in a tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament
+            player_id: The ID of the player
+            
+        Returns:
+            A dictionary containing match history with opponent names, results, and statistics
+        """
+        try:
+            # Get all pairings where the player was either white or black or had a bye
+            self.cursor.execute("""
+                WITH player_matches AS (
+                    -- Regular matches
+                    SELECT 
+                        r.round_number,
+                        p_opponent.id as opponent_id,
+                        p_opponent.name as opponent_name,
+                        p_opponent.rating as opponent_rating,
+                        CASE 
+                            WHEN pair.white_player_id = :player_id AND pair.result = '1-0' THEN '1-0'
+                            WHEN pair.white_player_id = :player_id AND pair.result = '0-1' THEN '0-1'
+                            WHEN pair.white_player_id = :player_id AND pair.result = '½-½' THEN '½-½'
+                            WHEN pair.black_player_id = :player_id AND pair.result = '1-0' THEN '0-1'
+                            WHEN pair.black_player_id = :player_id AND pair.result = '0-1' THEN '1-0'
+                            WHEN pair.black_player_id = :player_id AND pair.result = '½-½' THEN '½-½'
+                            WHEN r.status = 'completed' AND pair.status = 'completed' AND pair.result IS NULL THEN '1-0' -- Default win if round completed without result
+                            WHEN r.status = 'completed' THEN '0-1'  -- Default loss if round completed but no result
+                            ELSE 'Pending'
+                        END as result,
+                        CASE 
+                            WHEN pair.white_player_id = :player_id AND pair.result = '1-0' THEN 1.0
+                            WHEN pair.white_player_id = :player_id AND pair.result = '0-1' THEN 0.0
+                            WHEN pair.white_player_id = :player_id AND pair.result = '½-½' THEN 0.5
+                            WHEN pair.black_player_id = :player_id AND pair.result = '1-0' THEN 0.0
+                            WHEN pair.black_player_id = :player_id AND pair.result = '0-1' THEN 1.0
+                            WHEN pair.black_player_id = :player_id AND pair.result = '½-½' THEN 0.5
+                            WHEN r.status = 'completed' AND pair.status = 'completed' AND pair.result IS NULL THEN 1.0 -- Default win if round completed without result
+                            WHEN r.status = 'completed' THEN 0.0  -- Default loss if round completed but no result
+                            ELSE 0.0
+                        END as points_earned,
+                        CASE 
+                            WHEN pair.white_player_id = :player_id THEN 'White'
+                            WHEN pair.black_player_id = :player_id THEN 'Black'
+                            ELSE 'Bye'
+                        END as color,
+                        pair.result as game_result,
+                        r.status as round_status,
+                        r.start_time as game_date,
+                        FALSE as is_bye
+                    FROM pairings pair
+                    JOIN rounds r ON pair.round_id = r.id
+                    LEFT JOIN players p_opponent ON 
+                        (pair.white_player_id = p_opponent.id AND pair.black_player_id = :player_id) OR 
+                        (pair.black_player_id = p_opponent.id AND pair.white_player_id = :player_id)
+                    WHERE (pair.white_player_id = :player_id OR pair.black_player_id = :player_id)
+                    AND r.tournament_id = :tournament_id
+                    AND pair.status != 'cancelled'
+                    
+                    UNION ALL
+                    
+                    -- Manual byes
+                    SELECT 
+                        mb.round_number,
+                        NULL as opponent_id,
+                        'Bye' as opponent_name,
+                        NULL as opponent_rating,
+                        '1-0' as result,
+                        1.0 as points_earned,
+                        'Bye' as color,
+                        '1-0' as game_result,
+                        'completed' as round_status,
+                        (SELECT start_time FROM rounds r 
+                         WHERE r.tournament_id = :tournament_id 
+                         AND r.round_number = mb.round_number) as game_date,
+                        TRUE as is_bye
+                    FROM manual_byes mb
+                    WHERE mb.tournament_id = :tournament_id 
+                    AND mb.player_id = :player_id
+                )
+                SELECT * FROM player_matches
+                ORDER BY round_number
+            """, {"player_id": player_id, "tournament_id": tournament_id})
+            
+            matches = [dict(row) for row in self.cursor.fetchall()]
+            
+            # Process matches
+            for match in matches:
+                # Handle byes
+                if match.get('is_bye'):
+                    match['result'] = '1-0'  # Bye is always a win
+                    match['points_earned'] = 1.0
+                
+                # Set default values
+                match['opponent_rating'] = match.get('opponent_rating')
+                match['points_earned'] = match.get('points_earned', 0.0) or 0.0
+                
+                # Update status based on round status
+                if match['round_status'] == 'completed' and match['result'] == 'Pending':
+                    # If round is completed but no result, default to loss
+                    match['result'] = '0-1'
+                    match['points_earned'] = 0.0
+            
+            # Calculate statistics
+            total_games = len(matches)
+            wins = sum(1 for m in matches if m['result'] == '1-0')
+            losses = sum(1 for m in matches if m['result'] == '0-1')
+            draws = sum(1 for m in matches if m['result'] == '½-½')
+            byes = sum(1 for m in matches if m.get('is_bye'))
+                
+            # Calculate performance rating if we have rated games
+            rated_games = [m for m in matches if m.get('opponent_rating')]
+            if rated_games:
+                avg_opponent_rating = sum(m['opponent_rating'] for m in rated_games) / len(rated_games)
+                score_percentage = sum(m['points_earned'] for m in rated_games) / len(rated_games)
+                performance_rating = avg_opponent_rating + 400 * (2 * score_percentage - 1)  # Standard Elo formula
+            else:
+                performance_rating = None
+            
+            return {
+                'matches': matches,
+                'stats': {
+                    'total_games': total_games,
+                    'wins': wins - byes,  # Exclude byes from win count
+                    'losses': losses,
+                    'draws': draws,
+                    'byes': byes,
+                    'score': (wins - byes) + (draws * 0.5) + byes,  # Byes count as 1 point
+                    'performance_rating': round(performance_rating) if performance_rating else None,
+                    'win_percentage': round((wins - byes + (draws * 0.5)) / (total_games - byes) * 100, 1) if (total_games - byes) > 0 else (100 if byes > 0 else 0)
+                }
+            }
+            
+        except sqlite3.Error as e:
+            print(f"Error getting match history for player {player_id} in tournament {tournament_id}: {e}")
+            return {'matches': [], 'stats': {}}
+            
     def get_tournament_players(self, tournament_id: int) -> List[Dict[str, Any]]:
         """Get all players in a specific tournament.
         

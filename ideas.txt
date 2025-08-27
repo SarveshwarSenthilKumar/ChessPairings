@@ -26,10 +26,8 @@ Add a "Simulated Rating" button
 
 Prevent removing a bye once the round has concluded
 
-Clicking on a player reveals their matchups and results
-
 Prevent requesting a bye once the round has concluded
 
 Create an ai synopsys for rounds and the entire tournament as well
 
-Make sure that the pairings are pritnable
+Make sure that the pairings are printable

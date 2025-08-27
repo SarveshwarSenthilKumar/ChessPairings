@@ -205,7 +205,12 @@
                                         {% if view_type == 'team' %}
                                             {{ item.team }}
                                         {% else %}
-                                            {{ item.name }}
+                                            <a href="#" class="text-decoration-none player-name" 
+                                               data-tournament-id="{{ tournament.id }}"
+                                               data-player-id="{{ item.id }}"
+                                               data-player-name="{{ item.name|e }}">
+                                                {{ item.name }}
+                                            </a>
                                         {% endif %}
                                     </div>
                                     {% if view_type != 'team' and item.team %}

@@ -55,11 +55,14 @@
                                             <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
                                                 <i class="fas fa-user"></i>
                                             </div>
-                                            <div>
-                                                <div class="fw-medium">{{ player.name }}</div>
-                                                <small class="text-muted">@{{ player.username }}</small>
-                                            </div>
-                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="#" class="text-decoration-none player-name" 
+                                           data-tournament-id="{{ tournament.id }}"
+                                           data-player-id="{{ player.id }}"
+                                           data-player-name="{{ player.name|e('html_attr') }}">
+                                            {{ player.name }}
+                                        </a>
                                     </td>
                                     <td>{{ player.rating }}</td>
                                     <td>{{ player.federation or '—' }}</td>

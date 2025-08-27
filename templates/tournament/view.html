@@ -202,17 +202,35 @@
                                 <tr class="{% if loop.index <= 3 %}table-{{ ['success', 'info', 'warning'][loop.index0] }}{% endif %}">
                                     <td>{{ loop.index }}</td>
                                     <td>
-                                        <a href="#" class="text-decoration-none">
-                                            {{ item.team if view_type == 'team' else item.name }}
-                                            {% if loop.index <= 3 %}
-                                                <span class="badge bg-{{ ['success', 'info', 'warning'][loop.index0] }} ms-1">
-                                                    {{ loop.index|ordinal }}
-                                                </span>
-                                            {% endif %}
-                                            {% if view_type == 'team' and item.player_count %}
-                                                <span class="badge bg-secondary ms-2">{{ item.player_count }} player{% if item.player_count != 1 %}s{% endif %}</span>
-                                            {% endif %}
-                                        </a>
+                                        {% if view_type == 'team' %}
+                                            <a href="#" class="text-decoration-none">
+                                                {{ item.team }}
+                                                {% if loop.index <= 3 %}
+                                                    <span class="badge bg-{{ ['success', 'info', 'warning'][loop.index0] }} ms-1">
+                                                        {{ loop.index|ordinal }}
+                                                    </span>
+                                                {% endif %}
+                                                {% if item.player_count %}
+                                                    <span class="badge bg-secondary ms-2">{{ item.player_count }} player{% if item.player_count != 1 %}s{% endif %}</span>
+                                                {% endif %}
+                                            </a>
+                                        {% else %}
+                                            <a href="#" class="text-decoration-none player-name" 
+                                               data-tournament-id="{{ tournament.id }}"
+                                               data-player-id="{{ item.id }}"
+                                               data-player-name="{{ item.name|e }}"
+                                               data-player-rating="{{ item.rating if item.rating is defined else '0' }}">
+                                                {{ item.name }}
+                                                {% if item.rating is defined and item.rating %}
+                                                    <span class="text-muted small ms-1">({{ item.rating }})</span>
+                                                {% endif %}
+                                                {% if loop.index <= 3 %}
+                                                    <span class="badge bg-{{ ['success', 'info', 'warning'][loop.index0] }} ms-1">
+                                                        {{ loop.index|ordinal }}
+                                                    </span>
+                                                {% endif %}
+                                            </a>
+                                        {% endif %}
                                     </td>
                                     {% if view_type != 'team' %}
                                         <td class="text-center">{{ item.team or '—' }}</td>

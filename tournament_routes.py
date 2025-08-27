@@ -13,16 +13,27 @@ import os
 import sqlite3
 from datetime import datetime
 from decorators import check_tournament_active
+import json
 
 # Create blueprint
 tournament_bp = Blueprint('tournament', __name__, template_folder='templates')
 
 # Database connection
-def get_db():
-    if 'db' not in g:
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tournament.db')
-        g.db = TournamentDB(db_path)
-    return g.db
+def get_db(f=None):
+    if f is None:  # Called as a regular function
+        if 'db' not in g:
+            db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tournament.db')
+            g.db = TournamentDB(db_path)
+        return g.db
+    
+    # Called as a decorator
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'db' not in g:
+            db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tournament.db')
+            g.db = TournamentDB(db_path)
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Login required decorator
 def login_required(f):
@@ -33,6 +44,42 @@ def login_required(f):
             return redirect(url_for('auth.login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
+
+@tournament_bp.route('/<int:tournament_id>/player/<int:player_id>/history')
+@login_required
+@get_db
+def player_history(tournament_id, player_id):
+    """Get a player's match history in a tournament."""
+    db = g.db
+    player = db.get_player(player_id)
+    if not player:
+        return jsonify({'error': 'Player not found'}), 404
+    
+    # Get tournament for additional context
+    tournament = db.get_tournament(tournament_id)
+    if not tournament:
+        return jsonify({'error': 'Tournament not found'}), 404
+    
+    # Get match history with detailed stats
+    history = db.get_player_match_history(tournament_id, player_id)
+    
+    # Prepare response with player info, matches, and stats
+    response = {
+        'player': {
+            'id': player['id'],
+            'name': player['name'],
+            'rating': player.get('rating')
+        },
+        'tournament': {
+            'id': tournament['id'],
+            'name': tournament['name'],
+            'status': tournament['status']
+        },
+        'matches': history['matches'],
+        'stats': history['stats']
+    }
+    
+    return jsonify(response)
 
 # Tournament routes
 @tournament_bp.route('/')
