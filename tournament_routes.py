@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app, jsonify
 from flask_wtf.csrf import generate_csrf
 from flask_wtf import FlaskForm
-from wtforms import SelectField, BooleanField
-from wtforms.validators import DataRequired
+from wtforms import SelectField, BooleanField, IntegerField, StringField
+from wtforms.validators import DataRequired, NumberRange
 import os
 import pandas as pd
 from werkzeug.utils import secure_filename
@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from tournament_db import TournamentDB
 import os
 import sqlite3
+from datetime import datetime
 
 # Create blueprint
 tournament_bp = Blueprint('tournament', __name__, template_folder='templates')
@@ -218,6 +219,142 @@ class PairingsForm(FlaskForm):
                               default='swiss')
     check_color_balance = BooleanField('Try to balance colors', default=True)
     avoid_same_pairings = BooleanField('Avoid previous pairings', default=True)
+
+# Form for assigning byes
+class ByeForm(FlaskForm):
+    player_id = SelectField('Player', coerce=int, validators=[DataRequired()])
+    round_number = SelectField('Round', coerce=int, validators=[DataRequired()])
+
+@tournament_bp.route('/<int:tournament_id>/byes', methods=['GET'])
+@login_required
+def manage_byes(tournament_id):
+    """Manage byes for a tournament."""
+    try:
+        db = get_db()
+        tournament = db.get_tournament(tournament_id)
+        if not tournament:
+            flash('Tournament not found.', 'error')
+            return redirect(url_for('tournament.index'))
+            
+        # Get all players in the tournament
+        players = db.get_tournament_players(tournament_id)
+        
+        # Get all assigned byes
+        byes = db.get_manual_byes(tournament_id)
+        
+        # Prepare form
+        form = ByeForm()
+        
+        # Populate player choices
+        form.player_id.choices = [(p['id'], f"{p['name']} ({p.get('rating', 'Unrated')})") 
+                                for p in players]
+        
+        # Populate round choices (future rounds only)
+        current_round = db.get_current_round(tournament_id)
+        current_round_num = current_round['round_number'] if current_round else 1
+        form.round_number.choices = [(i, f"Round {i}") 
+                                   for i in range(current_round_num, tournament['rounds'] + 1)]
+        
+        return render_template('tournament/manage_byes.html',
+                             tournament=tournament,
+                             players=players,
+                             byes=byes,
+                             form=form)
+    except Exception as e:
+        print(f"Error managing byes: {e}")
+        flash('An error occurred while loading the bye management page.', 'error')
+        return redirect(url_for('tournament.view', tournament_id=tournament_id))
+
+@tournament_bp.route('/<int:tournament_id>/byes/assign', methods=['POST'])
+@login_required
+def assign_bye(tournament_id):
+    """Assign a bye to a player for a specific round."""
+    if not session.get('user_id'):
+        flash('You must be logged in to assign byes.', 'error')
+        return redirect(url_for('auth.login', next=request.url))
+        
+    db = get_db()
+    try:
+        tournament = db.get_tournament(tournament_id)
+        if not tournament:
+            flash('Tournament not found.', 'error')
+            return redirect(url_for('tournament.index'))
+            
+        player_id = request.form.get('player_id', type=int)
+        round_number = request.form.get('round_number', type=int)
+        
+        if not player_id or not round_number:
+            flash('Please select both a player and a round.', 'error')
+            return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
+        
+        # Check if the round has already been completed
+        current_round = db.get_current_round(tournament_id)
+        if current_round and round_number < current_round['round_number']:
+            flash('Cannot assign a bye to a completed round.', 'error')
+            return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
+            
+        # Check if the player is already assigned a bye for this round
+        existing_bye = db.get_manual_bye(tournament_id, player_id, round_number)
+        if existing_bye:
+            flash('This player already has a bye assigned for the selected round.', 'warning')
+            return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
+            
+        # Assign the bye
+        if db.assign_manual_bye(tournament_id, player_id, round_number, session['user_id']):
+            flash('Bye assigned successfully!', 'success')
+        else:
+            flash('Failed to assign bye. Please try again.', 'error')
+        
+    except Exception as e:
+        print(f"Error assigning bye: {e}")
+        flash(f'An error occurred while assigning the bye: {str(e)}', 'error')
+    
+    return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
+
+@tournament_bp.route('/<int:tournament_id>/byes/<int:bye_id>/remove', methods=['POST'])
+@login_required
+def remove_bye(tournament_id, bye_id):
+    """Remove an assigned bye."""
+    if not session.get('user_id'):
+        flash('You must be logged in to remove byes.', 'error')
+        return redirect(url_for('auth.login'))
+        
+    db = get_db()
+    try:
+        tournament = db.get_tournament(tournament_id)
+        if not tournament:
+            flash('Tournament not found.', 'error')
+            return redirect(url_for('tournament.index'))
+            
+        # Get the bye details before removing
+        db.cursor.execute("""
+            SELECT id, player_id, round_number 
+            FROM manual_byes 
+            WHERE id = ? AND tournament_id = ?
+        """, (bye_id, tournament_id))
+        
+        bye = db.cursor.fetchone()
+        if not bye:
+            flash('Bye assignment not found.', 'error')
+            return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
+        
+        # Check if the round has already started
+        current_round = db.get_current_round(tournament_id)
+        if current_round and bye['round_number'] <= current_round['round_number']:
+            flash('Cannot remove byes from rounds that have already started.', 'error')
+            return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
+        
+        # Remove the bye
+        if db.remove_manual_bye(bye_id):
+            flash('Bye removed successfully!', 'success')
+        else:
+            flash('Failed to remove bye. Please try again.', 'error')
+        
+    except Exception as e:
+        print(f"Error removing bye: {e}")
+        flash(f'An error occurred while removing the bye: {str(e)}', 'error')
+    
+    return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
 
 @tournament_bp.route('/<int:tournament_id>/pairings', methods=['GET', 'POST'])
 @login_required

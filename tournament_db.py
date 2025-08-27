@@ -88,10 +88,24 @@ class TournamentDB:
             FOREIGN KEY (black_player_id) REFERENCES players(id)
         );
         
+        CREATE TABLE IF NOT EXISTS manual_byes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tournament_id INTEGER NOT NULL,
+            player_id INTEGER NOT NULL,
+            round_number INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_by INTEGER,
+            FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+            UNIQUE(tournament_id, player_id, round_number)
+        );
+        
         CREATE INDEX IF NOT EXISTS idx_tournament_players_tournament ON tournament_players(tournament_id);
         CREATE INDEX IF NOT EXISTS idx_tournament_players_player ON tournament_players(player_id);
         CREATE INDEX IF NOT EXISTS idx_rounds_tournament ON rounds(tournament_id);
         CREATE INDEX IF NOT EXISTS idx_pairings_round ON pairings(round_id);
+        CREATE INDEX IF NOT EXISTS idx_manual_byes_tournament ON manual_byes(tournament_id);
+        CREATE INDEX IF NOT EXISTS idx_manual_byes_player ON manual_byes(player_id);
         """)
         
         self.conn.commit()
@@ -144,6 +158,99 @@ class TournamentDB:
         except sqlite3.Error as e:
             print(f"Error getting current round for tournament {tournament_id}: {e}")
             return None
+            
+    def get_pairings(self, round_id: int) -> List[Dict[str, Any]]:
+        """Get all pairings for a round, including byes.
+        
+        Args:
+            round_id: The ID of the round to get pairings for.
+            
+        Returns:
+            A list of dictionaries containing pairing information, including player details.
+            Each pairing has an 'is_bye' flag set to True if it's a bye pairing.
+        """
+        try:
+            # First, get the round details to determine the round number
+            self.cursor.execute("""
+                SELECT id, round_number, tournament_id 
+                FROM rounds 
+                WHERE id = ?
+            """, (round_id,))
+            round_info = self.cursor.fetchone()
+            
+            if not round_info:
+                return []
+                
+            round_number = round_info['round_number']
+            tournament_id = round_info['tournament_id']
+            
+            # Get all manual byes for this round
+            self.cursor.execute("""
+                SELECT mb.player_id, p.name, p.rating
+                FROM manual_byes mb
+                JOIN players p ON mb.player_id = p.id
+                WHERE mb.tournament_id = ? AND mb.round_number = ?
+            """, (tournament_id, round_number))
+            
+            manual_byes = {row['player_id']: dict(row) for row in self.cursor.fetchall()}
+            
+            # Get all pairings for the round
+            self.cursor.execute("""
+                SELECT 
+                    p.id, p.board_number, p.status, p.result,
+                    p.white_player_id, p.black_player_id,
+                    w.name as white_name, w.rating as white_rating,
+                    b.name as black_name, b.rating as black_rating
+                FROM pairings p
+                LEFT JOIN players w ON p.white_player_id = w.id
+                LEFT JOIN players b ON p.black_player_id = b.id
+                WHERE p.round_id = ?
+                ORDER BY 
+                    CASE WHEN p.black_player_id IS NULL THEN 0 ELSE 1 END,  # Bye pairings first
+                    p.board_number
+            """, (round_id,))
+            
+            pairings = []
+            for row in self.cursor.fetchall():
+                pairing = dict(row)
+                # Add is_bye flag
+                is_bye = pairing['black_player_id'] is None
+                pairing['is_bye'] = is_bye
+                
+                # If this is a bye pairing, ensure the player is in the manual_byes set
+                if is_bye and pairing['white_player_id'] in manual_byes:
+                    manual_byes.pop(pairing['white_player_id'])
+                    
+                pairings.append(pairing)
+            
+            # Add any manual byes that weren't found in the pairings table
+            for player_id, player_info in manual_byes.items():
+                pairings.append({
+                    'id': None,
+                    'board_number': 0,  # Will be updated below
+                    'status': 'completed',
+                    'result': '1-0',  # Bye is a win for the player
+                    'white_player_id': player_id,
+                    'black_player_id': None,
+                    'white_name': player_info['name'],
+                    'white_rating': player_info['rating'],
+                    'black_name': None,
+                    'black_rating': None,
+                    'is_bye': True
+                })
+            
+            # Sort pairings to ensure byes are first and have sequential board numbers
+            pairings.sort(key=lambda x: (0 if x['is_bye'] else 1, x.get('board_number', 0)))
+            
+            # Ensure board numbers are sequential
+            for i, pairing in enumerate(pairings, 1):
+                pairing['board_number'] = i
+                
+            return pairings
+            
+        except sqlite3.Error as e:
+            print(f"Error getting pairings: {e}")
+            return []
             
     def get_round_pairings(self, round_id: int) -> List[Dict[str, Any]]:
         """Get all pairings for a specific round.
@@ -268,6 +375,92 @@ class TournamentDB:
             print(f"Error getting previous pairings: {e}")
             return []
             
+    def get_manual_byes(self, tournament_id: int) -> List[Dict[str, Any]]:
+        """Get all manual byes for a tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            
+        Returns:
+            A list of dictionaries containing bye information.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT b.*, p.name as player_name
+                FROM manual_byes b
+                JOIN players p ON b.player_id = p.id
+                WHERE b.tournament_id = ?
+                ORDER BY b.round_number, p.name
+            """, (tournament_id,))
+            return [dict(row) for row in self.cursor.fetchall()]
+        except sqlite3.Error as e:
+            print(f"Error getting manual byes: {e}")
+            return []
+            
+    def get_manual_bye(self, tournament_id: int, player_id: int, round_number: int) -> Optional[Dict[str, Any]]:
+        """Check if a specific bye assignment exists.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            player_id: The ID of the player.
+            round_number: The round number.
+            
+        Returns:
+            The bye record if found, None otherwise.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT * FROM manual_byes 
+                WHERE tournament_id = ? AND player_id = ? AND round_number = ?
+            """, (tournament_id, player_id, round_number))
+            row = self.cursor.fetchone()
+            return dict(row) if row else None
+        except sqlite3.Error as e:
+            print(f"Error getting manual bye: {e}")
+            return None
+            
+    def assign_manual_bye(self, tournament_id: int, player_id: int, round_number: int, created_by: int) -> bool:
+        """Assign a manual bye to a player for a specific round.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            player_id: The ID of the player.
+            round_number: The round number.
+            created_by: The user ID who assigned the bye.
+            
+        Returns:
+            bool: True if the bye was assigned successfully, False otherwise.
+        """
+        try:
+            self.cursor.execute("""
+                INSERT INTO manual_byes (tournament_id, player_id, round_number, created_by)
+                VALUES (?, ?, ?, ?)
+            """, (tournament_id, player_id, round_number, created_by))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error assigning manual bye: {e}")
+            self.conn.rollback()
+            return False
+            
+    def remove_manual_bye(self, bye_id: int) -> bool:
+        """Remove a manual bye assignment.
+        
+        Args:
+            bye_id: The ID of the bye assignment to remove.
+            
+        Returns:
+            bool: True if the bye was removed successfully, False otherwise.
+        """
+        try:
+            self.cursor.execute("DELETE FROM manual_byes WHERE id = ?", (bye_id,))
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            print(f"Error removing manual bye: {e}")
+            self.conn.rollback()
+            return False
+            
     def generate_pairings(self, tournament_id: int, round_id: int, method: str = 'swiss') -> bool:
         """Generate pairings for a tournament round using the specified method.
         
@@ -299,6 +492,45 @@ class TournamentDB:
                 
             round_number = round_result[0]
             
+            # First, clear any existing pairings for this round to avoid duplicates
+            self.cursor.execute("DELETE FROM pairings WHERE round_id = ?", (round_id,))
+            
+            # Get players with manual byes for this round
+            self.cursor.execute("""
+                SELECT player_id FROM manual_byes 
+                WHERE tournament_id = ? AND round_number = ?
+            """, (tournament_id, round_number))
+            
+            players_with_manual_byes = {row[0] for row in self.cursor.fetchall()}
+            
+            # Create a list of players who should be paired (excluding those with byes)
+            players_to_pair = [p for p in players if p['id'] not in players_with_manual_byes]
+            
+            # For players with byes, create a bye pairing and award a point
+            for player_id in players_with_manual_byes:
+                player = next((p for p in players if p['id'] == player_id), None)
+                if player:
+                    # Get the next available board number
+                    self.cursor.execute("""
+                        SELECT COALESCE(MAX(board_number), 0) + 1 
+                        FROM pairings 
+                        WHERE round_id = ?
+                    """, (round_id,))
+                    next_board = self.cursor.fetchone()[0] or 1
+                    
+                    # Create the bye pairing - this will automatically award a point via create_pairing
+                    self.create_pairing(round_id, player['id'], None, next_board)
+                    
+                    # Ensure the player has a tournament_players entry
+                    self.cursor.execute("""
+                        INSERT OR IGNORE INTO tournament_players 
+                        (tournament_id, player_id, initial_rating, score)
+                        VALUES (?, ?, ?, 0)
+                    """, (tournament_id, player_id, player.get('rating', 1200)))
+            
+            # Use the filtered list for the rest of the pairing logic
+            players = players_to_pair
+            
             # For the first round, pair by rating
             if round_number == 1:
                 # Sort by rating for first round
@@ -315,9 +547,17 @@ class TournamentDB:
                     pairings.append((white_player, black_player))
                 
                 # If odd number of players, give a bye to the lowest-rated player
-                if len(players) % 2 != 0:
+                if len(players) % 2 != 0 and not players_with_manual_byes:
                     bye_player = players[-1]
-                    pairings.append((bye_player, None))
+                    # Get the next available board number
+                    self.cursor.execute("""
+                        SELECT COALESCE(MAX(board_number), 0) + 1 
+                        FROM pairings 
+                        WHERE round_id = ?
+                    """, (round_id,))
+                    next_board = self.cursor.fetchone()[0] or 1
+                    
+                    self.create_pairing(round_id, bye_player['id'], None, next_board)
                     
             else:
                 # For subsequent rounds, use Swiss system
@@ -398,9 +638,6 @@ class TournamentDB:
                     else:
                         pairings.append((player2, player1))
             
-            # Clear any existing pairings for this round
-            self.cursor.execute("DELETE FROM pairings WHERE round_id = ?", (round_id,))
-            
             # Create the pairings in the database
             board_number = 1
             for white, black in pairings:
@@ -409,27 +646,8 @@ class TournamentDB:
                     self.create_pairing(round_id, white['id'], black['id'], board_number)
                     board_number += 1
                 else:
-                    # Bye
-                    self.create_pairing(round_id, white['id'], None, 0)  # Board 0 for byes
-            
-            # Commit the transaction
-            self.conn.commit()
-            return True
-            
-        except Exception as e:
-            print(f"Error in generate_pairings: {str(e)}")
-            if self.conn:
-                self.conn.rollback()
-            return False
-                
-                # This check is no longer needed as we handle byes earlier
-                # and should never have an unpaired player at this point
-            
-            # Save pairings to database
-            for i, (white, black) in enumerate(pairings, 1):
-                # Use the create_pairing method which handles both regular and bye pairings
-                black_id = black['id'] if black else None
-                self.create_pairing(round_id, white['id'], black_id, i)
+                    # Bye - already handled in the manual byes section
+                    pass
             
             # Update round status
             self.cursor.execute("""
@@ -439,12 +657,14 @@ class TournamentDB:
                 WHERE id = ?
             """, (round_id,))
             
+            # Commit the transaction
             self.conn.commit()
             return True
             
-        except sqlite3.Error as e:
-            print(f"Error generating pairings: {e}")
-            self.conn.rollback()
+        except Exception as e:
+            print(f"Error in generate_pairings: {str(e)}")
+            if self.conn:
+                self.conn.rollback()
             return False
             
     def add_player_to_tournament(self, tournament_id: int, player_id: int) -> bool:
@@ -1076,7 +1296,7 @@ class TournamentDB:
         return standings
 
     def get_pairings(self, round_id: int) -> List[Dict[str, Any]]:
-        """Get all pairings for a round."""
+        """Get all pairings for a round, including byes."""
         query = """
         SELECT 
             p.id, 
@@ -1088,15 +1308,28 @@ class TournamentDB:
             w.name as white_name, 
             w.rating as white_rating,
             b.name as black_name, 
-            b.rating as black_rating
+            b.rating as black_rating,
+            CASE WHEN p.black_player_id IS NULL THEN 1 ELSE 0 END as is_bye
         FROM pairings p
         LEFT JOIN players w ON p.white_player_id = w.id
         LEFT JOIN players b ON p.black_player_id = b.id
         WHERE p.round_id = ?
-        ORDER BY p.board_number
+        ORDER BY 
+            CASE WHEN p.black_player_id IS NULL THEN 1 ELSE 0 END,  -- Show byes first
+            p.board_number
         """
         self.cursor.execute(query, (round_id,))
-        return [dict(row) for row in self.cursor.fetchall()]
+        pairings = []
+        for row in self.cursor.fetchall():
+            pairing = dict(row)
+            # For bye pairings, ensure the black player info is None
+            if pairing['black_player_id'] is None:
+                pairing.update({
+                    'black_name': None,
+                    'black_rating': None
+                })
+            pairings.append(pairing)
+        return pairings
 
     def is_current_round_complete(self, tournament_id: int) -> bool:
         """Check if all results are in for the current round.
