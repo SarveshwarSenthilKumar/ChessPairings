@@ -1,10 +1,35 @@
-add dark mode
-add ability to give byes
-add option to add teams to the players
-make it so that other people can see the results
-make it so other people can edit the pairings
-update readme and add details of how to initialize everything
-add ability to conclude the tournament at any point
-add ability to change the number of rounds at any point and give full reign at beginning
-add ability to edit other features at any point
-go back at the end and refresh the ui and make sure it looks good
+Add dark mode
+
+Add ability to give byes
+
+Add option to add teams to the players
+
+Make it so that other people can see the results
+
+Make it so other people can edit the pairings
+
+Update README and add details of how to initialize everything
+
+Add ability to conclude the tournament at any point
+
+Add ability to change the number of rounds at any point and give full reign at beginning
+
+Add ability to edit other features at any point
+
+Go back at the end and refresh the UI and make sure it looks good
+
+Add an attendance check-in feature
+
+Add a "bye" option in the current round to reshuffle pairings
+
+Allow the user to select the number of points awarded for a bye
+
+Show an error if the user tries to complete a round before all matches are filled in
+
+Add a "Simulated Rating" button
+
+Prevent removing a bye once the round has concluded
+
+Clicking on a player reveals their matchups and results
+
+Prevent requesting a bye once the round has concluded
