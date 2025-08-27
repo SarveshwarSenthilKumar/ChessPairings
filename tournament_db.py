@@ -375,6 +375,82 @@ class TournamentDB:
             print(f"Error getting previous pairings: {e}")
             return []
             
+    def get_tournament_rounds(self, tournament_id: int) -> List[Dict[str, Any]]:
+        """Get all rounds for a tournament with their pairings.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            
+        Returns:
+            A list of dictionaries containing round data with their pairings.
+        """
+        try:
+            # First get all rounds for the tournament
+            self.cursor.execute("""
+                SELECT id, round_number, status, 
+                       strftime('%Y-%m-%d %H:%M', start_time) as start_time,
+                       strftime('%Y-%m-%d %H:%M', end_time) as end_time
+                FROM rounds 
+                WHERE tournament_id = ?
+                ORDER BY round_number
+            """, (tournament_id,))
+            
+            rounds = [dict(row) for row in self.cursor.fetchall()]
+            
+            # For each round, get its pairings
+            for round_data in rounds:
+                round_id = round_data['id']
+                
+                # Get pairings for this round
+                self.cursor.execute("""
+                    SELECT p.*, 
+                           w.name as white_player_name, w.rating as white_rating,
+                           b.name as black_player_name, b.rating as black_rating
+                    FROM pairings p
+                    LEFT JOIN players w ON p.white_player_id = w.id
+                    LEFT JOIN players b ON p.black_player_id = b.id
+                    WHERE p.round_id = ?
+                    ORDER BY p.board_number
+                """, (round_id,))
+                
+                pairings = [dict(row) for row in self.cursor.fetchall()]
+                round_data['pairings'] = pairings
+                
+                # Get manual byes for this round
+                self.cursor.execute("""
+                    SELECT mb.*, p.name as player_name, p.rating as player_rating
+                    FROM manual_byes mb
+                    JOIN players p ON mb.player_id = p.id
+                    WHERE mb.tournament_id = ? AND mb.round_number = ?
+                """, (tournament_id, round_data['round_number']))
+                
+                # Add byes to pairings with is_bye flag
+                byes = [dict(row) for row in self.cursor.fetchall()]
+                for bye in byes:
+                    pairings.append({
+                        'id': f"bye_{bye['id']}",
+                        'white_player_id': bye['player_id'],
+                        'white_player_name': bye['player_name'],
+                        'white_rating': bye['player_rating'],
+                        'black_player_id': None,
+                        'black_player_name': 'BYE',
+                        'black_rating': None,
+                        'result': '1-0',  # Default result for byes
+                        'status': 'completed',
+                        'is_bye': True,
+                        'points_awarded': bye.get('points_awarded', 1.0)
+                    })
+                
+                # Sort pairings to have byes first, then by board number
+                round_data['pairings'].sort(key=lambda x: (0 if x.get('is_bye', False) else 1, 
+                                                         x.get('board_number', 0)))
+            
+            return rounds
+            
+        except sqlite3.Error as e:
+            print(f"Error getting tournament rounds: {e}")
+            return []
+            
     def get_manual_byes(self, tournament_id: int) -> List[Dict[str, Any]]:
         """Get all manual byes for a tournament.
         

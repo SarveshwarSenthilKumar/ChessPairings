@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tournament.name }} - All Rounds{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('tournament.index') }}">Tournaments</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}">{{ tournament.name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">All Rounds</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ tournament.name }} - All Rounds</h2>
+        <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Tournament
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if rounds %}
+                <div class="accordion" id="roundsAccordion">
+                    {% for round in rounds %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ round.id }}">
+                                <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" 
+                                        type="button" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#collapse{{ round.id }}" 
+                                        aria-expanded="{% if loop.first %}true{% else %}false{% endif %}" 
+                                        aria-controls="collapse{{ round.id }}">
+                                    <span class="fw-bold me-2">Round {{ round.round_number }}</span>
+                                    <span class="badge {% if round.status == 'completed' %}bg-success{% elif round.status == 'in_progress' %}bg-primary{% else %}bg-secondary{% endif %} ms-2">
+                                        {{ round.status|replace('_', ' ')|title }}
+                                    </span>
+                                    <span class="text-muted ms-3">
+                                        {% if round.start_date %}
+                                            {{ round.start_date|datetimeformat('%b %d, %Y %I:%M %p') }}
+                                        {% endif %}
+                                    </span>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ round.id }}" 
+                                 class="accordion-collapse collapse {% if loop.first %}show{% endif %}" 
+                                 aria-labelledby="heading{{ round.id }}" 
+                                 data-bs-parent="#roundsAccordion">
+                                <div class="accordion-body">
+                                    {% if round.pairings %}
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>White Player</th>
+                                                        <th>Black Player</th>
+                                                        <th>Result</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for pairing in round.pairings %}
+                                                        <tr>
+                                                            <td>{{ loop.index }}</td>
+                                                            <td>
+                                                                {% if pairing.white_player_id %}
+                                                                    {{ pairing.white_player_name }}
+                                                                    {% if pairing.white_rating %}
+                                                                        <span class="text-muted">({{ pairing.white_rating }})</span>
+                                                                    {% endif %}
+                                                                {% else %}
+                                                                    <span class="text-muted">-</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if pairing.black_player_id %}
+                                                                    {{ pairing.black_player_name }}
+                                                                    {% if pairing.black_rating %}
+                                                                        <span class="text-muted">({{ pairing.black_rating }})</span>
+                                                                    {% endif %}
+                                                                {% else %}
+                                                                    <span class="text-muted">-</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if pairing.result %}
+                                                                    {{ pairing.result }}
+                                                                {% else %}
+                                                                    <span class="text-muted">-</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge {% if pairing.status == 'completed' %}bg-success{% elif pairing.status == 'in_progress' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                                                    {{ pairing.status|replace('_', ' ')|title }}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    {% else %}
+                                        <div class="alert alert-info mb-0">
+                                            No pairings found for this round.
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info mb-0">
+                    No rounds have been created for this tournament yet.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
