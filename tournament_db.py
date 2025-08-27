@@ -1100,16 +1100,21 @@ class TournamentDB:
         
         Status can be:
         - 'upcoming': No rounds started yet
-        - 'ongoing': At least one round has started but not all rounds are complete
+        - 'ongoing': At least one round has started but not all rounds are complete, or not all pairings have results
         - 'completed': All rounds are complete and all pairings have results
         """
         # Get tournament info
-        self.cursor.execute("SELECT rounds FROM tournaments WHERE id = ?", (tournament_id,))
+        self.cursor.execute("""
+            SELECT t.rounds, 
+                   (SELECT COUNT(*) FROM rounds r WHERE r.tournament_id = t.id AND r.status = 'completed') as completed_rounds
+            FROM tournaments t
+            WHERE t.id = ?
+        """, (tournament_id,))
         result = self.cursor.fetchone()
         if not result:
             return
             
-        total_rounds = result[0]
+        total_rounds, completed_rounds = result
         
         # Get all rounds for this tournament
         self.cursor.execute("""
