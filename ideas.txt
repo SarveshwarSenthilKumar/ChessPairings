@@ -1,9 +1,5 @@
 Add dark mode
 
-Add ability to give byes
-
-Add option to add teams to the players
-
 Make it so that other people can see the results
 
 Make it so other people can edit the pairings
