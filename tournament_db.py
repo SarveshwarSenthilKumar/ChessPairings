@@ -1712,6 +1712,30 @@ class TournamentDB:
             print(f"Error getting players with bye requests: {e}")
             return []
 
+    def get_round(self, round_id: int) -> Optional[Dict[str, Any]]:
+        """Get a single round by its ID.
+        
+        Args:
+            round_id: ID of the round to fetch
+            
+        Returns:
+            Dictionary with round details or None if not found
+        """
+        try:
+            self.cursor.execute("""
+                SELECT id, tournament_id, round_number, status, 
+                       start_time, end_time
+                FROM rounds
+                WHERE id = ?
+            """, (round_id,))
+            
+            row = self.cursor.fetchone()
+            return dict(row) if row else None
+            
+        except Exception as e:
+            print(f"Error getting round {round_id}: {e}")
+            return None
+            
     def get_rounds(self, tournament_id: int) -> List[Dict[str, Any]]:
         """Get all rounds for a tournament.
         

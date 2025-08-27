@@ -30,4 +30,4 @@ Prevent requesting a bye once the round has concluded
 
 Create an ai synopsys for rounds and the entire tournament as well
 
-Make sure that the pairings are printable
+make sure that the export button in the pairings page actually work

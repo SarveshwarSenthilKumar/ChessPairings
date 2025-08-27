@@ -849,13 +849,43 @@ def rounds(tournament_id):
 def view_round(round_id):
     """View a specific round's pairings."""
     db = get_db()
+    
+    # Get the round data using the get_round method
     round_data = db.get_round(round_id)
+    
     if not round_data:
         flash('Round not found.', 'danger')
         return redirect(url_for('tournament.index'))
     
     tournament = db.get_tournament(round_data['tournament_id'])
     pairings = db.get_pairings(round_id)
+    
+    # Get player details for each pairing
+    for pairing in pairings:
+        # The get_pairings method already includes player names and ratings
+        # So we don't need to fetch them again
+        if 'white_name' not in pairing and 'white_player_id' in pairing and pairing['white_player_id']:
+            white = db.get_player(pairing['white_player_id'])
+            if white:
+                pairing['white_name'] = white.get('name', 'Unknown')
+                pairing['white_rating'] = white.get('rating')
+        if 'black_name' not in pairing and 'black_player_id' in pairing and pairing['black_player_id']:
+            black = db.get_player(pairing['black_player_id'])
+            if black:
+                pairing['black_name'] = black.get('name', 'Unknown')
+                pairing['black_rating'] = black.get('rating')
+    
+    # Check if this is a print view
+    print_view = request.args.get('print') == '1'
+    
+    if print_view:
+        return render_template(
+            'tournament/print_round.html',
+            tournament=tournament,
+            round_number=round_data['round_number'],
+            pairings=pairings,
+            now=datetime.now()
+        )
     
     return render_template(
         'tournament/round.html',

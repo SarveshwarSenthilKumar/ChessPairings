@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" onload="window.print();">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tournament.name }} - Round {{ round_number }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #333;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 100%;
+            padding: 0;
+            margin: 0 auto;
+            page-break-after: auto;
+        }
+        .print-header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2c3e50;
+        }
+        .print-header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0 0 5px 0;
+            padding: 0;
+            color: #2c3e50;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .print-header p {
+            margin: 5px 0 0;
+            color: #555;
+            font-size: 12px;
+            font-weight: 400;
+        }
+        .tournament-info {
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .print-section {
+            margin-bottom: 20px;
+        }
+        .print-section h2 {
+            font-size: 16px;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin: 0 0 10px 0;
+        }
+        .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 20px;
+            page-break-inside: auto;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .print-table th, .print-table td {
+            padding: 8px 10px;
+            border: 1px solid #e0e0e0;
+            font-size: 10px;
+            line-height: 1.3;
+            vertical-align: middle;
+        }
+        
+        .result-input {
+            width: 40px;
+            text-align: center;
+            border: 1px solid #ccc;
+            padding: 2px;
+            margin: 0 5px;
+        }
+        
+        .result-separator {
+            margin: 0 2px;
+        }
+        .print-table th {
+            background-color: #2c3e50;
+            color: white;
+            font-weight: 500;
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+        }
+        .print-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .print-footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 9px;
+            color: #777;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            font-style: italic;
+        }
+        @media print {
+            @page {
+                margin: 1.5cm;
+            }
+            body {
+                font-size: 10pt;
+            }
+            .no-print {
+                display: none;
+            }
+            .print-table {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="print-header">
+            <h1>{{ tournament.name }}</h1>
+            <p>Round {{ round_number }} Pairings</p>
+            <p>{{ tournament.start_date|datetimeformat('%b %d, %Y') }}{% if tournament.end_date and tournament.end_date != tournament.start_date %} - {{ tournament.end_date|datetimeformat('%b %d, %Y') }}{% endif %}</p>
+            <p class="tournament-info">
+                Printed: {{ now|datetimeformat('%b %d, %Y %I:%M %p') }} | 
+                Players: {{ tournament.player_count }} | 
+                Status: {{ tournament.status|title }}
+            </p>
+        </div>
+
+        <div class="print-section">
+            <h2>Round {{ round_number }} Pairings</h2>
+            {% if pairings %}
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th>Board</th>
+                            <th>White Player</th>
+                            <th>Rating</th>
+                            <th>Result</th>
+                            <th>Black Player</th>
+                            <th>Rating</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pairing in pairings %}
+                        <tr>
+                            <td style="text-align: center;">{{ loop.index }}</td>
+                            <td>{{ pairing.white_name }}</td>
+                            <td style="text-align: center;">{{ pairing.white_rating or '-' }}</td>
+                            <td style="text-align: center;">
+                                <input type="text" class="result-input" value="{{ pairing.result or '' }}" style="width: 80px; text-align: center;">
+                            </td>
+                            <td>{{ pairing.black_name or 'BYE' }}</td>
+                            <td style="text-align: center;">{{ pairing.black_rating or '' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No pairings available for this round.</p>
+            {% endif %}
+        </div>
+
+        <div class="print-footer">
+            {{ tournament.name }} • Round {{ round_number }} • Generated on {{ now.strftime('%Y-%m-%d %H:%M') }} • Page <span class="page-number">1</span>
+        </div>
+    </div>
+
+    <div class="no-print" style="text-align: center; margin-top: 20px;">
+        <button onclick="window.print()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            <i class="fas fa-print" style="margin-right: 5px;"></i>Print Round
+        </button>
+        <button onclick="window.close()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">
+            <i class="fas fa-times" style="margin-right: 5px;"></i>Close
+        </button>
+        
+        <script>
+            // Auto-print when the page loads
+            document.addEventListener('DOMContentLoaded', function() {
+                // Update page numbers
+                const pageNumber = document.querySelector('.page-number');
+                if (pageNumber) {
+                    const totalPages = Math.ceil(document.body.scrollHeight / (window.innerHeight * 0.9));
+                    pageNumber.textContent = '1 of ' + totalPages;
+                }
+                
+                // Auto-print after a short delay to ensure everything is loaded
+                setTimeout(function() {
+                    window.print();
+                }, 500);
+            });
+
+            // Close the window after printing
+            window.onafterprint = function() {
+                // Small delay to ensure print dialog is closed
+                setTimeout(function() {
+                    window.close();
+                }, 500);
+            };
+            
+            // Simple function to handle result input
+            function handleResultInput(input) {
+                // You can add any validation here if needed
+                console.log('Result entered:', input.value);
+            }
+        </script>
+    </div>
+</body>
+</html>

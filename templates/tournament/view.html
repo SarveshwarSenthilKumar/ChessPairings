@@ -6,30 +6,116 @@
 <style>
     /* Print styles */
     @media print {
-        body * {
-            visibility: hidden;
+        @page {
+            size: A4;
+            margin: 1.5cm 1cm;
         }
-        .print-section, .print-section * {
-            visibility: visible;
+        
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: white;
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            color: #000;
         }
-        .print-section {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-        }
-        .no-print {
+        
+        body > *:not(.print-section) {
             display: none !important;
         }
+        
+        .print-section {
+            display: block !important;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: white;
+        }
+        
         .print-header {
             text-align: center;
-            margin-bottom: 20px;
+            margin: 0 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #000;
+            page-break-after: avoid;
         }
-        .print-footer {
+        
+        .print-header h2 {
+            font-size: 18pt;
+            margin: 0 0 5px 0;
+            line-height: 1.2;
+            color: #000;
+        }
+        
+        .print-header p {
+            margin: 2px 0;
+            font-size: 10pt;
+        }
+        
+        .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 9pt;
+            page-break-inside: avoid;
+        }
+        
+        .print-table th, 
+        .print-table td {
+            border: 1px solid #000;
+            padding: 4px 6px;
+            text-align: left;
+        }
+        
+        .print-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
             text-align: center;
-            margin-top: 20px;
-            font-size: 0.8em;
+            white-space: nowrap;
+        }
+        
+        .print-table td {
+            vertical-align: middle;
+        }
+        
+        .tournament-info {
+            margin: 10px 0;
+            font-size: 10pt;
+        }
+        
+        .tournament-info p {
+            margin: 4px 0;
+        }
+        
+        .print-section h3 {
+            font-size: 12pt;
+            margin: 15px 0 8px 0;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #000;
+            page-break-after: avoid;
+        }
+        
+        .print-footer {
+            position: fixed;
+            bottom: 0;
+            left: 1cm;
+            right: 1cm;
+            text-align: center;
+            padding: 5px 0;
+            background: white;
+            border-top: 1px solid #000;
+            font-size: 8pt;
             color: #666;
+        }
+        
+        /* Ensure proper page breaks */
+        .page-break {
+            page-break-before: always;
+        }
+        
+        /* Hide print button in print view */
+        .no-print {
+            display: none !important;
         }
     }
 
@@ -137,6 +223,93 @@
             <p class="mb-0">{{ tournament.description }}</p>
         </div>
         {% endif %}
+    </div>
+</div>
+
+<!-- Print Section -->
+<div class="print-section d-none">
+    <div class="print-header">
+        <h2>{{ tournament.name }}</h2>
+        <p>Tournament Overview</p>
+        <p>{{ tournament.start_date|datetimeformat('%b %d, %Y') }}{% if tournament.end_date and tournament.end_date != tournament.start_date %} - {{ tournament.end_date|datetimeformat('%b %d, %Y') }}{% endif %}</p>
+        <p>Printed: {{ now|datetimeformat('%b %d, %Y %I:%M %p') }}</p>
+    </div>
+    
+    <div class="tournament-info">
+        <p><strong>Round:</strong> {% if current_round %}Round {{ current_round.round_number }}{% else %}-{% endif %} | 
+           <strong>Players:</strong> {{ tournament.player_count }} | 
+           <strong>Status:</strong> {{ tournament.status|title }}</p>
+        {% if tournament.description %}
+            <p><strong>Description:</strong> {{ tournament.description }}</p>
+        {% endif %}
+    </div>
+    
+    {% if current_round %}
+    <div class="current-round">
+        <h3>Round {{ current_round.round_number }} Pairings</h3>
+        {% if pairings %}
+            <table class="print-table">
+                <thead>
+                    <tr>
+                        <th>Board</th>
+                        <th>White</th>
+                        <th>Rating</th>
+                        <th>vs</th>
+                        <th>Black</th>
+                        <th>Rating</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pairing in pairings %}
+                    <tr>
+                        <td>{{ pairing.board_number }}</td>
+                        <td>{{ pairing.white_name }}</td>
+                        <td>{{ pairing.white_rating }}</td>
+                        <td>vs</td>
+                        <td>{{ pairing.black_name or 'BYE' }}</td>
+                        <td>{{ pairing.black_rating or '' }}</td>
+                        <td>{{ pairing.result or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No pairings available for this round.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if standings %}
+    <div class="standings">
+        <h3>Current Standings</h3>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Player</th>
+                    <th>Pts</th>
+                    <th>Buchholz</th>
+                    <th>SB</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in standings %}
+                <tr {% if item.status == 'withdrawn' %}class="player-removed"{% endif %}>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.name }}{% if item.status == 'withdrawn' %} (Withdrawn){% endif %}</td>
+                    <td>{{ '%.1f'|format(item.points) if item.points is number else item.points }}</td>
+                    <td>{{ '%.1f'|format(item.buchholz) if item.buchholz is defined and item.buchholz is not none else '-' }}</td>
+                    <td>{{ '%.1f'|format(item.sonneborn_berger) if item.sonneborn_berger is defined and item.sonneborn_berger is not none else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    
+    <div class="print-footer">
+        {{ tournament.name }} • Generated on {{ now.strftime('%Y-%m-%d %H:%M') }} • Page <span class="page-number">1</span>
     </div>
 </div>
 
@@ -340,7 +513,7 @@
                             <a href="{{ url_for('tournament.export_pairings', tournament_id=tournament.id, round_id=current_round.id, format='xlsx') }}" class="btn btn-sm btn-outline-secondary me-2" title="Export Current Round (Excel)">
                                 <i class="fas fa-file-excel me-1"></i>
                             </a>
-                            <a href="#" onclick="window.print()" class="btn btn-sm btn-outline-secondary me-2" title="Print Current Round">
+                            <a href="{{ url_for('tournament.view_round', round_id=current_round.id, print=1) }}" class="btn btn-sm btn-outline-secondary me-2" target="_blank" title="Print Round">
                                 <i class="fas fa-print"></i>
                             </a>
                         {% endif %}
@@ -576,6 +749,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // window.location.href = `/tournaments/{{ tournament.id }}/export?format=${format}&include_games=${includeGames}`;
         });
     }
+    
+    // Print functionality is now handled by the print_round.html template
 });
 </script>
 {% endblock %}
