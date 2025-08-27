@@ -580,6 +580,64 @@ class TournamentDB:
             print(f"Error getting tournament players: {e}")
             return []
             
+    def get_player_color_history(self, tournament_id: int, player_id: int) -> List[Dict[str, Any]]:
+        """Get a player's color history in a tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            player_id: The ID of the player.
+            
+        Returns:
+            A list of dictionaries containing round number and color ('white' or 'black') for each game.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT r.round_number,
+                       CASE 
+                           WHEN p.white_player_id = ? THEN 'white'
+                           ELSE 'black'
+                       END as color
+                FROM pairings p
+                JOIN rounds r ON p.round_id = r.id
+                WHERE r.tournament_id = ? 
+                AND (p.white_player_id = ? OR p.black_player_id = ?)
+                AND p.status = 'completed'
+                ORDER BY r.round_number
+            """, (player_id, tournament_id, player_id, player_id))
+            
+            return [dict(row) for row in self.cursor.fetchall()]
+            
+        except sqlite3.Error as e:
+            print(f"Error getting player color history: {e}")
+            return []
+            
+    def get_player_bye_count(self, tournament_id: int, player_id: int) -> int:
+        """Get the number of byes a player has received in the tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament.
+            player_id: The ID of the player.
+            
+        Returns:
+            The number of byes the player has received.
+        """
+        try:
+            self.cursor.execute("""
+                SELECT COUNT(*) 
+                FROM pairings p
+                JOIN rounds r ON p.round_id = r.id
+                WHERE r.tournament_id = ?
+                AND p.white_player_id = ?
+                AND p.black_player_id IS NULL
+                AND p.status = 'completed'
+            """, (tournament_id, player_id))
+            
+            return self.cursor.fetchone()[0] or 0
+            
+        except sqlite3.Error as e:
+            print(f"Error getting player bye count: {e}")
+            return 0
+            
     def get_previous_pairings(self, tournament_id: int, player_id: int) -> List[int]:
         """Get a list of player IDs that the given player has already played against.
         
@@ -932,64 +990,179 @@ class TournamentDB:
                     # Get list of players this player has already played against
                     previous_opponents = self.get_previous_pairings(tournament_id, player1['id'])
                     
-                    # Try to find the highest-ranked opponent with the same or similar score
-                    for score_diff in [0, 0.5, 1.0, 1.5, 2.0]:
-                        found_opponent = False
+                    # Get player's color history for better balancing
+                player1_history = self.get_player_color_history(tournament_id, player1['id'])
+                player1_white_count = sum(1 for h in player1_history if h['color'] == 'white')
+                player1_black_count = sum(1 for h in player1_history if h['color'] == 'black')
+                
+                # Try to find the highest-ranked opponent with the same or similar score
+                for score_diff in [0, 0.5, 1.0, 1.5, 2.0]:
+                    found_opponent = False
+                    best_opponent = None
+                    best_color_balance = float('inf')
+                    
+                    for j in range(i + 1, len(players)):
+                        player2 = players[j]
                         
-                        for j in range(i + 1, len(players)):
-                            player2 = players[j]
-                            
-                            # Skip if already paired, score difference too big, or already played
-                            if (player2['id'] in paired or 
-                                abs(player2.get('score', 0) - player1.get('score', 0)) > score_diff or
-                                player2['id'] in previous_opponents or
-                                player2['id'] == player1['id']):
-                                continue
-                            
-                            # Found a valid opponent
-                            if player1.get('rating', 0) >= player2.get('rating', 0):
-                                pairings.append((player1, player2))  # player1 is white
-                            else:
-                                pairings.append((player2, player1))  # player2 is white
-                                
-                            paired.add(player1['id'])
-                            paired.add(player2['id'])
-                            found_opponent = True
-                            break
-                            
-                        if found_opponent:
-                            break
+                        # Skip if already paired, score difference too big, or already played
+                        if (player2['id'] in paired or 
+                            abs(player2.get('score', 0) - player1.get('score', 0)) > score_diff or
+                            player2['id'] in previous_opponents or
+                            player2['id'] == player1['id']):
+                            continue
+                        
+                        # Get opponent's color history
+                        player2_history = self.get_player_color_history(tournament_id, player2['id'])
+                        player2_white_count = sum(1 for h in player2_history if h['color'] == 'white')
+                        player2_black_count = sum(1 for h in player2_history if h['color'] == 'black')
+                        
+                        # Try both color assignments and pick the one that balances colors better
+                        # Option 1: player1 as white
+                        option1_balance = abs((player1_white_count + 1 - player1_black_count) - 
+                                            (player2_white_count - (player2_black_count + 1)))
+                        
+                        # Option 2: player2 as white
+                        option2_balance = abs((player1_black_count + 1 - player1_white_count) - 
+                                            (player2_white_count + 1 - player2_black_count))
+                        
+                        # Track the best color balance we can achieve
+                        current_balance = min(option1_balance, option2_balance)
+                        
+                        if best_opponent is None or current_balance < best_color_balance:
+                            best_opponent = player2
+                            best_color_balance = current_balance
+                            best_pairing = (player1, player2) if option1_balance <= option2_balance else (player2, player1)
+                    
+                    if best_opponent is not None:
+                        pairings.append(best_pairing)
+                        paired.add(player1['id'])
+                        paired.add(best_opponent['id'])
+                        found_opponent = True
+                        break
                 
                 # Get all unpaired players
                 unpaired = [p for p in players if p['id'] not in paired]
                 
                 # If we have an odd number of players, handle the bye
                 if len(unpaired) % 2 != 0:
-                    # Find player with fewest byes (or lowest rating if tied)
-                    bye_player = min(
-                        unpaired,
-                        key=lambda p: (
-                            sum(1 for r in self.get_player_pairing_history(tournament_id, p['id']) 
-                                if r.get('black_player_id') is None),
-                            p.get('rating', 0)
-                        )
-                    )
-                    pairings.append((bye_player, None))
-                    paired.add(bye_player['id'])
-                    unpaired.remove(bye_player)
+                    # First, try to pair the top players who haven't been paired yet
+                    # This prevents giving byes to players who should be in title fights
+                    if len(unpaired) >= 3:  # Need at least 3 players to make this meaningful
+                        # Sort unpaired players by score (desc) and rating (desc)
+                        unpaired_sorted = sorted(unpaired, 
+                                              key=lambda x: (-x.get('score', 0), -x.get('rating', 0)))
+                        
+                        # Try to find a valid pairing among the top players
+                        for i in range(len(unpaired_sorted)):
+                            for j in range(i + 1, len(unpaired_sorted)):
+                                player1 = unpaired_sorted[i]
+                                player2 = unpaired_sorted[j]
+                                
+                                # Check if these players haven't played before
+                                if (player2['id'] not in self.get_previous_pairings(tournament_id, player1['id'])):
+                                    # Found a valid pairing, use it and remove from unpaired
+                                    pairings.append((player1, player2))
+                                    paired.add(player1['id'])
+                                    paired.add(player2['id'])
+                                    unpaired = [p for p in unpaired 
+                                              if p['id'] not in {player1['id'], player2['id']}]
+                                    print(f"Paired top players to avoid unnecessary bye: {player1.get('name')} vs {player2.get('name')}")
+                                    break
+                            else:
+                                continue
+                            break
                     
-                    # Add a message about the bye
-                    print(f"Assigned bye to {bye_player.get('name', 'Unknown')}")
+                    # If we still have an odd number after trying to pair top players
+                    if len(unpaired) % 2 != 0:
+                        # Find player with fewest byes (or lowest rating if tied)
+                        # Exclude top players from bye consideration
+                        eligible_for_bye = unpaired
+                        if len(unpaired) > 1:  # If there are multiple players left
+                            # Don't give byes to top players (top half of unpaired)
+                            mid_point = len(unpaired) // 2
+                            eligible_for_bye = unpaired[mid_point:]
+                            
+                        players_with_bye_counts = [
+                            {
+                                **p,
+                                'bye_count': self.get_player_bye_count(tournament_id, p['id']),
+                                'rating': p.get('rating', 0)
+                            }
+                            for p in eligible_for_bye
+                        ]
+                        
+                        if not players_with_bye_counts:  # Fallback in case all players are top players
+                            players_with_bye_counts = [
+                                {
+                                    **p,
+                                    'bye_count': self.get_player_bye_count(tournament_id, p['id']),
+                                    'rating': p.get('rating', 0)
+                                }
+                                for p in unpaired
+                            ]
+                        
+                        # Sort by bye count (ascending) and then by rating (ascending)
+                        players_with_bye_counts.sort(key=lambda x: (x['bye_count'], x['rating']))
+                        
+                        # The player with the fewest byes (and lowest rating if tied) gets the bye
+                        bye_player = players_with_bye_counts[0]
+                        
+                        # Remove the player from unpaired and add to pairings
+                        pairings.append((bye_player, None))
+                        paired.add(bye_player['id'])
+                        unpaired = [p for p in unpaired if p['id'] != bye_player['id']]
+                        
+                        # Add a message about the bye
+                        print(f"Assigned bye to {bye_player.get('name', 'Unknown')} (Bye count: {bye_player['bye_count']})")
                 
-                # Pair remaining unpaired players (if any)
+                # Pair remaining unpaired players (if any) with color balance in mind
                 while len(unpaired) >= 2:
                     player1 = unpaired.pop(0)
-                    player2 = unpaired.pop(0)
                     
-                    if player1.get('rating', 0) >= player2.get('rating', 0):
-                        pairings.append((player1, player2))
+                    # Get color history for player1
+                    player1_history = self.get_player_color_history(tournament_id, player1['id'])
+                    player1_white = sum(1 for h in player1_history if h['color'] == 'white')
+                    player1_black = sum(1 for h in player1_history if h['color'] == 'black')
+                    
+                    # Find the best opponent to balance colors
+                    best_balance = float('inf')
+                    best_opponent = None
+                    best_pairing = None
+                    
+                    for j, player2 in enumerate(unpaired):
+                        # Get color history for potential opponent
+                        player2_history = self.get_player_color_history(tournament_id, player2['id'])
+                        player2_white = sum(1 for h in player2_history if h['color'] == 'white')
+                        player2_black = sum(1 for h in player2_history if h['color'] == 'black')
+                        
+                        # Calculate color balance for both possible pairings
+                        # Option 1: player1 as white
+                        option1_balance = abs((player1_white + 1 - player1_black) - 
+                                           (player2_white - (player2_black + 1)))
+                        
+                        # Option 2: player2 as white
+                        option2_balance = abs((player1_black + 1 - player1_white) - 
+                                           (player2_white + 1 - player2_black))
+                        
+                        # Track the best balance
+                        current_balance = min(option1_balance, option2_balance)
+                        
+                        if current_balance < best_balance:
+                            best_balance = current_balance
+                            best_opponent = j
+                            best_pairing = (player1, player2) if option1_balance <= option2_balance else (player2, player1)
+                    
+                    # Add the best pairing found
+                    if best_opponent is not None and best_pairing is not None:
+                        pairings.append(best_pairing)
+                        unpaired.pop(best_opponent)
                     else:
-                        pairings.append((player2, player1))
+                        # Fallback to simple pairing if something went wrong
+                        player2 = unpaired.pop(0)
+                        if player1.get('rating', 0) >= player2.get('rating', 0):
+                            pairings.append((player1, player2))
+                        else:
+                            pairings.append((player2, player1))
             
             # Create the pairings in the database
             board_number = 1
