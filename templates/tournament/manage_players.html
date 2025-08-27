@@ -30,6 +30,7 @@
                             <thead>
                                 <tr>
                                     <th>Name</th>
+                                    <th>Team</th>
                                     <th>Rating</th>
                                     <th>Score</th>
                                     <th>Actions</th>
@@ -39,6 +40,7 @@
                                 {% for player in tournament_players %}
                                 <tr>
                                     <td>{{ player.name }}</td>
+                                    <td>{{ player.team or '-' }}</td>
                                     <td>{{ player.rating }}</td>
                                     <td>{{ player.score|default(0) }}</td>
                                     <td>
@@ -146,6 +148,10 @@
                     <div class="mb-3">
                         <label for="player_name" class="form-label">Player Name</label>
                         <input type="text" class="form-control" id="player_name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="player_team" class="form-label">Team (optional)</label>
+                        <input type="text" class="form-control" id="player_team" name="team" placeholder="Enter team name">
                     </div>
                     <div class="mb-3">
                         <label for="player_rating" class="form-label">Rating (optional)</label>

@@ -152,6 +152,7 @@
                                 <tr>
                                     <th>#</th>
                                     <th>Player</th>
+                                    <th class="text-center">Team</th>
                                     <th class="text-center">Pts</th>
                                     <th class="text-center">TB1</th>
                                     <th class="text-center">TB2</th>
@@ -172,6 +173,7 @@
                                             {% endif %}
                                         </a>
                                     </td>
+                                    <td class="text-center">{{ player.team or '—' }}</td>
                                     <td class="text-center fw-bold">{{ "%.1f"|format(player.points) }}</td>
                                     <td class="text-center">{{ "%.1f"|format(player.buchholz) }}</td>
                                     <td class="text-center">{{ "%.1f"|format(player.performance) }}</td>

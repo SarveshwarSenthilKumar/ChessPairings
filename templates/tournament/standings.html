@@ -154,6 +154,7 @@
                     <tr>
                         <th class="text-center" style="width: 60px;">#</th>
                         <th>Player</th>
+                        <th class="text-center">Team</th>
                         <th class="text-center">Rating</th>
                         <th class="text-center" data-bs-toggle="tooltip" title="Points: 1 for a win, 0.5 for a draw">Pts</th>
                         <th class="text-center" data-bs-toggle="tooltip" title="Buchholz: Sum of opponents' scores. Higher is better.">Buchholz</th>
@@ -190,6 +191,7 @@
                                 </div>
                             </div>
                         </td>
+                        <td class="text-center">{{ player.team or '—' }}</td>
                         <td class="text-center">{{ player.rating }}</td>
                         <td class="text-center fw-bold">{{ player.points }}</td>
                         <td class="text-center">{{ player.tiebreak1|default('—') }}</td>

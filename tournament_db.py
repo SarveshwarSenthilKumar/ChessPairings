@@ -283,11 +283,11 @@ class TournamentDB:
         """Get all players in the database.
         
         Returns:
-            A list of dictionaries containing player data.
+            A list of dictionaries containing player data with team information.
         """
         try:
             self.cursor.execute("""
-                SELECT id, name, rating, created_at
+                SELECT id, name, rating, team, created_at
                 FROM players
                 ORDER BY name
             """)
@@ -303,11 +303,11 @@ class TournamentDB:
             tournament_id: The ID of the tournament.
             
         Returns:
-            A list of dictionaries containing player data with tournament-specific info.
+            A list of dictionaries containing player data with tournament-specific info and team.
         """
         try:
             self.cursor.execute("""
-                SELECT p.id, p.name, p.rating, 
+                SELECT p.id, p.name, p.rating, p.team,
                        tp.initial_rating, tp.score, tp.tiebreak1, tp.tiebreak2, tp.tiebreak3
                 FROM players p
                 JOIN tournament_players tp ON p.id = tp.player_id
@@ -1201,7 +1201,7 @@ class TournamentDB:
         """Get current tournament standings with all required fields for the standings page."""
         # First get all players in the tournament
         query = """
-        SELECT p.id, p.name, p.rating
+        SELECT p.id, p.name, p.rating, p.team
         FROM players p
         JOIN tournament_players tp ON p.id = tp.player_id
         WHERE tp.tournament_id = ?

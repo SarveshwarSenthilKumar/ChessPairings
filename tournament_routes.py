@@ -155,15 +155,16 @@ def manage_players(tournament_id):
         if 'name' in request.form:  # Creating a new player
             name = request.form.get('name', '').strip()
             rating = request.form.get('rating', 1200, type=int)
+            team = request.form.get('team', '').strip() or None  # Optional team field
             
             if not name:
                 flash('Player name is required.', 'error')
             else:
                 try:
-                    # Create the new player with current timestamp
+                    # Create the new player with current timestamp and optional team
                     db.cursor.execute(
-                        "INSERT INTO players (name, rating, created_at) VALUES (?, ?, datetime('now'))",
-                        (name, rating)
+                        "INSERT INTO players (name, rating, team, created_at) VALUES (?, ?, ?, datetime('now'))",
+                        (name, rating, team)
                     )
                     player_id = db.cursor.lastrowid
                     
@@ -779,6 +780,65 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in {'xlsx', 'xls', 'csv'}
 
+@tournament_bp.route('/<int:tournament_id>/export')
+@login_required
+def export_players(tournament_id):
+    """Export players to a CSV or Excel file."""
+    db = get_db()
+    tournament = db.get_tournament(tournament_id)
+    if not tournament:
+        flash('Tournament not found.', 'danger')
+        return redirect(url_for('tournament.index'))
+    
+    # Get players with their team information
+    players = db.get_players(tournament_id)
+    
+    # Convert to DataFrame
+    import pandas as pd
+    from io import BytesIO
+    
+    # Create a DataFrame with the required columns
+    data = []
+    for player in players:
+        data.append({
+            'Name': player['name'],
+            'Team': player.get('team', ''),
+            'Rating': player['rating'],
+            'Federation': player.get('federation', '')
+        })
+    
+    df = pd.DataFrame(data)
+    
+    # Create output
+    output = BytesIO()
+    
+    # Get the requested format (default to CSV)
+    export_format = request.args.get('format', 'csv').lower()
+    
+    if export_format == 'xlsx':
+        # Export to Excel
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Players')
+        mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        extension = 'xlsx'
+    else:
+        # Default to CSV
+        output = BytesIO()
+        df.to_csv(output, index=False)
+        mimetype = 'text/csv'
+        extension = 'csv'
+    
+    output.seek(0)
+    
+    # Create a response with the file
+    from flask import send_file
+    return send_file(
+        output,
+        mimetype=mimetype,
+        as_attachment=True,
+        download_name=f"{tournament['name'].replace(' ', '_')}_players.{extension}"
+    )
+
 @tournament_bp.route('/<int:tournament_id>/import', methods=['POST'])
 @login_required
 def import_players(tournament_id):
@@ -829,11 +889,12 @@ def import_players(tournament_id):
                     continue
                     
                 rating = int(row.get('rating', 1200))
+                team = str(row.get('team', '')).strip() or None
                 
-                # Create the new player with current timestamp
+                # Create the new player with current timestamp and team
                 db.cursor.execute(
-                    "INSERT INTO players (name, rating, created_at) VALUES (?, ?, datetime('now'))",
-                    (name, rating)
+                    "INSERT INTO players (name, rating, team, created_at) VALUES (?, ?, ?, datetime('now'))",
+                    (name, rating, team)
                 )
                 player_id = db.cursor.lastrowid
                 
