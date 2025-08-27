@@ -414,23 +414,23 @@ class TournamentDB:
                         p_opponent.name as opponent_name,
                         p_opponent.rating as opponent_rating,
                         CASE 
-                            WHEN pair.white_player_id = :player_id AND pair.result = '1-0' THEN '1-0'
-                            WHEN pair.white_player_id = :player_id AND pair.result = '0-1' THEN '0-1'
-                            WHEN pair.white_player_id = :player_id AND pair.result = '½-½' THEN '½-½'
-                            WHEN pair.black_player_id = :player_id AND pair.result = '1-0' THEN '0-1'
-                            WHEN pair.black_player_id = :player_id AND pair.result = '0-1' THEN '1-0'
-                            WHEN pair.black_player_id = :player_id AND pair.result = '½-½' THEN '½-½'
+                            WHEN pair.white_player_id = :player_id AND pair.result IN ('1-0', '1.0-0.0') THEN '1-0'
+                            WHEN pair.white_player_id = :player_id AND pair.result IN ('0-1', '0.0-1.0') THEN '0-1'
+                            WHEN pair.white_player_id = :player_id AND (pair.result = '½-½' OR pair.result = '0.5-0.5' OR pair.result = '0.5-0.5 ') THEN '½-½'
+                            WHEN pair.black_player_id = :player_id AND pair.result IN ('1-0', '1.0-0.0') THEN '0-1'
+                            WHEN pair.black_player_id = :player_id AND pair.result IN ('0-1', '0.0-1.0') THEN '1-0'
+                            WHEN pair.black_player_id = :player_id AND (pair.result = '½-½' OR pair.result = '0.5-0.5' OR pair.result = '0.5-0.5 ') THEN '½-½'
                             WHEN r.status = 'completed' AND pair.status = 'completed' AND pair.result IS NULL THEN '1-0' -- Default win if round completed without result
                             WHEN r.status = 'completed' THEN '0-1'  -- Default loss if round completed but no result
                             ELSE 'Pending'
                         END as result,
                         CASE 
-                            WHEN pair.white_player_id = :player_id AND pair.result = '1-0' THEN 1.0
-                            WHEN pair.white_player_id = :player_id AND pair.result = '0-1' THEN 0.0
-                            WHEN pair.white_player_id = :player_id AND pair.result = '½-½' THEN 0.5
-                            WHEN pair.black_player_id = :player_id AND pair.result = '1-0' THEN 0.0
-                            WHEN pair.black_player_id = :player_id AND pair.result = '0-1' THEN 1.0
-                            WHEN pair.black_player_id = :player_id AND pair.result = '½-½' THEN 0.5
+                            WHEN pair.white_player_id = :player_id AND pair.result IN ('1-0', '1.0-0.0') THEN 1.0
+                            WHEN pair.white_player_id = :player_id AND pair.result IN ('0-1', '0.0-1.0') THEN 0.0
+                            WHEN pair.white_player_id = :player_id AND (pair.result = '½-½' OR pair.result = '0.5-0.5' OR pair.result = '0.5-0.5 ') THEN 0.5
+                            WHEN pair.black_player_id = :player_id AND pair.result IN ('1-0', '1.0-0.0') THEN 0.0
+                            WHEN pair.black_player_id = :player_id AND pair.result IN ('0-1', '0.0-1.0') THEN 1.0
+                            WHEN pair.black_player_id = :player_id AND (pair.result = '½-½' OR pair.result = '0.5-0.5' OR pair.result = '0.5-0.5 ') THEN 0.5
                             WHEN r.status = 'completed' AND pair.status = 'completed' AND pair.result IS NULL THEN 1.0 -- Default win if round completed without result
                             WHEN r.status = 'completed' THEN 0.0  -- Default loss if round completed but no result
                             ELSE 0.0
@@ -480,50 +480,79 @@ class TournamentDB:
             
             matches = [dict(row) for row in self.cursor.fetchall()]
             
-            # Process matches
+            # First, normalize the result format
             for match in matches:
-                # Handle byes
-                if match.get('is_bye'):
-                    match['result'] = '1-0'  # Bye is always a win
-                    match['points_earned'] = 1.0
-                
+                # Convert any numeric draw format to the standard '½-½' format
+                if match['result'] in ['0.5-0.5', '0.5-0.5 ']:
+                    match['result'] = '½-½'
+                    
                 # Set default values
                 match['opponent_rating'] = match.get('opponent_rating')
                 match['points_earned'] = match.get('points_earned', 0.0) or 0.0
                 
-                # Update status based on round status
-                if match['round_status'] == 'completed' and match['result'] == 'Pending':
+                # Handle byes first
+                if match.get('is_bye'):
+                    match['result'] = '1-0'  # Bye is always a win
+                    match['points_earned'] = 1.0
+                # Update status based on round status for pending matches
+                elif match['round_status'] == 'completed' and match['result'] == 'Pending':
                     # If round is completed but no result, default to loss
                     match['result'] = '0-1'
                     match['points_earned'] = 0.0
             
-            # Calculate statistics
+            # Ensure all matches have the correct points_earned based on result
+            for match in matches:
+                if match.get('is_bye'):
+                    match['result'] = '1-0'  # Bye is always a win
+                    match['points_earned'] = 1.0
+                elif match['result'] == '1-0':
+                    match['points_earned'] = 1.0
+                elif match['result'] == '0-1':
+                    match['points_earned'] = 0.0
+                elif match['result'] == '½-½':
+                    match['points_earned'] = 0.5
+                elif match['round_status'] == 'completed' and match['result'] == 'Pending':
+                    # Default to loss if round is completed but no result
+                    match['result'] = '0-1'
+                    match['points_earned'] = 0.0
+            
+            # Now calculate statistics
             total_games = len(matches)
-            wins = sum(1 for m in matches if m['result'] == '1-0')
-            losses = sum(1 for m in matches if m['result'] == '0-1')
+            wins = sum(1 for m in matches if m['result'] == '1-0' and not m.get('is_bye'))
+            losses = sum(1 for m in matches if m['result'] == '0-1' and not m.get('is_bye'))
             draws = sum(1 for m in matches if m['result'] == '½-½')
             byes = sum(1 for m in matches if m.get('is_bye'))
-                
+            
+            # Calculate total points from all matches (including byes)
+            total_points = round(sum(m['points_earned'] for m in matches), 1)
+            
             # Calculate performance rating if we have rated games
-            rated_games = [m for m in matches if m.get('opponent_rating')]
+            rated_games = [m for m in matches if m.get('opponent_rating') and not m.get('is_bye')]
             if rated_games:
                 avg_opponent_rating = sum(m['opponent_rating'] for m in rated_games) / len(rated_games)
                 score_percentage = sum(m['points_earned'] for m in rated_games) / len(rated_games)
-                performance_rating = avg_opponent_rating + 400 * (2 * score_percentage - 1)  # Standard Elo formula
+                performance_rating = int(avg_opponent_rating + 400 * (2 * score_percentage - 1))  # Standard Elo formula
             else:
                 performance_rating = None
+            
+            # Calculate win percentage (excluding byes)
+            played_games = total_games - byes
+            if played_games > 0:
+                win_percentage = round((wins + (draws * 0.5)) / played_games * 100, 1)
+            else:
+                win_percentage = 0.0
             
             return {
                 'matches': matches,
                 'stats': {
                     'total_games': total_games,
-                    'wins': wins - byes,  # Exclude byes from win count
+                    'wins': wins,
                     'losses': losses,
                     'draws': draws,
                     'byes': byes,
-                    'score': (wins - byes) + (draws * 0.5) + byes,  # Byes count as 1 point
+                    'score': total_points,  # Use the calculated total points
                     'performance_rating': round(performance_rating) if performance_rating else None,
-                    'win_percentage': round((wins - byes + (draws * 0.5)) / (total_games - byes) * 100, 1) if (total_games - byes) > 0 else (100 if byes > 0 else 0)
+                    'win_percentage': win_percentage
                 }
             }
             
