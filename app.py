@@ -3,6 +3,7 @@ from flask_session import Session
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from auth import auth_blueprint
 from tournament_routes import tournament_bp
+from public_routes import public_bp
 from SarvAuth import *
 from sql import *
 from datetime import datetime, date
@@ -35,6 +36,7 @@ def json_response(data, status=200):
 
 # Configuration
 app.config['SECRET_KEY'] = 'your-secure-secret-key-123'  # Use a fixed key for development
+app.config['DATABASE'] = 'tournament.db'  # Path to the SQLite database
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['WTF_CSRF_ENABLED'] = True
@@ -82,8 +84,9 @@ app.jinja_env.filters['datetimeformat'] = format_datetime
 app.jinja_env.filters['ordinal'] = ordinal
 
 # Register blueprints
-app.register_blueprint(auth_blueprint, url_prefix='/auth')
+app.register_blueprint(auth_blueprint)
 app.register_blueprint(tournament_bp, url_prefix='/tournament')
+app.register_blueprint(public_bp, url_prefix='/public')
 
 # Routes
 @app.route("/")

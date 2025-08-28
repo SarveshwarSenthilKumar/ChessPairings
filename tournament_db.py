@@ -176,6 +176,33 @@ class TournamentDB:
             print(f"Error getting tournament {tournament_id}: {e}")
             return None
             
+    def get_tournament_by_share_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Get a tournament by its share token.
+        
+        Args:
+            token: The share token of the tournament.
+            
+        Returns:
+            A dictionary containing the tournament data, or None if not found.
+        """
+        if not token:
+            return None
+            
+        try:
+            self.cursor.execute("""
+                SELECT t.*, 
+                       (SELECT COUNT(*) FROM tournament_players WHERE tournament_id = t.id) as player_count
+                FROM tournaments t
+                WHERE t.share_token = ?
+            """, (token,))
+            
+            result = self.cursor.fetchone()
+            return dict(result) if result else None
+            
+        except sqlite3.Error as e:
+            print(f"Error getting tournament by share token: {e}")
+            return None
+            
     def get_current_round(self, tournament_id: int) -> Optional[Dict[str, Any]]:
         """Get the current round for a tournament.
         

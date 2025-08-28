@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tournament.name }} - Public View{% endblock %}
+
+{% block extra_css %}
+<style>
+    .player-removed {
+        background-color: #fff0f0 !important;
+        position: relative;
+    }
+    .player-removed::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: #dc3545;
+    }
+    .player-removed .player-name {
+        position: relative;
+        padding-left: 10px;
+    }
+    .player-removed .player-name::after {
+        content: "(Removed)";
+        font-size: 0.8em;
+        color: #dc3545;
+        margin-left: 8px;
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-trophy me-2"></i>{{ tournament.name }}
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 mt-2">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Public View</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <a href="{{ url_for('public.public_export', token=tournament.share_token, format='pdf') }}" 
+               class="btn btn-outline-primary me-2">
+                <i class="fas fa-file-pdf me-1"></i> Export PDF
+            </a>
+            <a href="{{ url_for('public.public_export', token=tournament.share_token, format='xlsx') }}" 
+               class="btn btn-outline-success">
+                <i class="fas fa-file-excel me-1"></i> Export Excel
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Players</h6>
+                            <h3 class="mb-0">{{ standings|length }}</h3>
+                        </div>
+                        <div class="avatar-lg bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="fas fa-users text-primary" style="font-size: 1.75rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Current Round</h6>
+                            <h3 class="mb-0">{{ current_round.round_number if current_round else '0' }}<small class="text-muted">/{{ tournament.rounds }}</small></h3>
+                        </div>
+                        <div class="avatar-lg bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="fas fa-flag-checkered text-success" style="font-size: 1.75rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Status</h6>
+                            <h3 class="mb-0">
+                                <span class="badge bg-{{ 'success' if tournament.status == 'completed' else 'primary' if tournament.status == 'in_progress' else 'secondary' }}">
+                                    {{ tournament.status|replace('_', ' ')|title }}
+                                </span>
+                            </h3>
+                        </div>
+                        <div class="avatar-lg bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="fas fa-info-circle text-info" style="font-size: 1.75rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <div class="d-flex align-items-center">
+                <h5 class="mb-0 me-3">
+                    <i class="fas fa-list-ol me-2"></i>Standings
+                </h5>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('public.view_tournament', token=tournament.share_token) }}" 
+                       class="btn btn-outline-secondary {% if view_type == 'player' %}active{% endif %}">
+                        Individual
+                    </a>
+                    <a href="{{ url_for('public.view_tournament', token=tournament.share_token, view='team') }}" 
+                       class="btn btn-outline-secondary {% if view_type == 'team' %}active{% endif %}">
+                        Team
+                    </a>
+                </div>
+            </div>
+            <div class="d-flex">
+                <div class="input-group input-group-sm" style="width: 200px;">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search players...">
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center" style="width: 60px;">#</th>
+                        <th>{% if view_type == 'team' %}Team{% else %}Player{% endif %}</th>
+                        <th class="text-center">Pts</th>
+                        <th class="text-center">Buchholz</th>
+                        <th class="text-center">SB</th>
+                        <th class="text-center">Wins</th>
+                        <th class="text-center">Draws</th>
+                        <th class="text-center">Losses</th>
+                        {% if view_type == 'team' %}
+                        <th class="text-center">Players</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody id="standingsTable">
+                    {% for item in standings %}
+                    <tr class="{% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 %}table-warning{% endif %} {% if item.status == 'withdrawn' %}player-removed{% endif %}" {% if item.status == 'withdrawn' %}title="Player has been removed from the tournament"{% endif %}>
+                        <td class="text-center fw-bold">
+                            {{ loop.index }}
+                            {% if loop.index == 1 %}
+                                <i class="fas fa-trophy text-warning ms-1" title="1st Place"></i>
+                            {% elif loop.index == 2 %}
+                                <i class="fas fa-medal text-secondary ms-1" title="2nd Place"></i>
+                            {% elif loop.index == 3 %}
+                                <i class="fas fa-medal text-bronze ms-1" title="3rd Place"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span class="player-name">{{ item.name }}</span>
+                                {% if item.rating %}
+                                <span class="badge bg-light text-dark ms-2" data-bs-toggle="tooltip" title="Rating">{{ item.rating }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-center fw-bold">{{ '%.1f'|format(item.points) if item.points is not none else '0.0' }}</td>
+                        <td class="text-center">{{ '%.1f'|format(item.buchholz) if item.buchholz is not none else '0.0' }}</td>
+                        <td class="text-center">{{ '%.1f'|format(item.sonneborn_berger) if item.sonneborn_berger is defined and item.sonneborn_berger is not none else '0.0' }}</td>
+                        <td class="text-center">{{ item.wins|default(0) }}</td>
+                        <td class="text-center">{{ item.draws|default(0) }}</td>
+                        <td class="text-center">{{ item.losses|default(0) }}</td>
+                        {% if view_type == 'team' %}
+                        <td class="text-center">{{ item.player_count|default(1) }}</td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="12" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="fas fa-users-slash fa-3x mb-3"></i>
+                                <p class="mb-0">No {% if view_type == 'team' %}teams{% else %}players{% endif %} found</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted small">
+                Showing <strong>{{ standings|length }}</strong> {% if view_type == 'team' %}teams{% else %}players{% endif %}
+            </div>
+            <div class="text-muted small">
+                Last updated: {{ now.strftime('%Y-%m-%d %H:%M') }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="row mt-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body p-3">
+                <h6 class="card-title mb-3"><i class="fas fa-info-circle me-2"></i>Legend</h6>
+                <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-warning me-2" style="width: 16px; height: 16px;"></span>
+                        <small>Prize Winner</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-trophy text-warning me-2"></i>
+                        <small>1st Place</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-medal text-secondary me-2"></i>
+                        <small>2nd Place</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-medal text-bronze me-2"></i>
+                        <small>3rd Place</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body p-3">
+                <h6 class="card-title mb-3"><i class="fas fa-trophy me-2"></i>Tiebreak Information</h6>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Buchholz</small>
+                            <small>Sum of opponents' scores</small>
+                        </div>
+                        <div>
+                            <small class="text-muted d-block">Sonneborn-Berger</small>
+                            <small>Sum of defeated opponents' scores + ½ sum of drawn opponents' scores</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Direct Encounter</small>
+                            <small>Result between tied players</small>
+                        </div>
+                        <div>
+                            <small class="text-muted d-block">Rating</small>
+                            <small>Player's rating as last resort</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rounds Section -->
+<div class="card mt-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <h5 class="mb-0">
+            <i class="fas fa-flag-checkered me-2"></i>Rounds & Results
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="accordion" id="roundsAccordion">
+            {% for round in rounds %}
+            <div class="accordion-item border-0 border-bottom">
+                <h2 class="accordion-header" id="heading{{ round.id }}">
+                    <button class="accordion-button collapsed py-3" type="button" 
+                            data-bs-toggle="collapse" data-bs-target="#collapse{{ round.id }}" 
+                            aria-expanded="false" aria-controls="collapse{{ round.id }}">
+                        <div class="d-flex justify-content-between w-100 me-3">
+                            <span>
+                                <strong>Round {{ round.round_number }}</strong>
+                                <span class="text-muted ms-2">
+                                    {{ round.start_time|datetimeformat('%b %d, %Y') }}
+                                </span>
+                            </span>
+                            <span class="badge bg-{{ 'success' if round.status == 'completed' else 'warning' }} ms-2">
+                                {{ round.status|title }}
+                            </span>
+                        </div>
+                    </button>
+                </h2>
+                <div id="collapse{{ round.id }}" class="accordion-collapse collapse" 
+                     aria-labelledby="heading{{ round.id }}" data-bs-parent="#roundsAccordion">
+                    <div class="accordion-body p-0">
+                        {% set round_pairings = db.get_round_pairings(round.id) %}
+                        {% if round_pairings %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Board</th>
+                                        <th>White</th>
+                                        <th>Rating</th>
+                                        <th>Result</th>
+                                        <th>Black</th>
+                                        <th>Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pairing in round_pairings %}
+                                    <tr>
+                                        <td>{{ pairing.board_number or 'BYE' }}</td>
+                                        <td class="{% if pairing.result == '1-0' %}fw-bold{% endif %}">
+                                            {{ pairing.white_name or 'BYE' }}
+                                        </td>
+                                        <td class="text-muted small">
+                                            {{ pairing.white_rating or '' }}
+                                        </td>
+                                        <td class="text-center fw-bold">
+                                            {{ pairing.result or '-' }}
+                                        </td>
+                                        <td class="{% if pairing.result == '0-1' %}fw-bold{% endif %}">
+                                            {{ pairing.black_name or 'BYE' }}
+                                        </td>
+                                        <td class="text-muted small">
+                                            {{ pairing.black_rating or '' }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted mb-0">No pairings available for this round.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <p class="text-muted mb-0">No rounds have been created yet.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+
+    <div class="alert alert-info mt-4">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-info-circle me-3" style="font-size: 1.5rem;"></i>
+            <div>
+                <h5 class="alert-heading mb-2">Public Tournament View</h5>
+                <p class="mb-0">This is a read-only view of the tournament. To make changes, please contact the tournament organizer.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#standingsTable tr');
+            
+            rows.forEach(row => {
+                const playerName = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
+                if (playerName.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}
