@@ -690,58 +690,109 @@ class TournamentDB:
         Returns:
             A list of dictionaries containing match history with opponent, result, and tournament info.
         """
-        query = """
-        SELECT 
-            t.name as tournament_name,
-            r.round_number,
-            p1.name as white_name,
-            p2.name as black_name,
-            p.result,
-            CASE 
-                WHEN p.white_player_id = ? THEN 'white'
-                WHEN p.black_player_id = ? THEN 'black'
-            END as player_color,
-            CASE 
-                WHEN p.white_player_id = ? THEN p2.name
-                WHEN p.black_player_id = ? THEN p1.name
-            END as opponent_name,
-            t.id as tournament_id,
-            r.id as round_id
-        FROM pairings p
-        JOIN rounds r ON p.round_id = r.id
-        JOIN tournaments t ON r.tournament_id = t.id
-        JOIN players p1 ON p.white_player_id = p1.id
-        LEFT JOIN players p2 ON p.black_player_id = p2.id
-        WHERE (p.white_player_id = ? OR p.black_player_id = ?)
-        ORDER BY t.start_date, t.id, r.round_number
-        """
-        self.cursor.execute(query, (player_id, player_id, player_id, player_id, player_id, player_id))
-        
-        history = []
-        for row in self.cursor.fetchall():
-            row_dict = dict(row)
-            # Calculate points based on result and color
-            if row_dict['result'] == '1-0':
-                points = 1.0 if row_dict['player_color'] == 'white' else 0.0
-            elif row_dict['result'] == '0-1':
-                points = 1.0 if row_dict['player_color'] == 'black' else 0.0
-            elif row_dict['result'] in ('½-½', '='):
-                points = 0.5
-            else:
-                points = 0.0
-                
-            history.append({
-                'tournament_name': row_dict['tournament_name'],
-                'round_number': row_dict['round_number'],
-                'opponent_name': row_dict['opponent_name'] or 'BYE',
-                'color': row_dict['player_color'],
-                'result': row_dict['result'],
-                'points': points,
-                'tournament_id': row_dict['tournament_id'],
-                'round_id': row_dict['round_id']
-            })
+        try:
+            print(f"Fetching history for player ID: {player_id}")
             
-        return history
+            # First, verify the player exists
+            self.cursor.execute("SELECT id, name FROM players WHERE id = ?", (player_id,))
+            player = self.cursor.fetchone()
+            if not player:
+                print(f"Player with ID {player_id} not found")
+                return []
+                
+            print(f"Found player: {player['name']} (ID: {player['id']})")
+            
+            query = """
+            SELECT 
+                t.name as tournament_name,
+                r.round_number,
+                p1.name as white_name,
+                COALESCE(p2.name, 'BYE') as black_name,
+                COALESCE(p.result, '') as result,
+                CASE 
+                    WHEN p.white_player_id = ? THEN 'white'
+                    WHEN p.black_player_id = ? THEN 'black'
+                END as color,
+                CASE 
+                    WHEN p.white_player_id = ? AND p2.name IS NOT NULL THEN p2.name
+                    WHEN p.white_player_id = ? AND p.black_player_id IS NULL THEN 'BYE'
+                    WHEN p.black_player_id = ? THEN p1.name
+                END as opponent_name,
+                t.id as tournament_id,
+                r.id as round_id,
+                p.white_player_id,
+                p.black_player_id,
+                p.result as raw_result
+            FROM pairings p
+            JOIN rounds r ON p.round_id = r.id
+            JOIN tournaments t ON r.tournament_id = t.id
+            JOIN players p1 ON p.white_player_id = p1.id
+            LEFT JOIN players p2 ON p.black_player_id = p2.id
+            WHERE (p.white_player_id = ? OR p.black_player_id = ?)
+            ORDER BY t.start_date, t.id, r.round_number
+            """
+            
+            params = (player_id, player_id, player_id, player_id, player_id, player_id, player_id)
+            print(f"Executing query with params: {params}")
+            
+            self.cursor.execute(query, params)
+            rows = self.cursor.fetchall()
+            print(f"Found {len(rows)} matches for player {player_id}")
+            
+            if not rows:
+                print("No matches found for player")
+                # Let's check if the player exists in any tournaments
+                self.cursor.execute("""
+                    SELECT id FROM players WHERE id = ?
+                    AND (EXISTS (SELECT 1 FROM pairings WHERE white_player_id = ?) 
+                         OR EXISTS (SELECT 1 FROM pairings WHERE black_player_id = ?))
+                """, (player_id, player_id, player_id))
+                
+                if not self.cursor.fetchone():
+                    print("Player has no matches in any tournaments")
+                else:
+                    print("Player has matches but query returned no results - possible data inconsistency")
+                
+                return []
+            
+            history = []
+            for row in rows:
+                row_dict = dict(row)
+                print(f"Processing match: {row_dict}")
+                
+                # Calculate points based on result and color
+                result = row_dict['raw_result'] or ''
+                color = row_dict['color']
+                
+                if result == '1-0':
+                    points = 1.0 if color == 'white' else 0.0
+                elif result == '0-1':
+                    points = 1.0 if color == 'black' else 0.0
+                elif result in ('½-½', '=', '0.5-0.5'):
+                    points = 0.5
+                else:
+                    points = 0.0
+                
+                match_info = {
+                    'round_number': row_dict['round_number'],
+                    'opponent_name': row_dict['opponent_name'],
+                    'color': color,
+                    'result': result,
+                    'points': points,
+                    'tournament_id': row_dict['tournament_id'],
+                    'tournament_name': row_dict['tournament_name']
+                }
+                print(f"Adding match to history: {match_info}")
+                history.append(match_info)
+                
+            print(f"Returning {len(history)} matches for player {player_id}")
+            return history
+            
+        except Exception as e:
+            print(f"Error in get_player_history: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return []
             
     def get_player_bye_count(self, tournament_id: int, player_id: int) -> int:
         """Get the number of byes a player has received in the tournament.
@@ -1984,16 +2035,17 @@ class TournamentDB:
         self.cursor.execute(query, (tournament_id, tournament_id, tournament_id, tournament_id))
         players = [dict(row) for row in self.cursor.fetchall()]
         
-        # Get all completed pairings for this tournament
+        # Get all pairings for this tournament, including unplayed ones
         query = """
         SELECT 
             pr.white_player_id, 
             pr.black_player_id, 
             pr.result,
-            r.round_number
+            r.round_number,
+            CASE WHEN pr.result IS NULL THEN 0 ELSE 1 END as is_completed
         FROM pairings pr
         JOIN rounds r ON pr.round_id = r.id
-        WHERE r.tournament_id = ? AND pr.result IS NOT NULL
+        WHERE r.tournament_id = ?
         """
         self.cursor.execute(query, (tournament_id,))
         pairings = self.cursor.fetchall()
@@ -2017,33 +2069,49 @@ class TournamentDB:
             white_id = pairing['white_player_id']
             black_id = pairing['black_player_id']
             result = pairing['result']
+            is_completed = pairing['is_completed']
+            is_bye = black_id is None
             
-            if white_id in player_map and black_id in player_map:
+            # Handle bye pairings (where black_player_id is NULL)
+            if is_bye and white_id in player_map:
+                white = player_map[white_id]
+                # For byes, always count as a win (1 point) for the player who got the bye
+                if is_completed:
+                    white['wins'] += 1
+                    white['points'] += 1.0  # Bye is worth 1 point
+                    white['games_played'] += 1
+                # Record a dummy opponent for tiebreak purposes
+                white['opponents'].append(None)  # Will be handled in tiebreak calculations
+                
+            # Handle regular pairings
+            elif white_id in player_map and black_id in player_map:
                 white = player_map[white_id]
                 black = player_map[black_id]
                 
-                # Record opponents for tiebreaks
+                # Always record opponents for tiebreaks, even if game not completed
                 white['opponents'].append(black_id)
                 black['opponents'].append(white_id)
                 
-                # Update games played
-                white['games_played'] += 1
-                black['games_played'] += 1
-                
-                # Update results
-                if result == '1-0':
-                    white['wins'] += 1
-                    white['points'] += 1.0
-                    black['losses'] += 1
-                elif result == '0-1':
-                    black['wins'] += 1
-                    black['points'] += 1.0
-                    white['losses'] += 1
-                elif result == '0.5-0.5':
-                    white['draws'] += 1
-                    black['draws'] += 1
-                    white['points'] += 0.5
-                    black['points'] += 0.5
+                # Only update games played and results if the game is completed
+                if is_completed:
+                    # Update games played
+                    white['games_played'] += 1
+                    black['games_played'] += 1
+                    
+                    # Update results
+                    if result == '1-0':
+                        white['wins'] += 1
+                        white['points'] += 1.0
+                        black['losses'] += 1
+                    elif result == '0-1':
+                        black['wins'] += 1
+                        black['points'] += 1.0
+                        white['losses'] += 1
+                    elif result == '0.5-0.5':
+                        white['draws'] += 1
+                        black['draws'] += 1
+                        white['points'] += 0.5
+                        black['points'] += 0.5
         
         # Calculate tiebreaks (Buchholz, etc.)
         for player in players:
@@ -2052,12 +2120,59 @@ class TournamentDB:
             if total_games > 0:
                 player['performance'] = round((player['wins'] + (player['draws'] * 0.5)) / total_games * 100)
             
-            # Calculate Buchholz (sum of opponents' scores)
+            # Calculate Buchholz (sum of opponents' scores from completed games only)
             buchholz = 0.0
-            for opp_id in player['opponents']:
+            # Only consider opponents from completed games
+            completed_opponents = []
+            for i, opp_id in enumerate(player['opponents']):
+                # Skip None (which represents a bye in the opponents list)
+                if opp_id is None:
+                    # Count a bye as half the average points in the tournament for tiebreak purposes
+                    # This is a common approach to handle byes in tiebreaks
+                    avg_points = sum(p['points'] for p in players) / max(1, len(players))
+                    buchholz += avg_points * 0.5  # Half the average points for a bye
+                    continue
+                    
+                if opp_id in player_map and player['games_played'] > i:
+                    completed_opponents.append(opp_id)
+            
+            # Calculate Buchholz only for completed games
+            for opp_id in completed_opponents:
                 if opp_id in player_map:
-                    buchholz += player_map[opp_id]['points']
+                    # Only count points from completed games for the opponent as well
+                    opp = player_map[opp_id]
+                    buchholz += opp['points']
+            
             player['buchholz'] = buchholz
+            
+            # Calculate Sonneborn-Berger score (sum of scores of opponents the player has beaten or drawn with)
+            sb_score = 0.0
+            for i, opp_id in enumerate(completed_opponents):
+                if i >= player['games_played']:
+                    continue
+                if opp_id in player_map:
+                    # Only add points for wins and draws
+                    result = None
+                    # Find the result against this opponent
+                    for pairing in pairings:
+                        if (pairing['white_player_id'] == player['id'] and pairing['black_player_id'] == opp_id and pairing['is_completed']) or \
+                           (pairing['black_player_id'] == player['id'] and pairing['white_player_id'] == opp_id and pairing['is_completed']):
+                            result = pairing['result']
+                            break
+                    
+                    if result:
+                        if player['id'] == pairing['white_player_id']:
+                            if result == '1-0':
+                                sb_score += player_map[opp_id]['points']
+                            elif result == '0.5-0.5':
+                                sb_score += player_map[opp_id]['points'] * 0.5
+                        else:  # player is black
+                            if result == '0-1':
+                                sb_score += player_map[opp_id]['points']
+                            elif result == '0.5-0.5':
+                                sb_score += player_map[opp_id]['points'] * 0.5
+            
+            player['sonneborn_berger'] = sb_score
             
             # Add trend (same as performance for now)
             player['trend'] = player['performance']
@@ -2065,21 +2180,23 @@ class TournamentDB:
             # Add tiebreak fields for sorting
             player['tiebreak1'] = player['points']  # Primary sort by points
             player['tiebreak2'] = buchholz  # Secondary sort by Buchholz
-            player['tiebreak3'] = player['performance']  # Tertiary sort by performance
+            player['tiebreak3'] = player.get('sonneborn_berger', 0)  # Tertiary sort by Sonneborn-Berger
+            player['tiebreak4'] = player['performance']  # Quaternary sort by performance
         
         # Add status to each player
         for player in players:
             player['status'] = 'active' if player.get('is_active', 1) else 'withdrawn'
             
-        # Sort standings - active players first, then by points
+        # Sort standings - active players first, then by points and tiebreaks
         standings = sorted(
             players, 
             key=lambda x: (
                 0 if x.get('is_active', 1) else 1,  # Active players first
-                -x['points'], 
-                -x['buchholz'], 
-                -x['performance'], 
-                -x['rating']
+                -x['points'],  # Primary: Points
+                -x['buchholz'],  # Secondary: Buchholz
+                -x.get('sonneborn_berger', 0),  # Tertiary: Sonneborn-Berger
+                -x['performance'],  # Quaternary: Performance
+                -x['rating']  # Quinary: Rating
             )
         )
         

@@ -1,8 +1,8 @@
 Add dark mode
 
-Make it so that other people can see the results
-
 Make it so other people can edit the pairings
+
+add a select all to present option so peopele can be presumed to be there and can tick off people not there and base pairings on this
 
 Update README and add details of how to initialize everything
 
@@ -21,8 +21,6 @@ Add a "bye" option in the current round to reshuffle pairings
 Allow the user to select the number of points awarded for a bye
 
 Show an error if the user tries to complete a round before all matches are filled in
-
-Add a "Simulated Rating" button
 
 Prevent removing a bye once the round has concluded
 

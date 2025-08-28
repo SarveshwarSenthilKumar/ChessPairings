@@ -32,6 +32,9 @@
 {% endblock %}
 
 {% block content %}
+<!-- Include Player Stats Widget -->
+{% include 'tournament/_player_stats_widget.html' %}
+
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -176,7 +179,14 @@
                         </td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <span class="player-name">{{ item.name }}</span>
+                                <a href="#player-{{ item.id }}" class="player-name text-decoration-none" 
+                                   data-tournament-token="{{ tournament.share_token }}"
+                                   data-player-id="{{ item.id }}"
+                                   data-player-name="{{ item.name }}"
+                                   data-player-rating="{{ item.rating or '' }}"
+                                   style="color: #0d6efd;">
+                                    {{ item.name }}
+                                </a>
                                 {% if item.rating %}
                                 <span class="badge bg-light text-dark ms-2" data-bs-toggle="tooltip" title="Rating">{{ item.rating }}</span>
                                 {% endif %}
@@ -379,6 +389,93 @@
 </div>
 
 
+    <!-- Player History Modal -->
+    <div class="modal fade" id="playerHistoryModal" tabindex="-1" aria-labelledby="playerHistoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-chess-king me-2"></i>
+                        <h5 class="modal-title mb-0" id="playerHistoryModalLabel">Player Match History</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="playerInfo" class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h3 id="playerName" class="mb-1"></h3>
+                                <div id="playerRating" class="text-muted"></div>
+                            </div>
+                            <div id="tournamentInfo" class="text-end">
+                                <div class="text-muted small">Tournament</div>
+                                <div id="tournamentName" class="fw-bold">{{ tournament.name }}</div>
+                                <div id="tournamentStatus" class="badge bg-secondary">{{ tournament.status|title }}</div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                <div class="card border-success h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Wins</h6>
+                                        <h2 id="wins" class="text-success mb-0">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-warning h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Draws</h6>
+                                        <h2 id="draws" class="text-warning mb-0">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-danger h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Losses</h6>
+                                        <h2 id="losses" class="text-danger mb-0">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-1">Score</h6>
+                                        <h2 id="totalScore" class="text-primary mb-0">0.0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mb-3">Match History</h5>
+                    <div class="table-responsive border rounded">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center">#</th>
+                                    <th>Opponent</th>
+                                    <th class="text-center">Rating</th>
+                                    <th class="text-center">Color</th>
+                                    <th class="text-center">Result</th>
+                                    <th class="text-center">Points</th>
+                                    <th class="text-end">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="matchHistoryBody">
+                                <!-- Match history will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Player History Section -->
     <div class="card mt-4">
         <div class="card-header bg-white">
@@ -387,8 +484,9 @@
         <div class="card-body" id="playerHistoryContainer">
             <div class="text-center text-muted py-4">
                 <i class="fas fa-chess-board fa-2x mb-3"></i>
-                <p class="mb-0">Select a player to view their game history</p>
-            </div>
+                <div class="card-footer text-muted">
+    <small>Click on a player's name to view their match history. Click the close button (×) to hide the stats.</small>
+</div>            </div>
         </div>
     </div>
 
@@ -402,14 +500,487 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+<!-- Player History Modal -->
+<div class="modal fade" id="playerHistoryModal" tabindex="-1" aria-labelledby="playerHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="playerHistoryModalLabel">Player History</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 id="playerName" class="mb-0"></h4>
+                        <span id="playerRating" class="text-muted"></span>
+                    </div>
+                    <div id="playerStats" class="d-flex gap-2">
+                        <span class="badge bg-success" id="wins">0 Wins</span>
+                        <span class="badge bg-secondary" id="draws">0 Draws</span>
+                        <span class="badge bg-danger" id="losses">0 Losses</span>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Round</th>
+                                <th>Opponent</th>
+                                <th>Color</th>
+                                <th>Result</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matchHistoryBody">
+                            <!-- Match history will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% block extra_js %}
+{{ super() }}
 <script>
+// Handle initial page load with hash and initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Check for player in URL hash on page load
+    if (window.location.hash) {
+        const match = window.location.hash.match(/^#player-(\d+)$/);
+        if (match) {
+            const playerId = match[1];
+            const playerLink = document.querySelector(`a.player-name[data-player-id="${playerId}"]`);
+            if (playerLink) {
+                const tournamentToken = playerLink.dataset.tournamentToken;
+                const playerName = playerLink.dataset.playerName;
+                const playerRating = playerLink.dataset.playerRating || '';
+                
+                if (!tournamentToken) {
+                    console.error('Tournament token is missing from player link');
+                    return;
+                }
+                
+                console.log('Initial page load - showing history for:', { 
+                    tournamentToken, 
+                    playerId, 
+                    playerName, 
+                    playerRating 
+                });
+                
+                showPlayerHistory(tournamentToken, playerId, playerName, playerRating);
+            }
+        }
+    }
+});
+</script>
+<script>
+// Format rating with leading zero if needed
+function formatRating(rating) {
+    if (rating === null || rating === undefined || rating === '') return 'Unrated';
+    return rating < 1000 ? '0' + rating : rating;
+}
+
+// Format date
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+}
+
+// Get result badge class
+function getResultClass(result) {
+    if (result === '1-0' || result === '0-1' || result === '0.5-0.5') {
+        return result === '1-0' ? 'bg-success' : 
+               result === '0-1' ? 'bg-danger' : 'bg-warning';
+    }
+    return 'bg-secondary';
+}
+
+
+// Process player history data and update the UI
+function processPlayerHistory(data) {
+    console.log('Processing player history data:', data);
+    
+    const matchHistoryBody = document.getElementById('matchHistoryBody');
+    
+    // Clear the table
+    matchHistoryBody.innerHTML = '';
+    
+    if (!data || !data.history || data.history.length === 0) {
+        matchHistoryBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No match history available for this player.
+                </td>
+            </tr>`;
+        return;
+    }
+    
+    // Add each match to the table
+    data.history.forEach((match, index) => {
+        const row = document.createElement('tr');
+        
+        // Determine result text and badge class
+        let resultText = '';
+        let badgeClass = 'bg-secondary';
+        
+        if (match.result === '1-0') {
+            resultText = match.color === 'white' ? 'Win' : 'Loss';
+            badgeClass = match.color === 'white' ? 'bg-success' : 'bg-danger';
+        } else if (match.result === '0-1') {
+            resultText = match.color === 'black' ? 'Win' : 'Loss';
+            badgeClass = match.color === 'black' ? 'bg-success' : 'bg-danger';
+        } else if (match.result === '0.5-0.5') {
+            resultText = 'Draw';
+            badgeClass = 'bg-warning';
+        } else {
+            resultText = match.result || 'Unknown';
+        }
+        
+        row.innerHTML = `
+            <td>${match.round || index + 1}</td>
+            <td>${match.opponent || 'Unknown Opponent'}</td>
+            <td>${match.color || '?'}</td>
+            <td>${match.result || '?'}</td>
+            <td><span class="badge ${badgeClass}">${resultText}</span></td>
+        `;
+        
+        matchHistoryBody.appendChild(row);
+    });
+    
+    // Update player stats if available and elements exist
+    if (data.player_stats) {
+        const stats = data.player_stats;
+        const updateIfExists = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+        
+        // Update stats using the correct element IDs from _player_stats_widget.html
+        updateIfExists('winsCount', stats.wins || 0);
+        updateIfExists('lossesCount', stats.losses || 0);
+        updateIfExists('drawsCount', stats.draws || 0);
+        updateIfExists('totalPoints', stats.points !== undefined ? stats.points.toFixed(1) : '0.0');
+    }
+}
+
+// Player history widget functionality
+async function showPlayerHistory(tournamentToken, playerId, playerName, playerRating, useDebug = false) {
+    console.log(`Showing history for player ${playerName} (ID: ${playerId})`);
+    
+    // Set player info safely
+    const safeSetText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+    
+    safeSetText('playerName', playerName);
+    safeSetText('playerRating', playerRating ? `Rating: ${playerRating}` : 'Unrated');
+    
+    // Show loading state
+    const matchHistoryBody = document.getElementById('matchHistoryBody');
+    matchHistoryBody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>';
+    
+    // Show the widget
+    const widget = document.getElementById('playerStatsWidget');
+    widget.style.display = 'block';
+    
+    try {
+        // Scroll to the widget
+        widget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Fetch player history with JSON format
+        console.log(`Fetching history for player ${playerId}...`);
+        // The URL is relative to the site root, and the blueprint is mounted at /public
+        const url = `/public/t/${tournamentToken}/player/${playerId}/history?format=json`;
+        console.log('Using URL:', url);
+        
+        try {
+            // Make the request with proper headers
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                },
+                cache: 'no-store',
+                credentials: 'same-origin'  // Ensure cookies are sent with the request
+            });
+            
+            console.log('Response status:', response.status, response.statusText);
+            
+            // First, get the response as text to see what we're dealing with
+            const responseText = await response.text();
+            console.log('Raw response text (first 500 chars):', responseText.substring(0, 500));
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            // If we're in debug mode, use the test data
+            if (useDebug) {
+                console.log('Using debug endpoint');
+                const debugResponse = await fetch('/public/debug/player/history');
+                if (!debugResponse.ok) {
+                    throw new Error(`Debug endpoint failed with status ${debugResponse.status}`);
+                }
+                const debugData = await debugResponse.json();
+                console.log('Debug data:', debugData);
+                return processPlayerHistory(debugData);
+            }
+            
+            if (!response.ok) {
+                console.error('Error response status:', response.status, response.statusText);
+                console.error('Error response text (first 500 chars):', responseText.substring(0, 500));
+                
+                // Try to parse as JSON even if status is not OK
+                try {
+                    const errorData = JSON.parse(responseText);
+                    console.error('Error response JSON:', errorData);
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                } catch (e) {
+                    // If we can't parse as JSON, just use the text
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${responseText.substring(0, 200)}`);
+                }
+            }
+            
+            // Try to parse as JSON
+            let data;
+            try {
+                data = JSON.parse(responseText);
+                console.log('Parsed JSON data:', data);
+                
+                // Process the history data
+                processPlayerHistory(data);
+                
+            } catch (e) {
+                console.error('Failed to parse JSON:', e);
+                console.error('Response content type:', response.headers.get('content-type'));
+                throw new Error(`Invalid JSON response: ${e.message}. Response: ${responseText.substring(0, 200)}...`);
+            }
+            
+            if (!data) {
+                throw new Error('Empty response from server');
+            }
+            
+            // Handle both response formats: direct array or object with history property
+            let history = [];
+            if (Array.isArray(data)) {
+                // Direct array response
+                history = data;
+                history = data;
+            } else if (data.history && Array.isArray(data.history)) {
+                // Response with history property
+                history = data.history;
+            } else if (data.success === false) {
+                const errorMsg = data.error || 'Failed to load player history';
+                console.error('API error:', errorMsg);
+                throw new Error(errorMsg);
+            } else {
+                console.warn('Unexpected response format, trying to use data as history:', data);
+                history = Array.isArray(data) ? data : [data];
+            }
+            
+            console.log(`Found ${history.length} history items`, history);
+            
+            if (history.length === 0) {
+                console.log('No history found for player');
+                matchHistoryBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            No match history available for this player.
+                        </td>
+                    </tr>`;
+                updatePlayerStats([]);
+                return;
+            }
+            
+            // Clear the table
+            matchHistoryBody.innerHTML = '';
+            
+            // Add each match to the table
+            history.forEach(match => {
+                const row = document.createElement('tr');
+                
+                // Determine result text and badge class
+                let resultText = '';
+                let badgeClass = 'bg-secondary';
+                
+                if (match.result === '1-0') {
+                    resultText = match.color === 'white' ? 'Win' : 'Loss';
+                    badgeClass = match.color === 'white' ? 'bg-success' : 'bg-danger';
+                } else if (match.result === '0-1') {
+                    resultText = match.color === 'black' ? 'Win' : 'Loss';
+                    badgeClass = match.color === 'black' ? 'bg-success' : 'bg-danger';
+                } else if (['½-½', '0.5-0.5', '='].includes(match.result)) {
+                    resultText = 'Draw';
+                    badgeClass = 'bg-warning';
+                } else {
+                    resultText = 'Pending';
+                }
+                
+                // Get the round number, defaulting to 'N/A' if not available
+                const roundNumber = match.round_number !== undefined ? match.round_number : 'N/A';
+                
+                // Get the opponent name, defaulting to 'BYE' if not available
+                const opponentName = match.opponent_name || 'BYE';
+                
+                // Get the color, defaulting to 'white' if not available
+                const color = match.color || 'white';
+                
+                // Get the points, defaulting to 0 if not available
+                const points = typeof match.points === 'number' ? match.points.toFixed(1) : '0.0';
+                
+                row.innerHTML = `
+                    <td>${roundNumber}</td>
+                    <td>
+                        <span class="d-inline-flex align-items-center">
+                            <i class="fas fa-chess-${color === 'white' ? 'king' : 'pawn'} me-2 text-${color === 'white' ? 'light' : 'dark'}"></i>
+                            ${opponentName}
+                        </span>
+                    </td>
+                    <td>${color}</td>
+                    <td>${match.result || '?'}</td>
+                    <td><span class="badge ${badgeClass}">${resultText}</span></td>
+                `;
+                
+                matchHistoryBody.appendChild(row);
+            });
+            
+            // Update the player stats with the history
+            updatePlayerStats(history);
+            
+        } catch (error) {
+            console.error('Error in fetch:', error);
+            matchHistoryBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Failed to load match history. Please try again later.
+                        <div class="small text-muted mt-1">${error.message}</div>
+                    </td>
+                </tr>`;
+            updatePlayerStats([]);
+            return;
+        }
+    } catch (error) {
+        console.error('Error in showPlayerHistory:', error);
+        matchHistoryBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-4 text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    An error occurred while loading player history.
+                    <div class="small text-muted mt-1">${error.message}</div>
+                </td>
+            </tr>`;
+        updatePlayerStats([]);
+    }
+}
+
+// Update player stats based on match history
+function updatePlayerStats(history = []) {
+    console.log('Updating player stats with history:', history);
+    
+    // Initialize counters
+    let wins = 0, losses = 0, draws = 0, totalScore = 0;
+    
+    history.forEach(match => {
+        // Convert result to a standard format if needed
+        let result = match.result;
+        
+        // If result is in chess notation, convert it to Win/Loss/Draw
+        if (result === '1-0') {
+            result = match.color === 'white' ? 'Win' : 'Loss';
+        } else if (result === '0-1') {
+            result = match.color === 'black' ? 'Win' : 'Loss';
+        } else if (['½-½', '0.5-0.5', '='].includes(result)) {
+            result = 'Draw';
+        }
+        
+        // Count results
+        if (result === 'Win') wins++;
+        else if (result === 'Loss') losses++;
+        else if (result === 'Draw') draws++;
+        
+        // Sum points (ensure it's a number)
+        const points = typeof match.points === 'number' ? match.points : 0;
+        totalScore += points;
+    });
+    
+    console.log(`Stats - Wins: ${wins}, Losses: ${losses}, Draws: ${draws}, Total: ${totalScore.toFixed(1)}`);
+    
+    // Update the stats display with null checks
+    const updateElement = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+    
+    updateElement('winsCount', wins);
+    updateElement('lossesCount', losses);
+    updateElement('drawsCount', draws);
+    updateElement('totalPoints', totalScore.toFixed(1));
+    
+    // Calculate and update win percentage
+    const totalGames = wins + losses + draws;
+    const winPercentage = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+    updateElement('winPercentage', `${winPercentage}% win rate`);
+    
+    // Show/hide the stats container based on whether we have data
+    const statsContainer = document.getElementById('playerStatsContainer');
+    if (statsContainer) {
+        statsContainer.style.display = totalGames > 0 ? 'block' : 'none';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Handle player name clicks for history
+    document.body.addEventListener('click', function(e) {
+        const playerLink = e.target.closest('.player-name');
+        if (playerLink) {
+            e.preventDefault();
+            console.log('Player link clicked. Dataset:', playerLink.dataset);
+            
+            // Get all data attributes
+            const tournamentToken = playerLink.dataset.tournamentToken;
+            const playerId = playerLink.dataset.playerId;
+            const playerName = playerLink.dataset.playerName;
+            const playerRating = playerLink.dataset.playerRating ? parseInt(playerLink.dataset.playerRating) : 0;
+            
+            console.log('Extracted values:', {
+                tournamentToken,
+                playerId,
+                playerName,
+                playerRating
+            });
+            
+            if (!tournamentToken) {
+                console.error('Tournament token is missing from player link');
+                console.error('Link HTML:', playerLink.outerHTML);
+                return;
+            }
+            
+            console.log('Showing history for:', { tournamentToken, playerId, playerName, playerRating });
+            showPlayerHistory(tournamentToken, playerId, playerName, playerRating);
+        }
     });
     
     // Search functionality
@@ -494,7 +1065,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 
                 // Load player history
-                fetch(`/public/player/${playerId}/history`)
+                const tournamentToken = '{{ tournament.share_token }}';
+               fetch(`/public/t/${tournamentToken}/player/${playerId}/history`)
                     .then(response => {
                         if (!response.ok) throw new Error('Failed to load history');
                         return response.text();
@@ -516,5 +1088,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-{% endblock %}
 {% endblock %}

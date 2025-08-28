@@ -239,7 +239,12 @@
                                         {% if view_type == 'team' %}
                                             {{ item.team }}
                                         {% else %}
-                                            <span class="player-name">
+                                            <span class="player-name" 
+                                                  data-tournament-token="{{ tournament.share_token }}"
+                                                  data-player-id="{{ item.id }}"
+                                                  data-player-name="{{ item.name }}"
+                                                  data-player-rating="{{ item.rating }}"
+                                                  style="cursor: pointer; text-decoration: underline; color: #0d6efd;">
                                                 {{ item.name }}
                                             </span>
                                         {% endif %}
