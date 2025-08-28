@@ -36,8 +36,8 @@
                     <label for="round_number">Round Number</label>
                     <select class="form-control" id="round_number" name="round_number" required>
                         <option value="">Select a round</option>
-                        {% for i in range(1, tournament.rounds + 1) %}
-                            <option value="{{ i }}">Round {{ i }}</option>
+                        {% for value, label in form.round_number.choices %}
+                            <option value="{{ value }}">{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -71,13 +71,17 @@
                                     <td>Round {{ bye.round_number }}</td>
                                     <td>{{ bye.created_at }}</td>
                                     <td>
-                                        <form method="POST" action="{{ url_for('tournament.remove_bye', tournament_id=tournament.id, bye_id=bye.id) }}" style="display: inline;">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-danger btn-sm" 
-                                                    onclick="return confirm('Are you sure you want to remove this bye?')">
-                                                Remove
-                                            </button>
-                                        </form>
+                                        {% if bye.round_number >= current_round_num %}
+                                            <form method="POST" action="{{ url_for('tournament.remove_bye', tournament_id=tournament.id, bye_id=bye.id) }}" style="display: inline;">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-danger btn-sm" 
+                                                        onclick="return confirm('Are you sure you want to remove this bye?')">
+                                                    Remove
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <span class="text-muted">Cannot remove</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}

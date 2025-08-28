@@ -341,17 +341,50 @@ def manage_byes(tournament_id):
         form.player_id.choices = [(p['id'], f"{p['name']} ({p.get('rating', 'Unrated')})") 
                                 for p in players]
         
-        # Populate round choices (future rounds only)
+        # Get all rounds and their pairings to determine completion status
+        db.cursor.execute("""
+            SELECT r.id, r.round_number, 
+                   COUNT(p.id) as total_pairings,
+                   SUM(CASE WHEN p.result IS NOT NULL AND p.result != '' THEN 1 ELSE 0 END) as completed_pairings
+            FROM rounds r
+            LEFT JOIN pairings p ON r.id = p.round_id
+            WHERE r.tournament_id = ?
+            GROUP BY r.id, r.round_number
+            ORDER BY r.round_number
+        """, (tournament_id,))
+        rounds_info = {}
+        for r in db.cursor.fetchall():
+            # A round is considered completed if it has pairings and all have results
+            rounds_info[r['round_number']] = (r['total_pairings'] > 0 and 
+                                            r['completed_pairings'] == r['total_pairings'])
+        
+        # Get current round info
         current_round = db.get_current_round(tournament_id)
         current_round_num = current_round['round_number'] if current_round else 1
-        form.round_number.choices = [(i, f"Round {i}") 
-                                   for i in range(current_round_num, tournament['rounds'] + 1)]
+        
+        # Only show future rounds and current round if it's not completed
+        available_rounds = []
+        for i in range(1, tournament['rounds'] + 1):
+            # If we have info about this round, check if it's completed
+            if i in rounds_info:
+                if not rounds_info[i]:  # If round is not completed
+                    available_rounds.append((i, f"Round {i}"))
+            # If we don't have info, it's a future round
+            elif i >= current_round_num:
+                available_rounds.append((i, f"Round {i}"))
+        
+        form.round_number.choices = available_rounds
+        
+        # Get current round info for the template
+        current_round = db.get_current_round(tournament_id)
+        current_round_num = current_round['round_number'] if current_round else 1
         
         return render_template('tournament/manage_byes.html',
                              tournament=tournament,
                              players=players,
                              byes=byes,
-                             form=form)
+                             form=form,
+                             current_round_num=current_round_num)
     except Exception as e:
         print(f"Error managing byes: {e}")
         flash('An error occurred while loading the bye management page.', 'error')
@@ -430,11 +463,35 @@ def remove_bye(tournament_id, bye_id):
             flash('Bye assignment not found.', 'error')
             return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
         
-        # Check if the round has already started
-        current_round = db.get_current_round(tournament_id)
-        if current_round and bye['round_number'] <= current_round['round_number']:
-            flash('Cannot remove byes from rounds that have already started.', 'error')
-            return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
+        # Get round completion status by checking pairings
+        db.cursor.execute("""
+            SELECT r.id, r.round_number, 
+                   COUNT(p.id) as total_pairings,
+                   SUM(CASE WHEN p.result IS NOT NULL AND p.result != '' THEN 1 ELSE 0 END) as completed_pairings
+            FROM rounds r
+            LEFT JOIN pairings p ON r.id = p.round_id
+            WHERE r.tournament_id = ? AND r.round_number = ?
+            GROUP BY r.id, r.round_number
+        """, (tournament_id, bye['round_number']))
+        
+        round_info = db.cursor.fetchone()
+        
+        if round_info:
+            # Check if the round is completed (all pairings have results)
+            is_round_completed = (round_info['total_pairings'] > 0 and 
+                                round_info['completed_pairings'] == round_info['total_pairings'])
+            
+            if is_round_completed:
+                flash('Cannot remove byes from rounds that have been completed.', 'error')
+                return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
+                
+# Check if this is a past round (earlier than current round)
+            current_round = db.get_current_round(tournament_id)
+            current_round_num = current_round['round_number'] if current_round else 1
+            
+            if bye['round_number'] < current_round_num:
+                flash('Cannot remove byes from rounds that have already been completed.', 'error')
+                return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
         
         # Remove the bye
         if db.remove_manual_bye(bye_id):
