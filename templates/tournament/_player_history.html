@@ -1,0 +1,59 @@
+{% if history %}
+    <div class="table-responsive">
+        <table class="table table-sm table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Round</th>
+                    <th>Opponent</th>
+                    <th>Color</th>
+                    <th>Result</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in history %}
+                <tr>
+                    <td>{{ match.round_number }}</td>
+                    <td>{{ match.opponent_name }}</td>
+                    <td>{{ match.color|title }}</td>
+                    <td>
+                        {% if match.result == '1-0' %}
+                            {% if match.color == 'white' %}Win{% else %}Loss{% endif %}
+                        {% elif match.result == '0-1' %}
+                            {% if match.color == 'black' %}Win{% else %}Loss{% endif %}
+                        {% elif match.result == '0.5-0.5' %}
+                            Draw
+                        {% else %}
+                            Pending
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if match.result %}
+                            {{ match.result }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="mt-3">
+        <div class="d-flex justify-content-between">
+            <div>
+                <span class="badge bg-success">Wins: {{ history|selectattr('result', 'equalto', '1-0')|list|length }}</span>
+                <span class="badge bg-secondary ms-2">Draws: {{ history|selectattr('result', 'equalto', '0.5-0.5')|list|length }}</span>
+                <span class="badge bg-danger ms-2">Losses: {{ history|selectattr('result', 'equalto', '0-1')|list|length }}</span>
+            </div>
+            <div>
+                <span class="fw-bold">Total Points: {{ history|sum(attribute='points')|default('0.0') }}</span>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-info mb-0">
+        <i class="fas fa-info-circle me-2"></i>
+        No match history available for this player.
+    </div>
+{% endif %}

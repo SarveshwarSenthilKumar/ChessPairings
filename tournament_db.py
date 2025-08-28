@@ -660,25 +660,88 @@ class TournamentDB:
             A list of dictionaries containing round number and color ('white' or 'black') for each game.
         """
         try:
-            self.cursor.execute("""
-                SELECT r.round_number,
-                       CASE 
-                           WHEN p.white_player_id = ? THEN 'white'
-                           ELSE 'black'
-                       END as color
-                FROM pairings p
-                JOIN rounds r ON p.round_id = r.id
-                WHERE r.tournament_id = ? 
-                AND (p.white_player_id = ? OR p.black_player_id = ?)
-                AND p.status = 'completed'
-                ORDER BY r.round_number
-            """, (player_id, tournament_id, player_id, player_id))
-            
+            query = """
+            SELECT 
+                r.round_number,
+                CASE 
+                    WHEN p.white_player_id = ? THEN 'white'
+                    WHEN p.black_player_id = ? THEN 'black'
+                END as color
+            FROM pairings p
+            JOIN rounds r ON p.round_id = r.id
+            WHERE r.tournament_id = ?
+            AND (p.white_player_id = ? OR p.black_player_id = ?)
+            AND p.status = 'completed'
+            ORDER BY r.round_number
+            """
+            self.cursor.execute(query, (player_id, player_id, tournament_id, player_id, player_id))
             return [dict(row) for row in self.cursor.fetchall()]
             
         except sqlite3.Error as e:
             print(f"Error getting player color history: {e}")
             return []
+            
+    def get_player_history(self, player_id: int) -> List[Dict[str, Any]]:
+        """Get a player's match history across all tournaments.
+        
+        Args:
+            player_id: The ID of the player.
+            
+        Returns:
+            A list of dictionaries containing match history with opponent, result, and tournament info.
+        """
+        query = """
+        SELECT 
+            t.name as tournament_name,
+            r.round_number,
+            p1.name as white_name,
+            p2.name as black_name,
+            p.result,
+            CASE 
+                WHEN p.white_player_id = ? THEN 'white'
+                WHEN p.black_player_id = ? THEN 'black'
+            END as player_color,
+            CASE 
+                WHEN p.white_player_id = ? THEN p2.name
+                WHEN p.black_player_id = ? THEN p1.name
+            END as opponent_name,
+            t.id as tournament_id,
+            r.id as round_id
+        FROM pairings p
+        JOIN rounds r ON p.round_id = r.id
+        JOIN tournaments t ON r.tournament_id = t.id
+        JOIN players p1 ON p.white_player_id = p1.id
+        LEFT JOIN players p2 ON p.black_player_id = p2.id
+        WHERE (p.white_player_id = ? OR p.black_player_id = ?)
+        ORDER BY t.start_date, t.id, r.round_number
+        """
+        self.cursor.execute(query, (player_id, player_id, player_id, player_id, player_id, player_id))
+        
+        history = []
+        for row in self.cursor.fetchall():
+            row_dict = dict(row)
+            # Calculate points based on result and color
+            if row_dict['result'] == '1-0':
+                points = 1.0 if row_dict['player_color'] == 'white' else 0.0
+            elif row_dict['result'] == '0-1':
+                points = 1.0 if row_dict['player_color'] == 'black' else 0.0
+            elif row_dict['result'] in ('½-½', '='):
+                points = 0.5
+            else:
+                points = 0.0
+                
+            history.append({
+                'tournament_name': row_dict['tournament_name'],
+                'round_number': row_dict['round_number'],
+                'opponent_name': row_dict['opponent_name'] or 'BYE',
+                'color': row_dict['player_color'],
+                'result': row_dict['result'],
+                'points': points,
+                'tournament_id': row_dict['tournament_id'],
+                'round_id': row_dict['round_id']
+            })
+            
+        return history
             
     def get_player_bye_count(self, tournament_id: int, player_id: int) -> int:
         """Get the number of byes a player has received in the tournament.
@@ -1806,53 +1869,81 @@ class TournamentDB:
         """Get current tournament standings grouped by team."""
         # First get all players with their teams and points
         query = """
-        SELECT p.team, SUM(pp.points) as total_points, COUNT(DISTINCT p.id) as player_count,
-               AVG(pp.points) as avg_points_per_player
-        FROM players p
-        JOIN (
-            SELECT tp.player_id, 
-                   COALESCE(
-                       (SELECT SUM(
-                           CASE 
-                               WHEN p.result = '1-0' AND p.white_player_id = tp.player_id THEN 1
-                               WHEN p.result = '0-1' AND p.black_player_id = tp.player_id THEN 1
-                               WHEN p.result = '½-½' AND (p.white_player_id = tp.player_id OR p.black_player_id = tp.player_id) THEN 0.5
-                               WHEN p.result = '1-0' AND p.black_player_id = tp.player_id THEN 0
-                               WHEN p.result = '0-1' AND p.white_player_id = tp.player_id THEN 0
-                               WHEN p.result = '½-½' AND p.white_player_id = tp.player_id THEN 0.5
-                               WHEN p.result = '½-½' AND p.black_player_id = tp.player_id THEN 0.5
-                               WHEN p.result = '+' AND p.white_player_id = tp.player_id THEN 1
-                               WHEN p.result = '+' AND p.black_player_id = tp.player_id THEN 0
-                               WHEN p.result = '-' AND p.white_player_id = tp.player_id THEN 0
-                               WHEN p.result = '-' AND p.black_player_id = tp.player_id THEN 1
-                               WHEN p.result = '=' AND (p.white_player_id = tp.player_id OR p.black_player_id = tp.player_id) THEN 0.5
-                               ELSE 0
-                           END
-                        )
-                        FROM pairings p
-                        JOIN rounds r ON p.round_id = r.id
-                        WHERE r.tournament_id = ?
-                        AND (p.white_player_id = tp.player_id OR p.black_player_id = tp.player_id)
-                        AND p.status = 'completed'
-                       ), 0
-                   ) as points
-            FROM tournament_players tp
+        WITH player_points AS (
+            SELECT 
+                p.id as player_id,
+                p.team,
+                COALESCE(
+                    (SELECT SUM(
+                        CASE 
+                            WHEN p2.result = '1-0' AND p2.white_player_id = p.id THEN 1
+                            WHEN p2.result = '0-1' AND p2.black_player_id = p.id THEN 1
+                            WHEN p2.result = '½-½' AND (p2.white_player_id = p.id OR p2.black_player_id = p.id) THEN 0.5
+                            WHEN p2.result = '1-0' AND p2.black_player_id = p.id THEN 0
+                            WHEN p2.result = '0-1' AND p2.white_player_id = p.id THEN 0
+                            WHEN p2.result = '+' AND p2.white_player_id = p.id THEN 1
+                            WHEN p2.result = '-' AND p2.black_player_id = p.id THEN 1
+                            WHEN p2.result = '=' AND (p2.white_player_id = p.id OR p2.black_player_id = p.id) THEN 0.5
+                            ELSE 0
+                        END
+                    )
+                    FROM pairings p2
+                    JOIN rounds r ON p2.round_id = r.id
+                    WHERE r.tournament_id = ?
+                    AND (p2.white_player_id = p.id OR p2.black_player_id = p.id)
+                    AND p2.status = 'completed'), 0
+                ) as points,
+                (SELECT COUNT(*) FROM pairings p2 
+                 JOIN rounds r ON p2.round_id = r.id 
+                 WHERE r.tournament_id = ? 
+                 AND ((p2.white_player_id = p.id AND p2.result = '1-0') OR 
+                      (p2.black_player_id = p.id AND p2.result = '0-1') OR
+                      (p2.white_player_id = p.id AND p2.result = '+'))
+                ) as wins,
+                (SELECT COUNT(*) FROM pairings p2 
+                 JOIN rounds r ON p2.round_id = r.id 
+                 WHERE r.tournament_id = ? 
+                 AND ((p2.white_player_id = p.id AND p2.result = '0-1') OR 
+                      (p2.black_player_id = p.id AND p2.result = '1-0') OR
+                      (p2.black_player_id = p.id AND p2.result = '+') OR
+                      (p2.white_player_id = p.id AND p2.result = '-'))
+                ) as losses,
+                (SELECT COUNT(*) FROM pairings p2 
+                 JOIN rounds r ON p2.round_id = r.id 
+                 WHERE r.tournament_id = ? 
+                 AND ((p2.white_player_id = p.id OR p2.black_player_id = p.id) AND 
+                      (p2.result = '½-½' OR p2.result = '='))
+                ) as draws
+            FROM players p
+            JOIN tournament_players tp ON p.id = tp.player_id
             WHERE tp.tournament_id = ?
-        ) pp ON p.id = pp.player_id
-        WHERE p.team IS NOT NULL AND p.team != ''
-        GROUP BY p.team
+            AND p.team IS NOT NULL AND p.team != ''
+        )
+        SELECT 
+            team,
+            SUM(points) as total_points,
+            COUNT(DISTINCT player_id) as player_count,
+            AVG(points) as avg_points_per_player,
+            SUM(wins) as match_wins,
+            SUM(losses) as match_losses,
+            SUM(draws) as match_draws
+        FROM player_points
+        GROUP BY team
         ORDER BY total_points DESC, avg_points_per_player DESC, player_count DESC
         """
-        self.cursor.execute(query, (tournament_id, tournament_id))
+        self.cursor.execute(query, (tournament_id, tournament_id, tournament_id, tournament_id, tournament_id))
         
         standings = []
         for i, row in enumerate(self.cursor.fetchall(), 1):
             standings.append({
                 'position': i,
-                'team': row['team'],
-                'total_points': row['total_points'] or 0,
+                'name': row['team'],  # Using 'name' to match the template
+                'total_points': float(row['total_points'] or 0),
                 'player_count': row['player_count'],
-                'avg_points_per_player': row['avg_points_per_player'] or 0
+                'avg_points_per_player': float(row['avg_points_per_player'] or 0),
+                'match_wins': row['match_wins'] or 0,
+                'match_losses': row['match_losses'] or 0,
+                'match_draws': row['match_draws'] or 0
             })
             
         return standings

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, current_app, send_file, g
+from flask import Blueprint, render_template, redirect, url_for, flash, current_app, send_file, g, request
 from flask_wtf.csrf import generate_csrf
 from functools import wraps
 import io
@@ -33,6 +33,7 @@ def public_tournament_required(f):
 @public_bp.route('/tournament/<token>')  # Adding an additional route for backward compatibility
 def view_tournament(token):
     """Public view of a tournament."""
+    view_type = request.args.get('view', 'player')  # Get view type from query params
     db = get_db()
     tournament = db.get_tournament_by_share_token(token)
     
@@ -40,8 +41,12 @@ def view_tournament(token):
         flash('Invalid or expired tournament link.', 'error')
         return redirect(url_for('index'))
     
-    # Get tournament data
-    standings = db.get_standings(tournament['id'])
+    # Get tournament data based on view type
+    if view_type == 'team':
+        standings = db.get_team_standings(tournament['id'])
+    else:
+        standings = db.get_standings(tournament['id'])
+        
     current_round = db.get_current_round(tournament['id'])
     pairings = db.get_round_pairings(current_round['id']) if current_round else []
     rounds = db.get_tournament_rounds(tournament['id'])
@@ -53,9 +58,25 @@ def view_tournament(token):
         current_round=current_round,
         pairings=pairings,
         rounds=rounds,
-        view_type='player',  # Default to individual view
-        now=datetime.utcnow(),  # Add current timestamp
-        db=db  # Add database object to template context
+        view_type=view_type,
+        now=datetime.utcnow(),
+        db=db
+    )
+
+@public_bp.route('/player/<int:player_id>/history')
+def player_history(player_id):
+    """Get player's match history."""
+    db = get_db()
+    player = db.get_player(player_id)
+    if not player:
+        return "Player not found", 404
+        
+    history = db.get_player_history(player_id)
+    
+    return render_template(
+        'tournament/_player_history.html',
+        player=player,
+        history=history
     )
 
 @public_bp.route('/t/<token>/export/<format>')
