@@ -29,5 +29,3 @@ Prevent removing a bye once the round has concluded
 Prevent requesting a bye once the round has concluded
 
 Create an ai synopsys for rounds and the entire tournament as well
-
-make sure that the export button in the pairings page actually work

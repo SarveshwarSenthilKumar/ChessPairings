@@ -53,11 +53,13 @@
                 <i class="fas fa-download me-1"></i> Export
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="#"><i class="fas fa-file-pdf me-2"></i>PDF</a></li>
-                <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
-                <li><a class="dropdown-item" href="#"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('tournament.export_results', tournament_id=tournament.id) }}"><i class="fas fa-file-csv me-2"></i>Export Results (CSV)</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('tournament.export_results', tournament_id=tournament.id, format='xlsx') }}"><i class="fas fa-file-excel me-2"></i>Export Results (Excel)</a></li>
+                {% if tournament.status != 'completed' %}
+                <li><a class="dropdown-item" href="{{ url_for('tournament.export_players', tournament_id=tournament.id) }}"><i class="fas fa-users me-2"></i>Export Players</a></li>
+                {% endif %}
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="#"><i class="fas fa-print me-2"></i>Print</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('tournament.standings', tournament_id=tournament.id, print=1) }}" target="_blank"><i class="fas fa-print me-2"></i>Print Standings</a></li>
             </ul>
         </div>
         {% if is_round_complete and has_next_round %}
