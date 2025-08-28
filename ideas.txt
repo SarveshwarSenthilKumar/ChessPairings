@@ -4,6 +4,8 @@ Make it so other people can edit the pairings
 
 add a select all to present option so peopele can be presumed to be there and can tick off people not there and base pairings on this
 
+Add feature to make it into a graph type thing
+
 Update README and add details of how to initialize everything
 
 Add ability to add new rounds in the last round or whenever

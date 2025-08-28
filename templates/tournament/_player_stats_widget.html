@@ -28,6 +28,16 @@
                     <div class="text-muted small">Points</div>
                 </div>
             </div>
+            <div class="d-flex justify-content-center gap-4 mb-4">
+                <div class="text-center">
+                    <div class="h4 mb-1 text-info" id="perfRating">-</div>
+                    <div class="text-muted small">Perf. Rating</div>
+                </div>
+                <div class="text-center">
+                    <div class="h4 mb-1 text-info" id="avgOpponentRating">-</div>
+                    <div class="text-muted small">Avg. Opponent</div>
+                </div>
+            </div>
         </div>
 
         <div class="table-responsive">
@@ -55,6 +65,79 @@ function closePlayerStats() {
     document.getElementById('playerStatsWidget').style.display = 'none';
     // Clear the URL hash
     history.pushState('', document.title, window.location.pathname + window.location.search);
+}
+
+// Calculate performance rating based on opponent ratings and results
+function calculatePerformanceRating(history) {
+    console.log('Calculating performance rating with history:', history);
+    
+    if (!history || !Array.isArray(history) || history.length === 0) {
+        console.log('No valid history provided for performance rating calculation');
+        return null;
+    }
+    
+    let totalOpponentRating = 0;
+    let totalGames = 0;
+    let totalScore = 0;
+    
+    history.forEach((match, index) => {
+        console.log(`Processing match ${index + 1}:`, match);
+        
+        // Skip invalid matches
+        if (!match) {
+            console.log('Skipping invalid match (null/undefined)');
+            return;
+        }
+        
+        // Check if opponent_rating exists and is a valid number
+        const opponentRating = parseInt(match.opponent_rating || match.opponentRating || 0);
+        const points = parseFloat(match.points) || 0;
+        
+        console.log(`Match ${index + 1} - Opponent Rating: ${opponentRating}, Points: ${points}`);
+        
+        if (opponentRating > 0) {
+            totalOpponentRating += opponentRating;
+            totalScore += points;
+            totalGames++;
+            console.log(`Added to calculation - Total Games: ${totalGames}, Total Rating: ${totalOpponentRating}, Total Score: ${totalScore}`);
+        } else {
+            console.log(`Skipping match - Invalid opponent rating: ${opponentRating}`);
+        }
+    });
+    
+    console.log(`Final calculation - Total Games: ${totalGames}, Total Rating: ${totalOpponentRating}, Total Score: ${totalScore}`);
+    
+    if (totalGames === 0) {
+        console.log('No valid games with opponent ratings found');
+        return null;
+    }
+    
+    const avgOpponentRating = Math.round(totalOpponentRating / totalGames);
+    const scorePercentage = (totalScore / totalGames) * 100;
+    
+    console.log(`Average Opponent Rating: ${avgOpponentRating}, Score Percentage: ${scorePercentage.toFixed(2)}%`);
+    
+    // Performance Rating formula: PR = Average Opponent Rating + dp
+    // where dp is based on score percentage (dp = -400 * log10(1/scorePercentage - 1))
+    // For simplicity, we'll use a lookup table for common values
+    const dp = {
+        100: 800, 95: 677, 90: 589, 85: 538, 80: 501, 75: 470, 70: 444,
+        65: 420, 60: 400, 55: 380, 50: 360, 45: 340, 40: 320, 35: 300,
+        30: 280, 25: 260, 20: 240, 15: 220, 10: 200, 0: 0
+    };
+    
+    // Find the closest percentage in the lookup table
+    let closestPct = Object.keys(dp).reduce((prev, curr) => {
+        return (Math.abs(curr - scorePercentage) < Math.abs(prev - scorePercentage) ? curr : prev);
+    });
+    
+    const performanceRating = Math.round(avgOpponentRating + dp[closestPct]);
+    
+    return {
+        performanceRating: performanceRating,
+        avgOpponentRating: avgOpponentRating,
+        totalGames: totalGames
+    };
 }
 
 // Update player stats based on match history
@@ -107,29 +190,64 @@ function updatePlayerStats(history) {
             if (color === 'white') {
                 wins++;
                 totalPoints += 1;
-            } else if (color === 'black') {
+            } else {
                 losses++;
             }
         } else if (result === '0-1') {
             if (color === 'black') {
                 wins++;
                 totalPoints += 1;
-            } else if (color === 'white') {
+            } else {
                 losses++;
             }
-        } else if (['½-½', '=', '0.5-0.5', '0.5'].includes(result)) {
+        } else if (result === '0.5-0.5' || result === '0.5' || result === '½-½' || result === '=') {
             draws++;
             totalPoints += 0.5;
         }
-    });
     
     console.log(`Stats - Wins: ${wins}, Losses: ${losses}, Draws: ${draws}, Total: ${totalPoints.toFixed(1)}`);
     
-    // Update the UI
+    // Prepare history data for performance rating calculation
+    const historyForRatings = historyArray.map(match => {
+        // Calculate points based on result and color, same as in _player_history.html
+        let points = 0;
+        const result = String(match.result || '').trim();
+        const color = String(match.color || '').toLowerCase().trim();
+        
+        if (result === '1-0') {
+            points = (color === 'white') ? 1.0 : 0.0;
+        } else if (result === '0-1') {
+            points = (color === 'black') ? 1.0 : 0.0;
+        } else if (result === '0.5-0.5' || result === '0.5' || result === '½-½' || result === '=') {
+            points = 0.5;
+        }
+        
+        return {
+            ...match,
+            opponent_rating: match.opponent_rating || match.opponentRating,
+            points: match.points || points
+        };
+    });
+    
+    console.log('History for ratings:', historyForRatings);
+    
+    // Calculate performance rating and average opponent rating
+    const ratings = calculatePerformanceRating(historyForRatings);
+    
+    // Update the stats display
     safeSetText('winsCount', wins);
-    safeSetText('lossesCount', losses);
     safeSetText('drawsCount', draws);
+    safeSetText('lossesCount', losses);
     safeSetText('totalPoints', totalPoints.toFixed(1));
+    
+    // Update rating stats if available
+    if (ratings && ratings.totalGames > 0) {
+        safeSetText('perfRating', ratings.performanceRating);
+        safeSetText('avgOpponentRating', ratings.avgOpponentRating);
+    } else {
+        safeSetText('perfRating', '-');
+        safeSetText('avgOpponentRating', '-');
+    }
 }
 
 // Handle hash changes to show player stats

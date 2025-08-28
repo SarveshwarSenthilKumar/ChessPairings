@@ -707,7 +707,9 @@ class TournamentDB:
                 t.name as tournament_name,
                 r.round_number,
                 p1.name as white_name,
+                p1.rating as white_rating,
                 COALESCE(p2.name, 'BYE') as black_name,
+                p2.rating as black_rating,
                 COALESCE(p.result, '') as result,
                 CASE 
                     WHEN p.white_player_id = ? THEN 'white'
@@ -718,6 +720,11 @@ class TournamentDB:
                     WHEN p.white_player_id = ? AND p.black_player_id IS NULL THEN 'BYE'
                     WHEN p.black_player_id = ? THEN p1.name
                 END as opponent_name,
+                CASE
+                    WHEN p.white_player_id = ? AND p2.rating IS NOT NULL THEN p2.rating
+                    WHEN p.white_player_id = ? AND p.black_player_id IS NULL THEN NULL
+                    WHEN p.black_player_id = ? THEN p1.rating
+                END as opponent_rating,
                 t.id as tournament_id,
                 r.id as round_id,
                 p.white_player_id,
@@ -732,7 +739,7 @@ class TournamentDB:
             ORDER BY t.start_date, t.id, r.round_number
             """
             
-            params = (player_id, player_id, player_id, player_id, player_id, player_id, player_id)
+            params = (player_id, player_id, player_id, player_id, player_id, player_id, player_id, player_id, player_id, player_id)
             print(f"Executing query with params: {params}")
             
             self.cursor.execute(query, params)
@@ -776,6 +783,7 @@ class TournamentDB:
                 match_info = {
                     'round_number': row_dict['round_number'],
                     'opponent_name': row_dict['opponent_name'],
+                    'opponent_rating': row_dict['opponent_rating'],
                     'color': color,
                     'result': result,
                     'points': points,

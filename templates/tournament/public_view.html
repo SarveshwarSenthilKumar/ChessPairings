@@ -589,8 +589,80 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // Format rating with leading zero if needed
 function formatRating(rating) {
-    if (rating === null || rating === undefined || rating === '') return 'Unrated';
-    return rating < 1000 ? '0' + rating : rating;
+    return rating ? rating.toString().padStart(4, '0') : '----';
+}
+
+// Calculate performance rating based on opponent ratings and results
+function calculatePerformanceRating(history) {
+    console.log('Calculating performance rating with history:', history);
+    
+    if (!history || !Array.isArray(history) || history.length === 0) {
+        console.log('No valid history provided for performance rating calculation');
+        return null;
+    }
+    
+    let totalOpponentRating = 0;
+    let totalGames = 0;
+    let totalScore = 0;
+    
+    history.forEach((match, index) => {
+        console.log(`Processing match ${index + 1}:`, match);
+        
+        // Skip invalid matches
+        if (!match) {
+            console.log('Skipping invalid match (null/undefined)');
+            return;
+        }
+        
+        // Check if opponent_rating exists and is a valid number
+        const opponentRating = parseInt(match.opponent_rating || match.opponentRating || 0);
+        const points = parseFloat(match.points) || 0;
+        
+        console.log(`Match ${index + 1} - Opponent Rating: ${opponentRating}, Points: ${points}`);
+        
+        if (opponentRating > 0) {
+            totalOpponentRating += opponentRating;
+            totalScore += points;
+            totalGames++;
+            console.log(`Added to calculation - Total Games: ${totalGames}, Total Rating: ${totalOpponentRating}, Total Score: ${totalScore}`);
+        } else {
+            console.log(`Skipping match - Invalid opponent rating: ${opponentRating}`);
+        }
+    });
+    
+    console.log(`Final calculation - Total Games: ${totalGames}, Total Rating: ${totalOpponentRating}, Total Score: ${totalScore}`);
+    
+    if (totalGames === 0) {
+        console.log('No valid games with opponent ratings found');
+        return null;
+    }
+    
+    const avgOpponentRating = Math.round(totalOpponentRating / totalGames);
+    const scorePercentage = (totalScore / totalGames) * 100;
+    
+    console.log(`Average Opponent Rating: ${avgOpponentRating}, Score Percentage: ${scorePercentage.toFixed(2)}%`);
+    
+    // Performance Rating formula: PR = Average Opponent Rating + dp
+    // where dp is based on score percentage (dp = -400 * log10(1/scorePercentage - 1))
+    // For simplicity, we'll use a lookup table for common values
+    const dp = {
+        100: 800, 95: 677, 90: 589, 85: 538, 80: 501, 75: 470, 70: 444,
+        65: 420, 60: 400, 55: 380, 50: 360, 45: 340, 40: 320, 35: 300,
+        30: 280, 25: 260, 20: 240, 15: 220, 10: 200, 0: 0
+    };
+    
+    // Find the closest percentage in the lookup table
+    let closestPct = Object.keys(dp).reduce((prev, curr) => {
+        return (Math.abs(curr - scorePercentage) < Math.abs(prev - scorePercentage) ? curr : prev);
+    });
+    
+    const performanceRating = Math.round(avgOpponentRating + dp[closestPct]);
+    
+    return {
+        performanceRating: performanceRating,
+        avgOpponentRating: avgOpponentRating,
+        totalGames: totalGames
+    };
 }
 
 // Format date
@@ -680,7 +752,12 @@ function processPlayerHistory(data) {
 
 // Player history widget functionality
 async function showPlayerHistory(tournamentToken, playerId, playerName, playerRating, useDebug = false) {
-    console.log(`Showing history for player ${playerName} (ID: ${playerId})`);
+    console.log(`Showing history for player ${playerName} (ID: ${playerId}) in tournament ${tournamentToken}`);
+    
+    if (!tournamentToken || tournamentToken === 'undefined') {
+        console.error('No tournament token provided');
+        return;
+    }
     
     // Set player info safely
     const safeSetText = (id, text) => {
@@ -723,74 +800,58 @@ async function showPlayerHistory(tournamentToken, playerId, playerName, playerRa
             });
             
             console.log('Response status:', response.status, response.statusText);
-            
-            // First, get the response as text to see what we're dealing with
-            const responseText = await response.text();
-            console.log('Raw response text (first 500 chars):', responseText.substring(0, 500));
             console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            // Clone the response so we can read it multiple times if needed
+            const responseClone = response.clone();
+            
+            // First, try to parse as JSON
+            let responseData;
+            try {
+                responseData = await response.json();
+                console.log('Parsed JSON data:', responseData);
+            } catch (jsonError) {
+                console.log('Failed to parse as JSON, trying as text');
+                const responseText = await responseClone.text();
+                console.log('Raw response text (first 500 chars):', responseText.substring(0, 500));
+                throw new Error('Failed to parse response as JSON');
+            }
             
             // If we're in debug mode, use the test data
             if (useDebug) {
                 console.log('Using debug endpoint');
-                const debugResponse = await fetch('/public/debug/player/history');
-                if (!debugResponse.ok) {
-                    throw new Error(`Debug endpoint failed with status ${debugResponse.status}`);
+                try {
+                    const debugResponse = await fetch('/public/debug/player/history');
+                    if (!debugResponse.ok) {
+                        throw new Error(`Debug endpoint failed with status ${debugResponse.status}`);
+                    }
+                    const debugData = await debugResponse.json();
+                    console.log('Debug data:', debugData);
+                    return processPlayerHistory(debugData);
+                } catch (error) {
+                    console.error('Error fetching debug data:', error);
+                    throw error;
                 }
-                const debugData = await debugResponse.json();
-                console.log('Debug data:', debugData);
-                return processPlayerHistory(debugData);
             }
             
             if (!response.ok) {
-                console.error('Error response status:', response.status, response.statusText);
-                console.error('Error response text (first 500 chars):', responseText.substring(0, 500));
-                
-                // Try to parse as JSON even if status is not OK
-                try {
-                    const errorData = JSON.parse(responseText);
-                    console.error('Error response JSON:', errorData);
-                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                } catch (e) {
-                    // If we can't parse as JSON, just use the text
-                    throw new Error(`HTTP error! status: ${response.status}, message: ${responseText.substring(0, 200)}`);
-                }
-            }
-            
-            // Try to parse as JSON
-            let data;
-            try {
-                data = JSON.parse(responseText);
-                console.log('Parsed JSON data:', data);
-                
-                // Process the history data
-                processPlayerHistory(data);
-                
-            } catch (e) {
-                console.error('Failed to parse JSON:', e);
-                console.error('Response content type:', response.headers.get('content-type'));
-                throw new Error(`Invalid JSON response: ${e.message}. Response: ${responseText.substring(0, 200)}...`);
-            }
-            
-            if (!data) {
-                throw new Error('Empty response from server');
-            }
-            
-            // Handle both response formats: direct array or object with history property
-            let history = [];
-            if (Array.isArray(data)) {
-                // Direct array response
-                history = data;
-                history = data;
-            } else if (data.history && Array.isArray(data.history)) {
-                // Response with history property
-                history = data.history;
-            } else if (data.success === false) {
-                const errorMsg = data.error || 'Failed to load player history';
-                console.error('API error:', errorMsg);
+                const errorMsg = responseData.error || `HTTP error! status: ${response.status}`;
                 throw new Error(errorMsg);
+            }
+            
+            // Handle the response data
+            let history = [];
+            if (Array.isArray(responseData)) {
+                // Direct array response
+                history = responseData;
+            } else if (responseData.history && Array.isArray(responseData.history)) {
+                // Response with history property
+                history = responseData.history;
+            } else if (responseData.data && Array.isArray(responseData.data)) {
+                // Alternative response format
+                history = responseData.data;
             } else {
-                console.warn('Unexpected response format, trying to use data as history:', data);
-                history = Array.isArray(data) ? data : [data];
+                throw new Error('Invalid history data format');
             }
             
             console.log(`Found ${history.length} history items`, history);
@@ -891,52 +952,109 @@ async function showPlayerHistory(tournamentToken, playerId, playerName, playerRa
 }
 
 // Update player stats based on match history
-function updatePlayerStats(history = []) {
+function updatePlayerStats(history) {
     console.log('Updating player stats with history:', history);
     
-    // Initialize counters
-    let wins = 0, losses = 0, draws = 0, totalScore = 0;
-    
-    history.forEach(match => {
-        // Convert result to a standard format if needed
-        let result = match.result;
-        
-        // If result is in chess notation, convert it to Win/Loss/Draw
-        if (result === '1-0') {
-            result = match.color === 'white' ? 'Win' : 'Loss';
-        } else if (result === '0-1') {
-            result = match.color === 'black' ? 'Win' : 'Loss';
-        } else if (['½-½', '0.5-0.5', '='].includes(result)) {
-            result = 'Draw';
-        }
-        
-        // Count results
-        if (result === 'Win') wins++;
-        else if (result === 'Loss') losses++;
-        else if (result === 'Draw') draws++;
-        
-        // Sum points (ensure it's a number)
-        const points = typeof match.points === 'number' ? match.points : 0;
-        totalScore += points;
-    });
-    
-    console.log(`Stats - Wins: ${wins}, Losses: ${losses}, Draws: ${draws}, Total: ${totalScore.toFixed(1)}`);
-    
-    // Update the stats display with null checks
-    const updateElement = (id, value) => {
+    // Safely update element text
+    const safeSetText = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
     };
+
+    // Initialize counters
+    let wins = 0, draws = 0, losses = 0, totalPoints = 0;
     
-    updateElement('winsCount', wins);
-    updateElement('lossesCount', losses);
-    updateElement('drawsCount', draws);
-    updateElement('totalPoints', totalScore.toFixed(1));
+    // Check if history is valid
+    if (!history || (typeof history !== 'object')) {
+        console.warn('Invalid history data:', history);
+        safeSetText('winsCount', '0');
+        safeSetText('drawsCount', '0');
+        safeSetText('lossesCount', '0');
+        safeSetText('totalPoints', '0.0');
+        return;
+    }
+    
+    // Handle case where history is in a data property
+    const historyArray = Array.isArray(history) ? history : 
+                        (history.history && Array.isArray(history.history)) ? history.history : [];
+    
+    console.log(`Processing ${historyArray.length} history items`);
+    
+    if (historyArray.length === 0) {
+        safeSetText('winsCount', '0');
+        safeSetText('drawsCount', '0');
+        safeSetText('lossesCount', '0');
+        safeSetText('totalPoints', '0.0');
+        return;
+    }
+    
+    // Process each match
+    historyArray.forEach(match => {
+        if (!match) return;
+        
+        const result = String(match.result || '').trim();
+        const color = String(match.color || '').toLowerCase().trim();
+        
+        console.log('Processing match:', { result, color });
+        
+        if (result === '1-0') {
+            if (color === 'white') {
+                wins++;
+                totalPoints += 1;
+            } else if (color === 'black') {
+                losses++;
+            }
+        } else if (result === '0-1') {
+            if (color === 'black') {
+                wins++;
+                totalPoints += 1;
+            } else if (color === 'white') {
+                losses++;
+            }
+        } else if (['½-½', '0.5-0.5', '0.5', '='].includes(result)) {
+            draws++;
+            totalPoints += 0.5;
+        } else if (result === '1' || result === '+') {
+            wins++;
+            totalPoints += 1;
+        } else if (result === '0' || result === '-') {
+            losses++;
+        } else if (result === '0.5') {
+            draws++;
+            totalPoints += 0.5;
+        }
+        
+        // Try to get points directly if available
+        if (match.points !== undefined) {
+            const points = parseFloat(match.points);
+            if (!isNaN(points)) {
+                totalPoints = points; // Override with direct points if available
+            }
+        }
+    });
+    
+    // Calculate performance rating using the same function as in _player_stats_widget.html
+    const ratings = calculatePerformanceRating(historyArray);
+    
+    // Update the stats display
+    safeSetText('winsCount', wins);
+    safeSetText('drawsCount', draws);
+    safeSetText('lossesCount', losses);
+    safeSetText('totalPoints', totalPoints.toFixed(1));
+    
+    // Update rating stats if available
+    if (ratings && ratings.totalGames > 0) {
+        safeSetText('perfRating', ratings.performanceRating);
+        safeSetText('avgOpponentRating', ratings.avgOpponentRating);
+    } else {
+        safeSetText('perfRating', '-');
+        safeSetText('avgOpponentRating', '-');
+    }
     
     // Calculate and update win percentage
     const totalGames = wins + losses + draws;
     const winPercentage = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
-    updateElement('winPercentage', `${winPercentage}% win rate`);
+    safeSetText('winPercentage', `${winPercentage}% win rate`);
     
     // Show/hide the stats container based on whether we have data
     const statsContainer = document.getElementById('playerStatsContainer');
