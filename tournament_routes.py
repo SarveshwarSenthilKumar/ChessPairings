@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app, jsonify, send_file
 from flask_wtf.csrf import generate_csrf
 from flask_wtf import FlaskForm
-from wtforms import SelectField, BooleanField, IntegerField, StringField
+from wtforms import SelectField, BooleanField, IntegerField, StringField, TextAreaField, SubmitField, DateField
 from wtforms.validators import DataRequired, NumberRange
 import os
 import pandas as pd
@@ -204,6 +204,80 @@ def create():
     # For GET request or if there was an error
     return render_template('tournament/create.html')
 
+@tournament_bp.route('/<int:tournament_id>/settings', methods=['GET', 'POST'])
+@login_required
+def tournament_settings(tournament_id):
+    """Edit tournament settings."""
+    db = get_db()
+    tournament = db.get_tournament(tournament_id)
+    
+    if not tournament:
+        flash('Tournament not found.', 'danger')
+        return redirect(url_for('tournament.index'))
+    
+    # Ensure only the creator can edit
+    if tournament['creator_id'] != session.get('user_id'):
+        flash('You are not authorized to edit this tournament.', 'danger')
+        return redirect(url_for('tournament.view', tournament_id=tournament_id))
+    
+    form = TournamentSettingsForm()
+    
+    # Handle form submission
+    if request.method == 'POST' and form.validate_on_submit():
+        try:
+            # Get dates from form (already validated)
+            start_date = form.start_date.data
+            end_date = form.end_date.data
+            
+            # Update tournament with form data
+            success = db.update_tournament(
+                tournament_id=tournament_id,
+                name=form.name.data,
+                location=form.location.data or None,
+                start_date=start_date,
+                end_date=end_date,
+                rounds=form.rounds.data,
+                time_control=form.time_control.data or None,
+                description=form.description.data or None
+            )
+            
+            if success:
+                flash('Tournament settings updated successfully!', 'success')
+                return redirect(url_for('tournament.view', tournament_id=tournament_id))
+            else:
+                flash('Failed to update tournament settings. Please try again.', 'danger')
+        except Exception as e:
+            current_app.logger.error(f"Error updating tournament: {str(e)}")
+            flash('An error occurred while updating the tournament. Please try again.', 'danger')
+    
+    # Pre-populate form for GET request or failed POST
+    if request.method == 'GET':
+        form.name.data = tournament.get('name')
+        form.location.data = tournament.get('location')
+        
+        # Handle date conversion safely
+        if tournament.get('start_date'):
+            if isinstance(tournament['start_date'], str):
+                form.start_date.data = tournament['start_date'].split()[0]  # Get just the date part
+            else:
+                form.start_date.data = tournament['start_date'].strftime('%Y-%m-%d')
+        
+        if tournament.get('end_date'):
+            if isinstance(tournament['end_date'], str):
+                form.end_date.data = tournament['end_date'].split()[0]  # Get just the date part
+            else:
+                form.end_date.data = tournament['end_date'].strftime('%Y-%m-%d')
+        
+        form.rounds.data = tournament.get('rounds', 5)
+        form.time_control.data = tournament.get('time_control')
+        form.description.data = tournament.get('description')
+    
+    return render_template(
+        'tournament/settings.html',
+        tournament=tournament,
+        form=form
+    )
+
 @tournament_bp.route('/<int:tournament_id>')
 @login_required
 def view(tournament_id):
@@ -361,6 +435,41 @@ def manage_players(tournament_id):
                          tournament=tournament,
                          tournament_players=tournament_players,
                          available_players=available_players)
+
+# Form for tournament settings
+class TournamentSettingsForm(FlaskForm):
+    name = StringField('Tournament Name', validators=[DataRequired()])
+    location = StringField('Location')
+    start_date = StringField('Start Date (YYYY-MM-DD)', validators=[DataRequired()])
+    end_date = StringField('End Date (YYYY-MM-DD)', validators=[DataRequired()])
+    rounds = IntegerField('Number of Rounds', render_kw={'readonly': True})
+    time_control = StringField('Time Control')
+    description = TextAreaField('Description')
+    submit = SubmitField('Save Changes')
+    
+    def validate(self, **kwargs):
+        # First call the parent's validate method
+        rv = FlaskForm.validate(self)
+        if not rv:
+            return False
+            
+        # Validate date format and logic
+        try:
+            if self.start_date.data:
+                start = datetime.strptime(self.start_date.data, '%Y-%m-%d').date()
+            if self.end_date.data:
+                end = datetime.strptime(self.end_date.data, '%Y-%m-%d').date()
+                
+            if hasattr(self, 'start_date') and hasattr(self, 'end_date'):
+                if start > end:
+                    self.end_date.errors.append('End date must be after start date')
+                    return False
+                    
+        except ValueError as e:
+            self.start_date.errors.append('Please use YYYY-MM-DD format')
+            return False
+                
+        return True
 
 # Form for generating pairings
 class PairingsForm(FlaskForm):

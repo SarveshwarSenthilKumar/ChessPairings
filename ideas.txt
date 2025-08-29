@@ -8,7 +8,7 @@ Add feature to make it into a graph type thing
 
 Update README and add details of how to initialize everything
 
-Add ability to edit other features at any point
+Change the time control presets to be open
 
 Go back at the end and refresh the UI and make sure it looks good
 

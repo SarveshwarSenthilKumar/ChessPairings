@@ -151,6 +151,48 @@ class TournamentDB:
             self.conn.rollback()
             return False
             
+    def update_tournament(self, tournament_id: int, **kwargs) -> bool:
+        """Update tournament details.
+        
+        Args:
+            tournament_id: The ID of the tournament to update.
+            **kwargs: Tournament fields to update (name, location, start_date, end_date, 
+                    rounds, time_control, description)
+                    
+        Returns:
+            bool: True if the update was successful, False otherwise.
+        """
+        if not kwargs:
+            return False
+            
+        allowed_fields = ['name', 'location', 'start_date', 'end_date', 
+                        'rounds', 'time_control', 'description']
+        
+        updates = []
+        params = []
+        
+        for field, value in kwargs.items():
+            if field in allowed_fields and value is not None:
+                updates.append(f"{field} = ?")
+                params.append(value)
+                
+        if not updates:
+            return False
+            
+        query = f"""
+            UPDATE tournaments 
+            SET {', '.join(updates)}
+            WHERE id = ?
+        """
+        
+        try:
+            self.cursor.execute(query, params + [tournament_id])
+            self.conn.commit()
+            return True
+        except sqlite3.Error:
+            self.conn.rollback()
+            return False
+    
     def get_tournament(self, tournament_id: int) -> Optional[Dict[str, Any]]:
         """Get a single tournament by ID.
         
