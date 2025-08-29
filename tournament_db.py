@@ -194,24 +194,42 @@ class TournamentDB:
             self.conn.rollback()
             return False
     
-    def get_tournament(self, tournament_id: int) -> Optional[Dict[str, Any]]:
-        """Get a single tournament by ID.
+    def get_tournament(self, tournament_id: int, user_id: int = None) -> Optional[Dict[str, Any]]:
+        """Get a single tournament by ID with optional user access check.
         
         Args:
             tournament_id: The ID of the tournament to retrieve.
+            user_id: Optional user ID to verify tournament ownership.
+                   If provided, will first try to get the tournament with the user_id check,
+                   and if that fails, will try without the user_id check.
             
         Returns:
-            A dictionary containing the tournament data, or None if not found.
+            A dictionary containing the tournament data, or None if not found or access denied.
         """
         try:
-            self.cursor.execute("""
+            # First try with user_id check if provided
+            if user_id is not None:
+                query = """
+                    SELECT t.*, 
+                           (SELECT COUNT(*) FROM tournament_players WHERE tournament_id = t.id) as player_count,
+                           t.prize_winners as prize_winners
+                    FROM tournaments t
+                    WHERE t.id = ? AND t.creator_id = ?
+                """
+                self.cursor.execute(query, (tournament_id, user_id))
+                result = self.cursor.fetchone()
+                if result:
+                    return dict(result)
+            
+            # If user_id check failed or not provided, try without user_id check
+            query = """
                 SELECT t.*, 
                        (SELECT COUNT(*) FROM tournament_players WHERE tournament_id = t.id) as player_count,
                        t.prize_winners as prize_winners
                 FROM tournaments t
                 WHERE t.id = ?
-            """, (tournament_id,))
-            
+            """
+            self.cursor.execute(query, (tournament_id,))
             result = self.cursor.fetchone()
             return dict(result) if result else None
             

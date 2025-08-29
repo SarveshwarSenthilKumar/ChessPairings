@@ -126,8 +126,11 @@ def register():
                 date_joined=formatted_date
             )
             print("User created successfully")
+
+            userid = db.execute("SELECT * FROM users WHERE emailAddress = :email", email=email)
             
             # Log the user in
+            session["user_id"] = userid["id"]
             session["name"] = username
             session["email"] = email
             return redirect('/tournament/')
