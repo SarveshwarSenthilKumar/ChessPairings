@@ -1,8 +1,11 @@
-Add dark mode
+
+Allow the user to select the number of points awarded for a bye, win, draw, and loss in settings
 
 Make it so other people can edit the tournament details
 
-add a select all to present option so peopele can be presumed to be there and can tick off people not there and base pairings on this
+Add dark mode
+
+Create an ai synopsys for rounds and the entire tournament as well
 
 Add feature to make it into a graph type thing
 
@@ -14,8 +17,4 @@ Go back at the end and refresh the UI and make sure it looks good
 
 Add an attendance check-in feature
 
-Allow the user to select the number of points awarded for a bye, win, draw, and loss
-
-Show an error if the user tries to complete a round before all matches are filled in
-
-Create an ai synopsys for rounds and the entire tournament as well
+add a select all to present option so peopele can be presumed to be there and can tick off people not there and base pairings on this
