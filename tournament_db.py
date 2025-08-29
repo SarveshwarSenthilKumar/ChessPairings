@@ -166,7 +166,8 @@ class TournamentDB:
             return False
             
         allowed_fields = ['name', 'location', 'start_date', 'end_date', 
-                        'rounds', 'time_control', 'description']
+                        'rounds', 'time_control', 'description',
+                        'win_points', 'draw_points', 'loss_points', 'bye_points']
         
         updates = []
         params = []
@@ -1974,6 +1975,20 @@ class TournamentDB:
     
     def get_team_standings(self, tournament_id: int) -> List[Dict[str, Any]]:
         """Get current tournament standings grouped by team."""
+        # Get tournament point settings first
+        self.cursor.execute("""
+            SELECT win_points, draw_points, loss_points, bye_points
+            FROM tournaments
+            WHERE id = ?
+        """, (tournament_id,))
+        point_settings = self.cursor.fetchone()
+        
+        # Default point values if not set
+        win_pts = float(point_settings['win_points']) if point_settings and point_settings['win_points'] is not None else 1.0
+        draw_pts = float(point_settings['draw_points']) if point_settings and point_settings['draw_points'] is not None else 0.5
+        loss_pts = float(point_settings['loss_points']) if point_settings and point_settings['loss_points'] is not None else 0.0
+        bye_pts = float(point_settings['bye_points']) if point_settings and point_settings['bye_points'] is not None else 1.0
+        
         # First get all players with their teams and points
         query = """
         WITH player_points AS (
@@ -1983,14 +1998,14 @@ class TournamentDB:
                 COALESCE(
                     (SELECT SUM(
                         CASE 
-                            WHEN p2.result = '1-0' AND p2.white_player_id = p.id THEN 1
-                            WHEN p2.result = '0-1' AND p2.black_player_id = p.id THEN 1
-                            WHEN p2.result = '½-½' AND (p2.white_player_id = p.id OR p2.black_player_id = p.id) THEN 0.5
-                            WHEN p2.result = '1-0' AND p2.black_player_id = p.id THEN 0
-                            WHEN p2.result = '0-1' AND p2.white_player_id = p.id THEN 0
-                            WHEN p2.result = '+' AND p2.white_player_id = p.id THEN 1
-                            WHEN p2.result = '-' AND p2.black_player_id = p.id THEN 1
-                            WHEN p2.result = '=' AND (p2.white_player_id = p.id OR p2.black_player_id = p.id) THEN 0.5
+                            WHEN p2.result = '1-0' AND p2.white_player_id = p.id THEN ?
+                            WHEN p2.result = '0-1' AND p2.black_player_id = p.id THEN ?
+                            WHEN p2.result = '½-½' AND (p2.white_player_id = p.id OR p2.black_player_id = p.id) THEN ?
+                            WHEN p2.result = '1-0' AND p2.black_player_id = p.id THEN ?
+                            WHEN p2.result = '0-1' AND p2.white_player_id = p.id THEN ?
+                            WHEN p2.result = '+' AND p2.white_player_id = p.id THEN ?
+                            WHEN p2.result = '-' AND p2.black_player_id = p.id THEN ?
+                            WHEN p2.result = '=' AND (p2.white_player_id = p.id OR p2.black_player_id = p.id) THEN ?
                             ELSE 0
                         END
                     )
@@ -2020,7 +2035,14 @@ class TournamentDB:
                  WHERE r.tournament_id = ? 
                  AND ((p2.white_player_id = p.id OR p2.black_player_id = p.id) AND 
                       (p2.result = '½-½' OR p2.result = '='))
-                ) as draws
+                ) as draws,
+                (SELECT COUNT(*) FROM pairings p2 
+                 JOIN rounds r ON p2.round_id = r.id 
+                 WHERE r.tournament_id = ? 
+                 AND ((p2.white_player_id = p.id AND p2.black_player_id IS NULL) OR
+                      (p2.white_player_id = p.id AND p2.result = '+') OR
+                      (p2.black_player_id = p.id AND p2.result = '-'))
+                ) as byes
             FROM players p
             JOIN tournament_players tp ON p.id = tp.player_id
             WHERE tp.tournament_id = ?
@@ -2033,12 +2055,30 @@ class TournamentDB:
             AVG(points) as avg_points_per_player,
             SUM(wins) as match_wins,
             SUM(losses) as match_losses,
-            SUM(draws) as match_draws
+            SUM(draws) as match_draws,
+            SUM(byes) as byes
         FROM player_points
         GROUP BY team
         ORDER BY total_points DESC, avg_points_per_player DESC, player_count DESC
         """
-        self.cursor.execute(query, (tournament_id, tournament_id, tournament_id, tournament_id, tournament_id))
+        # Pass point values as parameters
+        params = (
+            win_pts,  # 1-0 white win
+            win_pts,  # 0-1 black win
+            draw_pts,  # 1/2-1/2 draw
+            loss_pts,  # 1-0 black loss
+            loss_pts,  # 0-1 white loss
+            bye_pts,   # + bye
+            bye_pts,   # - bye
+            draw_pts,  # = bye (draw)
+            tournament_id,  # For the subquery
+            tournament_id,  # For wins count
+            tournament_id,  # For losses count
+            tournament_id,  # For draws count
+            tournament_id,  # For byes count
+            tournament_id   # For main query
+        )
+        self.cursor.execute(query, params)
         
         standings = []
         for i, row in enumerate(self.cursor.fetchall(), 1):
@@ -2106,6 +2146,21 @@ class TournamentDB:
         self.cursor.execute(query, (tournament_id,))
         pairings = self.cursor.fetchall()
         
+        # Get tournament point settings
+        query = """
+        SELECT win_points, draw_points, loss_points, bye_points
+        FROM tournaments
+        WHERE id = ?
+        """
+        self.cursor.execute(query, (tournament_id,))
+        point_settings = self.cursor.fetchone()
+        
+        # Default point values if not set
+        win_pts = float(point_settings['win_points']) if point_settings and point_settings['win_points'] is not None else 1.0
+        draw_pts = float(point_settings['draw_points']) if point_settings and point_settings['draw_points'] is not None else 0.5
+        loss_pts = float(point_settings['loss_points']) if point_settings and point_settings['loss_points'] is not None else 0.0
+        bye_pts = float(point_settings['bye_points']) if point_settings and point_settings['bye_points'] is not None else 1.0
+        
         # Initialize player stats
         for player in players:
             player['wins'] = 0
@@ -2131,10 +2186,10 @@ class TournamentDB:
             # Handle bye pairings (where black_player_id is NULL)
             if is_bye and white_id in player_map:
                 white = player_map[white_id]
-                # For byes, always count as a win (1 point) for the player who got the bye
+                # For byes, award points based on tournament settings
                 if is_completed:
                     white['wins'] += 1
-                    white['points'] += 1.0  # Bye is worth 1 point
+                    white['points'] += bye_pts  # Use configured bye points
                     white['games_played'] += 1
                 # Record a dummy opponent for tiebreak purposes
                 white['opponents'].append(None)  # Will be handled in tiebreak calculations
@@ -2154,20 +2209,22 @@ class TournamentDB:
                     white['games_played'] += 1
                     black['games_played'] += 1
                     
-                    # Update results
+                    # Update results using tournament point settings
                     if result == '1-0':
                         white['wins'] += 1
-                        white['points'] += 1.0
+                        white['points'] += win_pts
                         black['losses'] += 1
+                        black['points'] += loss_pts
                     elif result == '0-1':
                         black['wins'] += 1
-                        black['points'] += 1.0
+                        black['points'] += win_pts
                         white['losses'] += 1
+                        white['points'] += loss_pts
                     elif result == '0.5-0.5':
                         white['draws'] += 1
                         black['draws'] += 1
-                        white['points'] += 0.5
-                        black['points'] += 0.5
+                        white['points'] += draw_pts
+                        black['points'] += draw_pts
         
         # Calculate tiebreaks (Buchholz, etc.)
         for player in players:

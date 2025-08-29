@@ -1,6 +1,4 @@
 
-Allow the user to select the number of points awarded for a bye, win, draw, and loss in settings
-
 Make it so other people can edit the tournament details
 
 Add dark mode

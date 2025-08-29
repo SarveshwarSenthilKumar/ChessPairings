@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app, jsonify, send_file
 from flask_wtf.csrf import generate_csrf
 from flask_wtf import FlaskForm
-from wtforms import SelectField, BooleanField, IntegerField, StringField, TextAreaField, SubmitField, DateField
+from wtforms import SelectField, BooleanField, IntegerField, StringField, TextAreaField, SubmitField, DateField, FloatField
 from wtforms.validators import DataRequired, NumberRange
 import os
 import pandas as pd
@@ -229,7 +229,7 @@ def tournament_settings(tournament_id):
             start_date = form.start_date.data
             end_date = form.end_date.data
             
-            # Update tournament with form data
+            # Update tournament with form data including point settings
             success = db.update_tournament(
                 tournament_id=tournament_id,
                 name=form.name.data,
@@ -238,7 +238,11 @@ def tournament_settings(tournament_id):
                 end_date=end_date,
                 rounds=form.rounds.data,
                 time_control=form.time_control.data or None,
-                description=form.description.data or None
+                description=form.description.data or None,
+                win_points=form.win_points.data,
+                draw_points=form.draw_points.data,
+                loss_points=form.loss_points.data,
+                bye_points=form.bye_points.data
             )
             
             if success:
@@ -271,6 +275,12 @@ def tournament_settings(tournament_id):
         form.rounds.data = tournament.get('rounds', 5)
         form.time_control.data = tournament.get('time_control')
         form.description.data = tournament.get('description')
+        
+        # Set point settings defaults if not set
+        form.win_points.data = tournament.get('win_points', 1.0)
+        form.draw_points.data = tournament.get('draw_points', 0.5)
+        form.loss_points.data = tournament.get('loss_points', 0.0)
+        form.bye_points.data = tournament.get('bye_points', 1.0)
     
     return render_template(
         'tournament/settings.html',
@@ -438,6 +448,7 @@ def manage_players(tournament_id):
 
 # Form for tournament settings
 class TournamentSettingsForm(FlaskForm):
+    # Basic info
     name = StringField('Tournament Name', validators=[DataRequired()])
     location = StringField('Location')
     start_date = StringField('Start Date (YYYY-MM-DD)', validators=[DataRequired()])
@@ -445,6 +456,13 @@ class TournamentSettingsForm(FlaskForm):
     rounds = IntegerField('Number of Rounds', render_kw={'readonly': True})
     time_control = StringField('Time Control')
     description = TextAreaField('Description')
+    
+    # Point settings
+    win_points = IntegerField('Points for a Win', default=1, validators=[NumberRange(min=0)])
+    draw_points = FloatField('Points for a Draw', default=0.5, validators=[NumberRange(min=0)])
+    loss_points = FloatField('Points for a Loss', default=0.0, validators=[NumberRange(min=0)])
+    bye_points = FloatField('Points for a Bye', default=1.0, validators=[NumberRange(min=0)])
+    
     submit = SubmitField('Save Changes')
     
     def validate(self, **kwargs):

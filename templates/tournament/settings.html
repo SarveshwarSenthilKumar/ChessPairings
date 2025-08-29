@@ -72,6 +72,50 @@
                             {% endfor %}
                         </div>
                         
+                        <!-- Point Settings Section -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Point Settings</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        {{ form.win_points.label(class="form-label") }}
+                                        {{ form.win_points(class="form-control" + (" is-invalid" if form.win_points.errors else "")) }}
+                                        {% for error in form.win_points.errors %}
+                                            <div class="invalid-feedback">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        {{ form.draw_points.label(class="form-label") }}
+                                        {{ form.draw_points(class="form-control" + (" is-invalid" if form.draw_points.errors else "")) }}
+                                        {% for error in form.draw_points.errors %}
+                                            <div class="invalid-feedback">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        {{ form.loss_points.label(class="form-label") }}
+                                        {{ form.loss_points(class="form-control" + (" is-invalid" if form.loss_points.errors else "")) }}
+                                        {% for error in form.loss_points.errors %}
+                                            <div class="invalid-feedback">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        {{ form.bye_points.label(class="form-label") }}
+                                        {{ form.bye_points(class="form-control" + (" is-invalid" if form.bye_points.errors else "")) }}
+                                        {% for error in form.bye_points.errors %}
+                                            <div class="invalid-feedback">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="alert alert-info mb-0">
+                                    <small class="d-block"><i class="fas fa-info-circle me-1"></i> These settings affect how points are calculated in the standings.</small>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" 
                                class="btn btn-secondary me-md-2">Cancel</a>
