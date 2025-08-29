@@ -14,6 +14,69 @@ import sqlite3
 from datetime import datetime
 from decorators import check_tournament_active
 import json
+from typing import Dict, List, Optional, Tuple
+
+def regenerate_current_round_pairings(db: TournamentDB, tournament_id: int) -> bool:
+    """Regenerate pairings for the current round, preserving any existing results.
+    
+    Args:
+        db: Database connection
+        tournament_id: ID of the tournament
+        
+    Returns:
+        bool: True if pairings were regenerated successfully, False otherwise
+    """
+    try:
+        # Get current round
+        current_round = db.get_current_round(tournament_id)
+        if not current_round:
+            return False
+            
+        round_id = current_round['id']
+        
+        # Get existing pairings with results
+        existing_pairings = db.get_pairings(round_id)
+        completed_results = {}
+        
+        # Store completed results
+        for pairing in existing_pairings:
+            if pairing.get('result'):
+                white_id = pairing.get('white_player_id')
+                black_id = pairing.get('black_player_id')
+                if white_id and black_id:  # Only store results for actual games, not byes
+                    completed_results[(white_id, black_id)] = pairing['result']
+        
+        # Regenerate pairings
+        success = db.generate_pairings(tournament_id, round_id, 'swiss')
+        if not success:
+            return False
+            
+        # Get new pairings
+        new_pairings = db.get_pairings(round_id)
+        
+        # Restore completed results where possible
+        for pairing in new_pairings:
+            white_id = pairing.get('white_player_id')
+            black_id = pairing.get('black_player_id')
+            
+            if not white_id or not black_id:
+                continue  # Skip byes
+                
+            result = completed_results.get((white_id, black_id))
+            if result:
+                db.update_pairing_result(
+                    pairing['id'],
+                    white_id,
+                    black_id,
+                    result,
+                    'completed'
+                )
+                
+        return True
+        
+    except Exception as e:
+        print(f"Error regenerating pairings: {e}")
+        return False
 
 # Create blueprint
 tournament_bp = Blueprint('tournament', __name__, template_folder='templates')
@@ -424,9 +487,20 @@ def assign_bye(tournament_id):
             flash('This player already has a bye assigned for the selected round.', 'warning')
             return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
             
+        # Get current round info
+        current_round = db.get_current_round(tournament_id)
+        current_round_num = current_round['round_number'] if current_round else 0
+        
         # Assign the bye
         if db.assign_manual_bye(tournament_id, player_id, round_number, session['user_id']):
-            flash('Bye assigned successfully!', 'success')
+            # If this is the current round, regenerate pairings
+            if round_number == current_round_num and current_round:
+                if regenerate_current_round_pairings(db, tournament_id):
+                    flash('Bye assigned and pairings updated successfully!', 'success')
+                else:
+                    flash('Bye assigned, but failed to update pairings. Please regenerate them manually.', 'warning')
+            else:
+                flash('Bye assigned successfully!', 'success')
         else:
             flash('Failed to assign bye. Please try again.', 'error')
         
@@ -493,9 +567,20 @@ def remove_bye(tournament_id, bye_id):
                 flash('Cannot remove byes from rounds that have already been completed.', 'error')
                 return redirect(url_for('tournament.manage_byes', tournament_id=tournament_id))
         
+        # Get current round info
+        current_round = db.get_current_round(tournament_id)
+        current_round_num = current_round['round_number'] if current_round else 0
+        
         # Remove the bye
         if db.remove_manual_bye(bye_id):
-            flash('Bye removed successfully!', 'success')
+            # If this is the current round, regenerate pairings
+            if bye['round_number'] == current_round_num and current_round:
+                if regenerate_current_round_pairings(db, tournament_id):
+                    flash('Bye removed and pairings updated successfully!', 'success')
+                else:
+                    flash('Bye removed, but failed to update pairings. Please regenerate them manually.', 'warning')
+            else:
+                flash('Bye removed successfully!', 'success')
         else:
             flash('Failed to remove bye. Please try again.', 'error')
         
