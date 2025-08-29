@@ -30,12 +30,16 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="rounds" class="form-label">Number of Rounds</label>
-                            <select class="form-select" id="rounds" name="rounds">
-                                <option value="3">3 Rounds</option>
-                                <option value="5" selected>5 Rounds</option>
-                                <option value="7">7 Rounds</option>
-                                <option value="9">9 Rounds</option>
-                            </select>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="rounds" 
+                                   name="rounds" 
+                                   min="1" 
+                                   max="50"
+                                   value="5"
+                                   required
+                                   oninput="this.value = Math.min(50, Math.max(1, this.value) || 1)">
+                            <div class="form-text">Enter a number between 1 and 50</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="time_control" class="form-label">Time Control</label>

@@ -8,8 +8,6 @@ Add feature to make it into a graph type thing
 
 Update README and add details of how to initialize everything
 
-Add ability to change the number of rounds at any point and give full reign at beginning
-
 Add ability to edit other features at any point
 
 Go back at the end and refresh the UI and make sure it looks good
