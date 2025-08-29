@@ -410,7 +410,7 @@
                 <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" class="btn btn-sm btn-primary">
                     <i class="fas fa-edit me-1"></i> Manage Pairings
                 </a>
-                {% if current_round.status == 'ongoing' %}
+                {% if current_round.status == 'ongoing' and pairings %}
                     <a href="#" class="btn btn-sm btn-success ms-2" data-bs-toggle="modal" data-bs-target="#completeRoundModal">
                         <i class="fas fa-flag-checkered me-1"></i> Complete Round
                     </a>

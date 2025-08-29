@@ -1,14 +1,12 @@
 Add dark mode
 
-Make it so other people can edit the pairings
+Make it so other people can edit the tournament details
 
 add a select all to present option so peopele can be presumed to be there and can tick off people not there and base pairings on this
 
 Add feature to make it into a graph type thing
 
 Update README and add details of how to initialize everything
-
-Add ability to add new rounds in the last round or whenever
 
 Add ability to change the number of rounds at any point and give full reign at beginning
 
@@ -18,9 +16,7 @@ Go back at the end and refresh the UI and make sure it looks good
 
 Add an attendance check-in feature
 
-Add a "bye" option in the current round to reshuffle pairings
-
-Allow the user to select the number of points awarded for a bye
+Allow the user to select the number of points awarded for a bye, win, draw, and loss
 
 Show an error if the user tries to complete a round before all matches are filled in
 

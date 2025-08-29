@@ -1081,7 +1081,13 @@ class TournamentDB:
             # Get all players ordered by score and rating
             players = self.get_tournament_players_with_scores(tournament_id)
             
+            # Check if there are enough players to generate pairings
             if not players:
+                self.conn.rollback()
+                return False
+                
+            # Ensure there are at least 2 players to generate pairings
+            if len(players) < 2:
                 self.conn.rollback()
                 return False
                 

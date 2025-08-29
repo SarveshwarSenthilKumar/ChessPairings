@@ -634,7 +634,13 @@ def manage_pairings(tournament_id):
             flash('Tournament completed successfully!', 'success')
             return redirect(url_for('tournament.standings', tournament_id=tournament_id))
             
-        # Create next round
+        # Check if we have enough players to generate pairings before creating the next round
+        players = db.get_tournament_players(tournament_id)
+        if len(players) < 2:
+            flash('Cannot generate pairings: At least 2 players are required to generate pairings.', 'error')
+            return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
+            
+        # Create next round only if we have enough players
         next_round_num = current_round_num + 1
         db.start_round(tournament_id, next_round_num)
         next_round = db.get_current_round(tournament_id)
@@ -644,7 +650,7 @@ def manage_pairings(tournament_id):
         for player in players_needing_byes:
             db.create_pairing(next_round['id'], player['player_id'], None, 0)  # Board 0 for byes
             flash(f'Assigned bye to {player["name"]} for round {next_round_num}', 'info')
-        
+            
         # Generate pairings for the remaining players
         method = 'swiss'  # Default to Swiss system
         success = db.generate_pairings(tournament_id, next_round['id'], method=method)
@@ -653,6 +659,9 @@ def manage_pairings(tournament_id):
             flash(f'Round {next_round_num} has been created and pairings generated!', 'success')
         else:
             flash('Failed to generate pairings for the next round.', 'danger')
+            # If we fail to generate pairings, we should clean up the round we just created
+            db.conn.execute('DELETE FROM rounds WHERE id = ?', (next_round['id'],))
+            db.conn.commit()
             
         return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
         
@@ -958,10 +967,10 @@ def standings(tournament_id):
         return redirect(url_for('tournament.view', tournament_id=tournament_id))
         return redirect(url_for('tournament.view', tournament_id=tournament_id))
 
-@tournament_bp.route('/<int:tournament_id>/rounds')
+@tournament_bp.route('/<int:tournament_id>/rounds', methods=['GET', 'POST'])
 @login_required
 def rounds(tournament_id):
-    """View all rounds in the tournament."""
+    """View and manage all rounds in the tournament."""
     try:
         db = get_db()
         tournament = db.get_tournament(tournament_id)
@@ -969,21 +978,53 @@ def rounds(tournament_id):
             flash('Tournament not found.', 'danger')
             return redirect(url_for('tournament.index'))
         
-        # Safely get rounds if the method exists
+        # Handle adding more rounds
+        if request.method == 'POST' and 'add_rounds' in request.form:
+            try:
+                additional_rounds = int(request.form.get('additional_rounds', 1))
+                max_additional_rounds = 10  # Maximum number of rounds that can be added at once
+                
+                if additional_rounds < 1:
+                    flash('Number of rounds to add must be at least 1.', 'error')
+                elif additional_rounds > max_additional_rounds:
+                    flash(f'You can add a maximum of {max_additional_rounds} rounds at a time.', 'error')
+                else:
+                    new_total = tournament['rounds'] + additional_rounds
+                    max_total_rounds = 50  # Absolute maximum number of rounds
+                    
+                    if new_total > max_total_rounds:
+                        flash(f'Maximum number of rounds ({max_total_rounds}) would be exceeded.', 'error')
+                    else:
+                        # Update rounds and set status to 'in_progress' if it was 'upcoming'
+                        db.cursor.execute("""
+                            UPDATE tournaments 
+                            SET rounds = ?,
+                                status = CASE WHEN status = 'upcoming' THEN 'in_progress' ELSE status END
+                            WHERE id = ?
+                        """, (new_total, tournament_id))
+                        db.conn.commit()
+                        
+                        flash(f'Successfully added {additional_rounds} round(s). Total rounds is now {new_total}.', 'success')
+                        return redirect(url_for('tournament.rounds', tournament_id=tournament_id))
+            except ValueError:
+                flash('Please enter a valid number of rounds to add.', 'error')
+        
+        # Get current rounds data
         rounds_data = []
         if hasattr(db, 'get_tournament_rounds'):
             rounds_data = db.get_tournament_rounds(tournament_id) or []
         
-        # Provide empty prize_winners list if used in the template
         return render_template(
             'tournament/rounds.html',
             tournament=tournament,
             rounds=rounds_data,
-            prize_winners=[]  # Add empty prize_winners list
+            prize_winners=[]
         )
     except Exception as e:
         print(f"Error in rounds route: {e}")
-        flash('An error occurred while loading the rounds.', 'error')
+        import traceback
+        traceback.print_exc()
+        flash('An error occurred while processing your request.', 'error')
         return redirect(url_for('tournament.view', tournament_id=tournament_id))
 
 @tournament_bp.route('/round/<int:round_id>')

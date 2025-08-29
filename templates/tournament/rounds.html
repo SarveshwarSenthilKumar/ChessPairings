@@ -2,6 +2,35 @@
 
 {% block title %}{{ tournament.name }} - All Rounds{% endblock %}
 
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addRoundsForm = document.getElementById('addRoundsForm');
+        if (addRoundsForm) {
+            addRoundsForm.addEventListener('submit', function(e) {
+                const additionalRounds = parseInt(document.getElementById('additional_rounds').value);
+                const currentRounds = parseInt('{{ tournament.rounds }}');
+                const newTotal = currentRounds + additionalRounds;
+                
+                if (!confirm(`Are you sure you want to add ${additionalRounds} round(s)?\n\nThis will set the total number of rounds to ${newTotal}.`)) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Show loading state
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Adding Rounds...';
+                }
+                
+                return true;
+            });
+        }
+    });
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
@@ -17,6 +46,40 @@
         <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i> Back to Tournament
         </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Tournament Rounds</h5>
+        </div>
+        <div class="card-body">
+            <form id="addRoundsForm" method="POST" action="{{ url_for('tournament.rounds', tournament_id=tournament.id) }}" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="additional_rounds" class="form-label">Number of rounds to add</label>
+                    <input type="number" 
+                           class="form-control" 
+                           id="additional_rounds" 
+                           name="additional_rounds" 
+                           min="1" 
+                           max="10"
+                           value="1" 
+                           required
+                           oninput="this.value = Math.min(10, Math.max(1, this.value) || 1)">
+                    <div class="form-text">You can add 1-10 rounds at a time</div>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" name="add_rounds" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i> Add Rounds
+                    </button>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex flex-column">
+                        <span class="text-muted">Current total rounds: <strong>{{ tournament.rounds }}</strong></span>
+                        <span class="text-muted small">Maximum allowed: 50 rounds</span>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div class="card">
