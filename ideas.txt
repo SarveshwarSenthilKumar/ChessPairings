@@ -1,6 +1,8 @@
 
 Make it so other people can edit the tournament details
 
+Add a search bar for tournaments
+
 Add dark mode
 
 Create an ai synopsys for rounds and the entire tournament as well
@@ -18,3 +20,7 @@ Go back at the end and refresh the UI and make sure it looks good
 Add an attendance check-in feature
 
 add a select all to present option so peopele can be presumed to be there and can tick off people not there and base pairings on this
+
+add categories for tournaments 
+
+allow users to highlight different tournaments
