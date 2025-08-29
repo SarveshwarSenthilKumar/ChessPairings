@@ -7,6 +7,8 @@ Create an ai synopsys for rounds and the entire tournament as well
 
 Add feature to make it into a graph type thing
 
+create terms of conditions and privacy policy
+
 Update README and add details of how to initialize everything
 
 Create a mass delete mode in tournaments
