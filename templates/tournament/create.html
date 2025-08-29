@@ -43,12 +43,9 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="time_control" class="form-label">Time Control</label>
-                            <select class="form-select" id="time_control" name="time_control">
-                                <option value="Classical">Classical (90+30)</option>
-                                <option value="Rapid" selected>Rapid (15+10)</option>
-                                <option value="Blitz">Blitz (3+2)</option>
-                                <option value="Bullet">Bullet (1+0)</option>
-                            </select>
+                            <input type="text" class="form-control" id="time_control" name="time_control" 
+                                   placeholder="e.g., 90+30, 15+10, 3+2" value="15+10">
+                            <div class="form-text">Enter time control (e.g., 90+30 for 90 minutes with 30-second increment)</div>
                         </div>
                     </div>
                     

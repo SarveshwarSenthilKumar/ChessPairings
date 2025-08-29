@@ -8,7 +8,7 @@ Add feature to make it into a graph type thing
 
 Update README and add details of how to initialize everything
 
-Change the time control presets to be open
+Create a mass delete mode in tournaments
 
 Go back at the end and refresh the UI and make sure it looks good
 
