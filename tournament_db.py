@@ -1566,17 +1566,25 @@ class TournamentDB:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
             rounds: Number of rounds (default: 5)
-            **kwargs: Additional tournament fields (location, time_control, status, created_at)
+            **kwargs: Additional tournament fields (location, time_control, status, created_at, share_token)
             
         Returns:
             int: ID of the created tournament
         """
+        import secrets
+        
+        # Generate a unique share token if not provided
+        share_token = kwargs.pop('share_token', None)
+        if not share_token:
+            share_token = secrets.token_urlsafe(16)
+            
         query = """
         INSERT INTO tournaments (
             name, start_date, end_date, time_control, 
-            rounds, status, location, created_at, creator_id, description
+            rounds, status, location, created_at, creator_id, description,
+            share_token
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         # Prepare parameters
         params = (
@@ -1589,7 +1597,8 @@ class TournamentDB:
             kwargs.get('location'),
             kwargs.get('created_at', datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
             kwargs.get('creator_id'),
-            kwargs.get('description', '')
+            kwargs.get('description', ''),
+            share_token
         )
         
         try:
