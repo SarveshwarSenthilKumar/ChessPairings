@@ -1,6 +1,4 @@
 
-Add dark mode
-
 Make it so other people can edit the tournament details
 
 Create an ai synopsys for rounds and the entire tournament as well
