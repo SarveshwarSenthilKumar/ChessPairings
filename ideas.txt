@@ -1,9 +1,7 @@
 
-Make it so other people can edit the tournament details
-
-Add a search bar for tournaments
-
 Add dark mode
+
+Make it so other people can edit the tournament details
 
 Create an ai synopsys for rounds and the entire tournament as well
 
