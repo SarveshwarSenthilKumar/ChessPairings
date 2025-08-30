@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Admin Share Links - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('tournament.index') }}">Tournaments</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tournament.view', tournament_id=tournament_id) }}">Tournament #{{ tournament_id }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Admin Share Links</li>
+                </ol>
+            </nav>
+            <h2>Admin Share Links</h2>
+            <p class="text-muted">Create and manage share links for tournament administrators</p>
+        </div>
+    </div>
+
+    {% if new_share_url %}
+    <div class="alert alert-success">
+        <h5>Share Link Created!</h5>
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" value="{{ new_share_url }}" id="shareLink" readonly>
+            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('shareLink')">
+                <i class="fas fa-copy"></i> Copy
+            </button>
+        </div>
+        <small class="text-muted">Share this link with other administrators. This link will expire based on the settings you chose.</small>
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Create New Share Link</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="/tournament/{{ tournament_id }}/admin/share/create">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-3">
+                    <label class="form-label">Permissions</label>
+                    <div class="border rounded p-3">
+                        {% for perm_key, perm_desc in available_permissions.items() %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="permissions" value="{{ perm_key }}" id="perm-{{ loop.index }}">
+                            <label class="form-check-label" for="perm-{{ loop.index }}">
+                                {{ perm_desc }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="form-text">Select the permissions to grant with this share link.</div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="expires_days" class="form-label">Link Expires After (days)</label>
+                        <input type="number" class="form-control" id="expires_days" name="expires_days" value="7" min="1">
+                        <div class="form-text">Leave empty for no expiration</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="max_uses" class="form-label">Maximum Uses</label>
+                        <input type="number" class="form-control" id="max_uses" name="max_uses" min="1">
+                        <div class="form-text">Leave empty for unlimited uses</div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-link me-1"></i> Create Share Link
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Active Share Links</h5>
+        </div>
+        <div class="card-body">
+            {% if not links %}
+                <p class="text-muted">No share links have been created yet.</p>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Created</th>
+                                <th>Permissions</th>
+                                <th>Uses</th>
+                                <th>Expires</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for link in links %}
+                            <tr>
+                                <td>{{ link.created_at|datetimeformat('%b %d, %Y') }}</td>
+                                <td>
+                                    {% if link.permissions_display %}
+                                        <ul class="mb-0 ps-3">
+                                            {% for perm in link.permissions_display %}
+                                                <li>{{ perm }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <span class="text-muted">No permissions</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ link.use_count }}
+                                    {% if link.max_uses %}/ {{ link.max_uses }}{% endif %}
+                                </td>
+                                <td>
+                                    {% if link.expires_at %}
+                                        {{ link.expires_at|datetimeformat('%b %d, %Y') }}
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="POST" action="/tournament/{{ tournament_id }}/admin/share/{{ link.id }}/revoke" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                onclick="return confirm('Are you sure you want to revoke this share link?')">
+                                            <i class="fas fa-ban"></i> Revoke
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(elementId) {
+    const copyText = document.getElementById(elementId);
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); // For mobile devices
+    document.execCommand("copy");
+    
+    // Show tooltip or feedback
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+    }, 2000);
+}
+</script>
+{% endblock %}

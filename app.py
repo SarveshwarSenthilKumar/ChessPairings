@@ -4,6 +4,7 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf
 from auth import auth_blueprint
 from tournament_routes import tournament_bp
 from public_routes import public_bp
+from admin_share_routes import bp as admin_share_bp
 from SarvAuth import *
 from sql import *
 from datetime import datetime, date
@@ -87,6 +88,7 @@ app.jinja_env.filters['ordinal'] = ordinal
 app.register_blueprint(auth_blueprint)
 app.register_blueprint(tournament_bp, url_prefix='/tournament')
 app.register_blueprint(public_bp, url_prefix='/public')
+app.register_blueprint(admin_share_bp, url_prefix='/tournament/<int:tournament_id>/admin')
 
 # Routes
 @app.route("/")

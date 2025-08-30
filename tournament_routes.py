@@ -215,9 +215,21 @@ def tournament_settings(tournament_id):
         flash('Tournament not found.', 'danger')
         return redirect(url_for('tournament.index'))
     
-    # Ensure only the creator can edit
-    if tournament['creator_id'] != session.get('user_id'):
-        flash('You are not authorized to edit this tournament.', 'danger')
+    # Check if user is the creator of the tournament or has a valid share link with edit settings permission
+    creator_id = tournament.get('creator_id')
+    user_id = session.get('user_id')
+    
+    # Check for valid share token in the URL with edit settings permission
+    token = request.args.get('token')
+    has_edit_permission = False
+    
+    if token:
+        is_valid, permissions = validate_share_link(token, tournament_id)
+        if is_valid and 'can_edit_settings' in permissions:
+            has_edit_permission = True
+    
+    if creator_id != user_id and not has_edit_permission:
+        flash('You do not have permission to edit this tournament.', 'danger')
         return redirect(url_for('tournament.view', tournament_id=tournament_id))
     
     form = TournamentSettingsForm()
@@ -288,6 +300,8 @@ def tournament_settings(tournament_id):
         form=form
     )
 
+from admin_share_links import validate_share_link
+
 @tournament_bp.route('/<int:tournament_id>')
 @login_required
 def view(tournament_id):
@@ -305,11 +319,20 @@ def view(tournament_id):
         if not isinstance(tournament, dict):
             tournament = dict(tournament)
             
-        # Check if user is the creator of the tournament
+        # Check if user is the creator of the tournament or has a valid share link
         creator_id = tournament.get('creator_id')
         user_id = session.get('user_id')
         
-        if creator_id != user_id:
+        # Check for valid share token in the URL
+        token = request.args.get('token')
+        has_valid_share_link = False
+        
+        if token:
+            is_valid, _ = validate_share_link(token, tournament_id)
+            if is_valid:
+                has_valid_share_link = True
+        
+        if creator_id != user_id and not has_valid_share_link:
             flash('You do not have permission to view this tournament.', 'danger')
             return redirect(url_for('tournament.index'))
             
