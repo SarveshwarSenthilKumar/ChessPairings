@@ -2,9 +2,162 @@
 
 {% block title %}Create Account - Chess Tournament Manager{% endblock %}
 
+{% block extra_css %}
+<style>
+    .signup-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 0;
+    }
+    
+    .signup-card {
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .theme-toggle-container {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1000;
+    }
+    
+    .theme-toggle-btn {
+        background: var(--bs-gray-200);
+        border: none;
+        color: var(--bs-body-color);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+    
+    [data-bs-theme="dark"] .theme-toggle-btn {
+        background: var(--bs-gray-800);
+        color: var(--bs-light);
+    }
+    
+    .theme-toggle-btn:hover {
+        background: var(--bs-gray-300);
+    }
+    
+    [data-bs-theme="dark"] .theme-toggle-btn:hover {
+        background: var(--bs-gray-700);
+    }
+    
+    body {
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    
+    .card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .card-header {
+        border-radius: 1rem 1rem 0 0 !important;
+        background: linear-gradient(135deg, #198754, #157347);
+        border: none;
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #198754, #157347);
+        border: none;
+        padding: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .btn-success:hover {
+        background: linear-gradient(135deg, #157347, #13653f);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(25, 135, 84, 0.3);
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+    
+    .form-floating>label {
+        padding: 1rem 0.75rem;
+    }
+    
+    .form-text {
+        font-size: 0.875rem;
+    }
+    
+    .text-muted {
+        color: #6c757d !important;
+    }
+    
+    [data-bs-theme="dark"] .text-muted {
+        color: #adb5bd !important;
+    }
+    
+    /* Password strength indicator */
+    #passwordStrength {
+        height: 4px;
+        border-radius: 2px;
+        margin-top: 0.25rem;
+        transition: all 0.3s ease;
+    }
+    
+    .strength-0 { width: 20%; background-color: #dc3545; }
+    .strength-1 { width: 40%; background-color: #fd7e14; }
+    .strength-2 { width: 60%; background-color: #ffc107; }
+    .strength-3 { width: 80%; background-color: #0dcaf0; }
+    .strength-4 { width: 100%; background-color: #198754; }
+    
+    .password-requirements {
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+    }
+    
+    .requirement {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+    
+    .requirement i {
+        margin-right: 0.5rem;
+        font-size: 0.7rem;
+    }
+    
+    .requirement.valid {
+        color: #198754;
+    }
+    
+    .requirement.invalid {
+        color: #dc3545;
+    }
+    
+    [data-bs-theme="dark"] .requirement.valid {
+        color: #20c997;
+    }
+    
+    [data-bs-theme="dark"] .requirement.invalid {
+        color: #ff6b6b;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
+<div class="theme-toggle-container">
+    <button class="theme-toggle-btn" id="theme-toggle">
+        <i id="theme-icon" class="bi bi-moon-fill"></i>
+        <span id="theme-text">Dark Mode</span>
+    </button>
+</div>
+
 <div class="container">
-    <div class="row justify-content-center">
+    <div class="row justify-content-center signup-container">
         <div class="col-md-8 col-lg-6">
             <div class="card shadow-lg border-0 rounded-lg mt-5">
                 <div class="card-header bg-success text-white text-center py-4">
@@ -90,6 +243,10 @@
         </div>
     </div>
 </div>
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+{% endblock %}
 {% endblock %}
 
 {% block extra_css %}

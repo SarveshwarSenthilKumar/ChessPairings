@@ -1,0 +1,138 @@
+/* Base styles that apply to both themes */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Card styling */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Form elements */
+.form-control, .form-select {
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Buttons */
+.btn {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Tables */
+.table {
+    --bs-table-bg: transparent;
+}
+
+/* Navigation */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+}
+
+/* Theme-specific overrides */
+[data-bs-theme="dark"] {
+    /* Dark theme specific styles */
+    .bg-light {
+        background-color: var(--bs-gray-800) !important;
+    }
+    
+    .bg-white {
+        background-color: var(--bs-gray-900) !important;
+    }
+    
+    .text-dark {
+        color: var(--bs-gray-100) !important;
+    }
+    
+    .border {
+        border-color: var(--bs-gray-700) !important;
+    }
+    
+    .table {
+        --bs-table-striped-bg: rgba(255, 255, 255, 0.05);
+        --bs-table-hover-bg: rgba(255, 255, 255, 0.075);
+    }
+    
+    .form-control, .form-select {
+        background-color: var(--bs-gray-800);
+        border-color: var(--bs-gray-700);
+        color: var(--bs-light);
+    }
+    
+    .form-control:focus, .form-select:focus {
+        background-color: var(--bs-gray-800);
+        color: var(--bs-light);
+    }
+    
+    .dropdown-menu {
+        background-color: var(--bs-gray-900);
+        border-color: var(--bs-gray-700);
+    }
+    
+    .dropdown-item {
+        color: var(--bs-light);
+    }
+    
+    .dropdown-item:hover {
+        background-color: var(--bs-gray-800);
+        color: var(--bs-light);
+    }
+    
+    .modal-content {
+        background-color: var(--bs-gray-900);
+        border-color: var(--bs-gray-700);
+    }
+    
+    .modal-header {
+        border-bottom-color: var(--bs-gray-700);
+    }
+    
+    .modal-footer {
+        border-top-color: var(--bs-gray-700);
+    }
+    
+    .list-group-item {
+        background-color: var(--bs-gray-900);
+        border-color: var(--bs-gray-700);
+        color: var(--bs-light);
+    }
+    
+    .text-muted {
+        color: #adb5bd !important;
+    }
+}
+
+/* Light theme specific overrides */
+[data-bs-theme="light"] {
+    .card {
+        background-color: #ffffff;
+    }
+    
+    .table {
+        --bs-table-striped-bg: rgba(0, 0, 0, 0.02);
+        --bs-table-hover-bg: rgba(0, 0, 0, 0.05);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: 1rem;
+    }
+}

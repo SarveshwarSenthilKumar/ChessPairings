@@ -1,0 +1,527 @@
+/* ===== Tournament View Styles ===== */
+:root {
+    /* Light theme colors */
+    --card-bg: #ffffff;
+    --card-header-bg: #f8f9fa;
+    --card-border: rgba(0, 0, 0, 0.125);
+    --text-color: #212529;
+    --text-muted: #6c757d;
+    --link-color: #0d6efd;
+    --link-hover-color: #0a58ca;
+    --table-bg: #ffffff;
+    --table-striped-bg: rgba(0, 0, 0, 0.02);
+    --table-hover-bg: rgba(0, 0, 0, 0.075);
+    --table-border-color: #dee2e6;
+    --input-bg: #ffffff;
+    --input-border: #ced4da;
+    --input-color: #212529;
+    --player-removed-bg: #fff0f0;
+    --player-removed-border: #dc3545;
+    --dropdown-bg: #ffffff;
+    --dropdown-link-color: #212529;
+    --dropdown-link-hover-bg: #f8f9fa;
+    --dropdown-link-hover-color: #1e2125;
+    --modal-content-bg: #ffffff;
+    --modal-header-border-color: #dee2e6;
+}
+
+[data-bs-theme="dark"] {
+    /* Dark theme colors */
+    --card-bg: #2d2d2d;
+    --card-header-bg: #343a40;
+    --card-border: #444;
+    --text-color: #f8f9fa;
+    --text-muted: #adb5bd;
+    --link-color: #6ea8fe;
+    --link-hover-color: #8bb9fe;
+    --table-bg: #2d2d2d;
+    --table-striped-bg: rgba(255, 255, 255, 0.05);
+    --table-hover-bg: rgba(255, 255, 255, 0.1);
+    --table-border-color: #444;
+    --input-bg: #343a40;
+    --input-border: #495057;
+    --input-color: #f8f9fa;
+    --player-removed-bg: #3a1f1f;
+    --player-removed-border: #dc3545;
+    --dropdown-bg: #343a40;
+    --dropdown-link-color: #f8f9fa;
+    --dropdown-link-hover-bg: #424649;
+    --dropdown-link-hover-color: #ffffff;
+    --modal-content-bg: #343a40;
+    --modal-header-border-color: #495057;
+}
+
+/* Base card styling */
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    background-color: var(--card-header-bg);
+    color: var(--text-color);
+    border-bottom: 1px solid var(--card-border);
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
+}
+
+/* Table styling */
+.table {
+    --bs-table-bg: var(--table-bg);
+    --bs-table-striped-bg: var(--table-striped-bg);
+    --bs-table-hover-bg: var(--table-hover-bg);
+    --bs-table-border-color: var(--table-border-color);
+    --bs-table-striped-color: var(--text-color);
+    --bs-table-hover-color: var(--text-color);
+    color: var(--text-color);
+    margin-bottom: 0;
+}
+
+.table th {
+    font-weight: 600;
+    background-color: var(--card-header-bg);
+    border-bottom: 2px solid var(--table-border-color);
+    color: var(--text-color);
+}
+
+/* Links */
+a {
+    color: var(--link-color);
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
+}
+
+a:hover {
+    color: var(--link-hover-color);
+    text-decoration: underline;
+}
+
+/* Form controls */
+.form-control, .form-select {
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--input-color);
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--input-bg);
+    color: var(--input-color);
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Dropdowns */
+.dropdown-menu {
+    background-color: var(--dropdown-bg);
+    border-color: var(--card-border);
+}
+
+.dropdown-item {
+    color: var(--dropdown-link-color);
+}
+
+.dropdown-item:hover, .dropdown-item:focus {
+    background-color: var(--dropdown-link-hover-bg);
+    color: var(--dropdown-link-hover-color);
+}
+
+/* Modals */
+.modal-content {
+    background-color: var(--modal-content-bg);
+    color: var(--text-color);
+    border-color: var(--card-border);
+}
+
+.modal-header {
+    border-bottom-color: var(--modal-header-border-color);
+}
+
+.modal-footer {
+    border-top-color: var(--modal-header-border-color);
+}
+
+/* Player removed styling */
+.player-removed {
+    background-color: var(--player-removed-bg) !important;
+    position: relative;
+}
+
+.player-removed::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--player-removed-border);
+}
+
+.player-removed .player-name {
+    position: relative;
+    padding-left: 10px;
+}
+
+/* Status badges */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Print styles */
+@media print {
+    @page {
+        size: A4;
+        margin: 1.5cm 1cm;
+    }
+    
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: white;
+        font-family: Arial, sans-serif;
+        font-size: 10pt;
+        color: #000;
+    }
+    
+    body > *:not(.print-section) {
+        display: none !important;
+    }
+    
+    .print-section {
+        display: block !important;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+    }
+    
+    .print-header {
+        text-align: center;
+        margin: 0 0 10px 0;
+        padding-bottom: 5px;
+        border-bottom: 2px solid #000;
+        page-break-after: avoid;
+    }
+    
+    .print-header h2 {
+        font-size: 18pt;
+        margin: 0 0 5px 0;
+        line-height: 1.2;
+        color: #000;
+    }
+    
+    .print-header p {
+        margin: 2px 0;
+        font-size: 10pt;
+    }
+    
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 9pt;
+        page-break-inside: avoid;
+    }
+    
+    .print-table th,
+    .print-table td {
+        border: 1px solid #000;
+        padding: 4px 6px;
+        text-align: left;
+    }
+    
+    .print-table th {
+        background-color: #f0f0f0;
+        font-weight: bold;
+        text-align: center;
+        white-space: nowrap;
+    }
+    
+    .print-table td {
+        vertical-align: middle;
+    }
+    
+    .tournament-info {
+        margin: 10px 0;
+        font-size: 10pt;
+    }
+    
+    .tournament-info p {
+        margin: 4px 0;
+    }
+    
+    .print-section h3 {
+        font-size: 12pt;
+        margin: 15px 0 8px 0;
+        padding-bottom: 3px;
+        border-bottom: 1px solid #000;
+        page-break-after: avoid;
+    }
+    
+    .print-footer {
+        position: fixed;
+        bottom: 0;
+        left: 1cm;
+        right: 1cm;
+        text-align: center;
+        padding: 5px 0;
+        background: white;
+        border-top: 1px solid #000;
+        font-size: 8pt;
+        color: #666;
+    }
+    
+    /* Ensure proper page breaks */
+    .page-break {
+        page-break-before: always;
+    }
+    
+    /* Hide print button in print view */
+    .no-print {
+        display: none !important;
+    }
+}
+
+/* Player removed styles */
+.player-removed {
+    background-color: var(--bs-danger-bg-subtle) !important;
+    position: relative;
+}
+
+.player-removed::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--bs-danger);
+}
+
+.player-removed .player-name {
+    position: relative;
+    padding-left: 10px;
+}
+
+/* Tournament header */
+.tournament-header {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Card styles */
+.card {
+    border: 1px solid var(--card-border);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+}
+
+.card-header {
+    background-color: var(--card-header-bg);
+    border-bottom: 1px solid var(--card-border);
+    font-weight: 600;
+}
+
+/* Table styles */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: var(--table-header-bg);
+    border-bottom: 2px solid var(--table-border);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--table-hover-bg);
+}
+
+/* Status badges */
+.badge {
+    font-weight: 500;
+    padding: 0.4em 0.7em;
+}
+
+/* Action buttons */
+.btn-action {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+/* Dark mode specific overrides */
+[data-bs-theme="dark"] .card {
+    background-color: var(--card-bg);
+}
+
+[data-bs-theme="dark"] .table {
+    --bs-table-bg: transparent;
+    --bs-table-striped-bg: var(--table-striped-bg);
+    --bs-table-hover-bg: var(--table-hover-bg);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .btn-action {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+    }
+    
+    .card-header h5 {
+        font-size: 1rem;
+    }
+}
+
+/* Tournament status indicators */
+.status-upcoming {
+    background-color: var(--bs-info-bg-subtle);
+    color: var(--bs-info-text);
+}
+
+.status-in-progress {
+    background-color: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary-text);
+}
+
+.status-completed {
+    background-color: var(--bs-success-bg-subtle);
+    color: var(--bs-success-text);
+}
+
+/* Round status indicators */
+.round-status-pending {
+    color: var(--bs-warning);
+}
+
+.round-status-in-progress {
+    color: var(--bs-primary);
+}
+
+.round-status-completed {
+    color: var(--bs-success);
+}
+
+/* Pairing result indicators */
+.result-win {
+    color: var(--bs-success);
+    font-weight: bold;
+}
+
+.result-loss {
+    color: var(--bs-danger);
+}
+
+.result-draw {
+    color: var(--bs-warning);
+}
+
+/* Standings table */
+.standings-table .rank-1 {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+}
+
+.standings-table .rank-2 {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+}
+
+.standings-table .rank-3 {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+/* Player pairing colors */
+.white-pieces {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.black-pieces {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Loading state */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+}
+
+/* Responsive tables */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Custom scrollbar for tables */
+.table-scrollable {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Form controls */
+.form-control:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Custom checkboxes */
+.form-check-input:checked {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+/* Tooltip customizations */
+.tooltip {
+    pointer-events: none;
+}
+
+/* Custom modal styles */
+.modal-header {
+    background-color: var(--card-header-bg);
+    border-bottom: 1px solid var(--card-border);
+}
+
+.modal-footer {
+    background-color: var(--card-bg);
+    border-top: 1px solid var(--card-border);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bs-light);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bs-secondary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-primary);
+}
