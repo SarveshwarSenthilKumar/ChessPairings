@@ -152,10 +152,34 @@ def index():
     try:
         db = get_db()
         user_id = session.get('user_id')
-        tournaments = db.get_tournaments_by_creator(user_id) if user_id else []
-        return render_template('tournament/index.html', tournaments=tournaments)
+
+        tournaments = []
+        
+        # Get tournaments created by the user
+        if user_id:
+            tournaments = db.get_tournaments_by_creator(user_id)
+            
+        # Get tournaments accessed via share links
+        share_link_tournaments = []
+        for key in session.keys():
+            if key.startswith('share_link_') and session[key]:
+                try:
+                    tournament_id = int(key.split('_')[-1])
+                    tournament = db.get_tournament(tournament_id)
+                    if tournament and not any(t['id'] == tournament_id for t in tournaments):
+                        tournament['via_share_link'] = True
+                        share_link_tournaments.append(tournament)
+                except (ValueError, IndexError):
+                    continue
+        
+        # Combine both lists
+        all_tournaments = tournaments + share_link_tournaments
+        
+        return render_template('tournament/index.html', tournaments=all_tournaments)
     except Exception as e:
         print(f"Error retrieving tournaments: {e}")
+        import traceback
+        traceback.print_exc()
         flash('An error occurred while retrieving your tournaments.', 'error')
         return render_template('tournament/index.html', tournaments=[])
 
