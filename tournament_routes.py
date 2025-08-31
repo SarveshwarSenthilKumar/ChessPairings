@@ -144,6 +144,30 @@ def player_history(tournament_id, player_id):
     
     return jsonify(response)
 
+@tournament_bp.route('/<int:tournament_id>/hide', methods=['POST'])
+@login_required
+def hide_tournament(tournament_id):
+    """Hide a tournament from the user's view."""
+    try:
+        # Remove the share link from the session
+        share_link_key = f'share_link_{tournament_id}'
+        if share_link_key in session:
+            del session[share_link_key]
+            session.modified = True
+            
+            # Also remove any associated share link data
+            share_data_key = f'share_link_data_{tournament_id}'
+            if share_data_key in session:
+                del session[share_data_key]
+                
+            return jsonify({'success': True})
+        
+        return jsonify({'success': False, 'message': 'Tournament not found in your shared links'}), 404
+        
+    except Exception as e:
+        print(f"Error hiding tournament: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while hiding the tournament'}), 500
+
 # Tournament routes
 @tournament_bp.route('/')
 @login_required
