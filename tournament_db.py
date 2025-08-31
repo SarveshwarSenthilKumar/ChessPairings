@@ -1822,25 +1822,31 @@ class TournamentDB:
                 return False
                 
             # Delete all related data in the correct order to maintain referential integrity
-            # 1. Delete pairings
+            # 1. Delete manual byes
+            self.cursor.execute(
+                "DELETE FROM manual_byes WHERE tournament_id = ?",
+                (tournament_id,)
+            )
+            
+            # 2. Delete pairings
             self.cursor.execute("""
                 DELETE FROM pairings 
                 WHERE round_id IN (SELECT id FROM rounds WHERE tournament_id = ?)
             """, (tournament_id,))
             
-            # 2. Delete rounds
+            # 3. Delete rounds
             self.cursor.execute(
                 "DELETE FROM rounds WHERE tournament_id = ?",
                 (tournament_id,)
             )
             
-            # 3. Delete tournament players
+            # 4. Delete tournament players
             self.cursor.execute(
                 "DELETE FROM tournament_players WHERE tournament_id = ?",
                 (tournament_id,)
             )
             
-            # 4. Finally delete the tournament
+            # 5. Finally delete the tournament
             self.cursor.execute(
                 "DELETE FROM tournaments WHERE id = ?",
                 (tournament_id,)
