@@ -350,15 +350,26 @@ def view(tournament_id):
         creator_id = tournament.get('creator_id')
         user_id = session.get('user_id')
         
-        # Check for valid share token in the URL
+        # Check for valid share token in the URL or session
         token = request.args.get('token')
         has_valid_share_link = False
         
+        # Check URL token first
         if token:
+            is_valid, _ = validate_share_link(token, tournament_id)
+            if is_valid:
+                # Store the token in session for future requests
+                session[f'share_link_{tournament_id}'] = token
+                session.permanent = True
+                has_valid_share_link = True
+        # Check session for existing token
+        elif f'share_link_{tournament_id}' in session:
+            token = session[f'share_link_{tournament_id}']
             is_valid, _ = validate_share_link(token, tournament_id)
             if is_valid:
                 has_valid_share_link = True
         
+        # Check if user is creator or has valid share link
         if creator_id != user_id and not has_valid_share_link:
             flash('You do not have permission to view this tournament.', 'danger')
             return redirect(url_for('tournament.index'))

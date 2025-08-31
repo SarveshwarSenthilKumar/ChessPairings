@@ -4,8 +4,16 @@
 
 {% block extra_css %}
 <style>
-    .signup-container {
+    body {
+        background-color: #f8f9fa;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e9ecef' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .signup-container {
+        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -34,7 +42,7 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
     }
     
     [data-bs-theme="dark"] .theme-toggle-btn {
@@ -50,54 +58,93 @@
         background: var(--bs-gray-700);
     }
     
-    body {
-        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    [data-bs-theme="dark"] body {
+        background-color: #1a1a1a;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23333' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
     }
     
     .card {
         border: none;
         border-radius: 1rem;
+        overflow: hidden;
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     }
     
     .card-header {
-        border-radius: 1rem 1rem 0 0 !important;
+        border-radius: 0 !important;
         background: linear-gradient(135deg, #198754, #157347);
         border: none;
-    }
-    
-    .btn-success {
-        background: linear-gradient(135deg, #198754, #157347);
-        border: none;
-        padding: 0.75rem;
-        font-weight: 500;
-    }
-    
-    .btn-success:hover {
-        background: linear-gradient(135deg, #157347, #13653f);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 15px rgba(25, 135, 84, 0.3);
-    }
-    
-    .form-control:focus, .form-select:focus {
-        border-color: #86b7fe;
-        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+        padding: 1.5rem;
     }
     
     .form-floating>label {
         padding: 1rem 0.75rem;
     }
     
-    .form-text {
+    .form-control:focus, .form-select:focus {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+    
+    .btn {
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #198754, #157347);
+        border: none;
+        padding: 0.75rem;
+    }
+    
+    .btn-success:hover {
+        background: linear-gradient(135deg, #157347, #146c43);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(25, 135, 84, 0.3);
+    }
+    
+    .divider {
+        position: relative;
+        text-align: center;
+        margin: 2rem 0;
+    }
+    
+    .divider:before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: #e9ecef;
+        z-index: -1;
+    }
+    
+    .divider span {
+        position: relative;
+        display: inline-block;
         font-size: 0.875rem;
+        background: var(--bs-body-bg);
+        padding: 0 1rem;
     }
     
-    .text-muted {
-        color: #6c757d !important;
+    [data-bs-theme="dark"] .form-control, 
+    [data-bs-theme="dark"] .form-select {
+        background-color: #2d2d2d;
+        border-color: #404040;
+        color: #e0e0e0;
     }
     
-    [data-bs-theme="dark"] .text-muted {
-        color: #adb5bd !important;
+    [data-bs-theme="dark"] .form-control:focus, 
+    [data-bs-theme="dark"] .form-select:focus {
+        background-color: #2d2d2d;
+        color: #e0e0e0;
+    }
+    
+    [data-bs-theme="dark"] .card {
+        background-color: #2d2d2d;
+        border-color: #404040;
     }
     
     /* Password strength indicator */
@@ -243,86 +290,10 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
-{% endblock %}
-{% endblock %}
-
-{% block extra_css %}
-<style>
-    body {
-        background-color: #f8f9fa;
-        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e9ecef' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-    .card {
-        border: none;
-        border-radius: 1rem;
-        overflow: hidden;
-    }
-    .card-header {
-        border-radius: 0 !important;
-    }
-    .form-floating>label {
-        padding: 1rem 0.75rem;
-    }
-    .form-control:focus {
-        border-color: #198754;
-        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
-    }
-    .divider {
-        position: relative;
-        text-align: center;
-        margin: 2rem 0;
-    }
-    .divider:before {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background-color: #e9ecef;
-        z-index: -1;
-    }
-    .divider span {
-        position: relative;
-        display: inline-block;
-        font-size: 0.875rem;
-    }
-    .btn {
-        font-weight: 500;
-        letter-spacing: 0.5px;
-        transition: all 0.3s ease;
-    }
-    .btn-success {
-        background: linear-gradient(45deg, #198754, #157347);
-        border: none;
-    }
-    .btn-success:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(25, 135, 84, 0.3);
-    }
-    .btn-outline-success:hover {
-        background-color: rgba(25, 135, 84, 0.1);
-    }
-    .btn-outline-dark:hover {
-        background-color: rgba(33, 37, 41, 0.1);
-    }
-    #passwordStrength {
-        height: 4px;
-        margin-top: 5px;
-        transition: all 0.3s ease;
-    }
-    .strength-0 { width: 20%; background-color: #dc3545; }
-    .strength-1 { width: 40%; background-color: #fd7e14; }
-    .strength-2 { width: 60%; background-color: #ffc107; }
-    .strength-3 { width: 80%; background-color: #0dcaf0; }
-    .strength-4 { width: 100%; background-color: #198754; }
-</style>
-{% endblock %}
-
-{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Password strength indicator
@@ -333,44 +304,102 @@ document.addEventListener('DOMContentLoaded', function() {
     passwordStrength.className = 'strength-0 rounded-pill';
     passwordInput.parentNode.insertBefore(passwordStrength, passwordInput.nextSibling);
 
-    passwordInput.addEventListener('input', function() {
-        const strength = checkPasswordStrength(this.value);
-        passwordStrength.className = 'strength-' + strength + ' rounded-pill';
+    // Password requirements
+    const requirements = {
+        length: document.getElementById('req-length'),
+        lowercase: document.getElementById('req-lowercase'),
+        uppercase: document.getElementById('req-uppercase'),
+        number: document.getElementById('req-number'),
+        special: document.getElementById('req-special')
+    };
+
+    // Check if password meets requirements
+    function checkPasswordRequirements(password) {
+        const hasMinLength = password.length >= 8;
+        const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+        return {
+            hasMinLength,
+            hasLowercase,
+            hasUppercase,
+            hasNumber,
+            hasSpecial,
+            isValid: hasMinLength && hasLowercase && hasUppercase && hasNumber && hasSpecial
+        };
+    }
+
+    // Update password strength indicator
+    function updatePasswordStrength(password) {
+        const { hasMinLength, hasLowercase, hasUppercase, hasNumber, hasSpecial } = checkPasswordRequirements(password);
+        let strength = 0;
+
+        if (hasMinLength) strength++;
+        if (hasLowercase) strength++;
+        if (hasUppercase) strength++;
+        if (hasNumber) strength++;
+        if (hasSpecial) strength++;
+
+        // Update strength indicator
+        passwordStrength.className = `strength-${strength - 1} rounded-pill`;
         
-        // Check if passwords match
-        if (confirmPasswordInput.value) {
-            validatePasswordMatch();
-        }
-    });
+        // Update requirement indicators
+        requirements.length.className = `requirement ${hasMinLength ? 'valid' : 'invalid'}`;
+        requirements.lowercase.className = `requirement ${hasLowercase ? 'valid' : 'invalid'}`;
+        requirements.uppercase.className = `requirement ${hasUppercase ? 'valid' : 'invalid'}`;
+        requirements.number.className = `requirement ${hasNumber ? 'valid' : 'invalid'}`;
+        requirements.special.className = `requirement ${hasSpecial ? 'valid' : 'invalid'}`;
 
-    // Password confirmation validation
-    confirmPasswordInput.addEventListener('input', validatePasswordMatch);
+        return strength >= 3; // At least 3 requirements met
+    }
 
+    // Validate password match
     function validatePasswordMatch() {
-        if (passwordInput.value !== confirmPasswordInput.value) {
-            confirmPasswordInput.setCustomValidity('Passwords do not match');
-        } else {
-            confirmPasswordInput.setCustomValidity('');
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        if (password && confirmPassword) {
+            if (password !== confirmPassword) {
+                confirmPasswordInput.setCustomValidity("Passwords don't match");
+            } else {
+                confirmPasswordInput.setCustomValidity('');
+            }
         }
     }
 
+    // Check password strength
     function checkPasswordStrength(password) {
         let strength = 0;
         
-        // Check length
+        // Length check
         if (password.length >= 8) strength++;
         
-        // Check for numbers
-        if (password.match(/([0-9])/)) strength++;
+        // Contains lowercase
+        if (/[a-z]/.test(password)) strength++;
         
-        // Check for special chars
-        if (password.match(/([!,%,&,@,#,$,^,*,?,_,~])/)) strength++;
+        // Contains uppercase
+        if (/[A-Z]/.test(password)) strength++;
         
-        // Check for both lower and upper case
-        if (password.match(/([a-z].*[A-Z])|([A-Z].*[a-z])/)) strength++;
+        // Contains number
+        if (/[0-9]/.test(password)) strength++;
         
-        return Math.min(strength, 4); // Cap at 4 for the CSS classes
+        // Contains special character
+        if (/[^A-Za-z0-9]/.test(password)) strength++;
+        
+        return strength;
     }
+
+    // Event listeners
+    passwordInput.addEventListener('input', function() {
+        const strength = checkPasswordStrength(this.value);
+        passwordStrength.className = `strength-${Math.min(strength - 1, 4)} rounded-pill`;
+        updatePasswordStrength(this.value);
+        validatePasswordMatch();
+    });
+
+    confirmPasswordInput.addEventListener('input', validatePasswordMatch);
 
     // Form submission with validation
     const form = document.getElementById('signupForm');
