@@ -1,5 +1,7 @@
 fix podium and pairings results buttons for dark mode
 
+fix add rounds button, fix delete button after completed
+
 add a hide tournament button for every tournament
 
 add filter and sorting functions for tournament page

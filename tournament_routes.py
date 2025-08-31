@@ -1182,7 +1182,7 @@ def rounds(tournament_id):
             return redirect(url_for('tournament.index'))
         
         # Handle adding more rounds
-        if request.method == 'POST' and 'add_rounds' in request.form:
+        if request.method == 'POST':
             try:
                 additional_rounds = int(request.form.get('additional_rounds', 1))
                 max_additional_rounds = 10  # Maximum number of rounds that can be added at once
