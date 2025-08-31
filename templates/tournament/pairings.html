@@ -4,6 +4,53 @@
 
 {% block extra_css %}
 <style>
+    /* Dark mode styles */
+    [data-bs-theme='dark'] .modal-content {
+        background-color: #2d2d2d;
+        border: 1px solid #444;
+    }
+    
+    [data-bs-theme='dark'] .modal-body {
+        background-color: #2d2d2d;
+    }
+    
+    [data-bs-theme='dark'] .btn-outline-primary {
+        color: #7ab4ff;
+        border-color: #7ab4ff;
+    }
+    
+    [data-bs-theme='dark'] .btn-outline-primary:hover {
+        background-color: rgba(122, 180, 255, 0.1);
+    }
+    
+    [data-bs-theme='dark'] .btn-outline-dark {
+        color: #a1a1a1;
+        border-color: #555;
+    }
+    
+    [data-bs-theme='dark'] .btn-outline-dark:hover {
+        background-color: rgba(161, 161, 161, 0.1);
+    }
+    
+    [data-bs-theme='dark'] .btn-outline-secondary {
+        color: #a1a1a1;
+        border-color: #555;
+    }
+    
+    [data-bs-theme='dark'] .btn-outline-secondary:hover {
+        background-color: rgba(161, 161, 161, 0.1);
+    }
+    
+    /* Hover effects for record buttons */
+    .record-btn {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .record-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
     @media print {
         body * {
             visibility: hidden;
@@ -220,15 +267,15 @@
                             </td>
                             <td class="text-end">
                                 {% if pairing.black_player_id is not none %}
-                                <button type="button" class="btn btn-sm btn-outline-primary" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#recordResultModal"
-                                    data-pairing-id="{{ pairing.id }}"
-                                    data-white-name="{{ pairing.white_name }}"
-                                    data-black-name="{{ pairing.black_name }}"
-                                    data-result="{{ pairing.result or '' }}">
-                                    <i class="fas fa-pen"></i> Record
-                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary record-btn" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#recordResultModal"
+                            data-pairing-id="{{ pairing.id }}"
+                            data-white-name="{{ pairing.white_name }}"
+                            data-black-name="{{ pairing.black_name }}"
+                            data-result="{{ pairing.result or '' }}">
+                            <i class="fas fa-pen"></i> Record
+                        </button>
                                 {% else %}
                                 <span class="text-muted small">Auto-recorded</span>
                                 {% endif %}
