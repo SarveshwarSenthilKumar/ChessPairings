@@ -12,7 +12,8 @@ from tournament_db import TournamentDB
 import os
 import sqlite3
 from datetime import datetime
-from decorators import check_tournament_active
+from decorators import login_required, tournament_creator_required
+from admin_share_links import share_link_required
 import json
 from typing import Dict, List, Optional, Tuple
 
@@ -148,14 +149,37 @@ def player_history(tournament_id, player_id):
 @tournament_bp.route('/')
 @login_required
 def index():
-    """Show tournaments created by the current user."""
+    """Show tournaments created by the current user or accessed via share links."""
     try:
         db = get_db()
         user_id = session.get('user_id')
-        tournaments = db.get_tournaments_by_creator(user_id) if user_id else []
-        return render_template('tournament/index.html', tournaments=tournaments)
+        tournaments = []
+        
+        # Get tournaments created by the user
+        if user_id:
+            tournaments = db.get_tournaments_by_creator(user_id)
+            
+        # Get tournaments accessed via share links
+        share_link_tournaments = []
+        for key in session.keys():
+            if key.startswith('share_link_') and session[key]:
+                try:
+                    tournament_id = int(key.split('_')[-1])
+                    tournament = db.get_tournament(tournament_id)
+                    if tournament and not any(t['id'] == tournament_id for t in tournaments):
+                        tournament['via_share_link'] = True
+                        share_link_tournaments.append(tournament)
+                except (ValueError, IndexError):
+                    continue
+        
+        # Combine both lists
+        all_tournaments = tournaments + share_link_tournaments
+        
+        return render_template('tournament/index.html', tournaments=all_tournaments)
     except Exception as e:
         print(f"Error retrieving tournaments: {e}")
+        import traceback
+        traceback.print_exc()
         flash('An error occurred while retrieving your tournaments.', 'error')
         return render_template('tournament/index.html', tournaments=[])
 
@@ -206,6 +230,8 @@ def create():
 
 @tournament_bp.route('/<int:tournament_id>/settings', methods=['GET', 'POST'])
 @login_required
+@share_link_required('can_edit_settings')
+@tournament_creator_required
 def tournament_settings(tournament_id):
     """Edit tournament settings."""
     db = get_db()
@@ -304,6 +330,7 @@ from admin_share_links import validate_share_link
 
 @tournament_bp.route('/<int:tournament_id>')
 @login_required
+@share_link_required()
 def view(tournament_id):
     """View tournament details."""
     try:
@@ -368,6 +395,7 @@ def view(tournament_id):
 
 @tournament_bp.route('/<int:tournament_id>/players/<int:player_id>/edit', methods=['GET', 'POST'])
 @login_required
+@share_link_required('can_manage_players')
 def edit_player(tournament_id, player_id):
     """Edit a player's details."""
     db = get_db()
@@ -402,7 +430,7 @@ def edit_player(tournament_id, player_id):
 
 @tournament_bp.route('/<int:tournament_id>/players', methods=['GET', 'POST'])
 @login_required
-@check_tournament_active
+@share_link_required('can_manage_players')
 def manage_players(tournament_id):
     """Manage tournament players."""
     db = get_db()
@@ -531,7 +559,8 @@ class ByeForm(FlaskForm):
 
 @tournament_bp.route('/<int:tournament_id>/byes', methods=['GET', 'POST'])
 @login_required
-@check_tournament_active
+@share_link_required('can_manage_byes')
+@tournament_creator_required
 def manage_byes(tournament_id):
     """Manage byes for a tournament."""
     try:
@@ -742,7 +771,8 @@ def remove_bye(tournament_id, bye_id):
 
 @tournament_bp.route('/<int:tournament_id>/pairings', methods=['GET', 'POST'])
 @login_required
-@check_tournament_active
+@share_link_required('can_view_pairings')
+@tournament_creator_required
 def manage_pairings(tournament_id):
     """Manage tournament pairings."""
     db = get_db()
@@ -842,68 +872,6 @@ def manage_pairings(tournament_id):
         return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
     
     # Ensure pairings are loaded for the current round
-    pairings = []
-    if current_round:
-        pairings = db.get_pairings(current_round.get('id'))
-        
-    # Handle round completion and next round generation
-    elif (request.args.get('generate_next') == 'True' or request.args.get('complete_round') == 'True') and current_round:
-        # If completing the current round, verify all results are in
-        if request.args.get('complete_round') == 'True':
-            all_results_in = all(p.get('result') for p in pairings if p.get('black_player_id') is not None)
-            if not all_results_in:
-                flash('Cannot complete round: not all results have been recorded.', 'warning')
-                return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
-            
-            # Mark current round as completed
-            db.complete_round(current_round['id'])
-            flash(f'Round {current_round["round_number"]} has been completed successfully!', 'success')
-            
-            # If this was the last round, redirect to standings
-            if current_round['round_number'] >= tournament.rounds:
-                flash('Tournament has been completed!', 'success')
-                return redirect(url_for('tournament.standings', tournament_id=tournament_id))
-            
-            # If not the last round, proceed to generate next round
-            next_round_num = current_round['round_number'] + 1
-        else:
-            # For direct next round generation (backward compatibility)
-            next_round_num = current_round['round_number'] + 1
-        
-        # Create new round if we haven't reached the maximum
-        if next_round_num > tournament.rounds:
-            flash('Tournament has reached the maximum number of rounds.', 'warning')
-            return redirect(url_for('tournament.standings', tournament_id=tournament_id))
-            
-        # Create new round
-        db.start_round(tournament_id, next_round_num)
-        current_round = db.get_current_round(tournament_id)
-        
-        # Process any bye requests for this round
-        players_needing_byes = db.get_players_with_bye_requests(tournament_id, next_round_num)
-        for player in players_needing_byes:
-            db.create_pairing(current_round['id'], player['player_id'], None, 0)  # Board 0 for byes
-            flash(f'Assigned bye to {player["name"]} for round {next_round_num}', 'info')
-        
-        # Generate pairings for the remaining players using the selected method
-        method = 'swiss'  # Default to Swiss system
-        if hasattr(request, 'form') and request.form.get('pairing_method'):
-            method = request.form.get('pairing_method')
-            
-        success = db.generate_pairings(
-            tournament_id,
-            current_round['id'],
-            method=method
-        )
-        
-        if success:
-            flash(f'Round {next_round_num} has been created and pairings generated!', 'success')
-        else:
-            flash('Failed to generate pairings for the next round.', 'danger')
-            
-        return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
-    
-    # Ensure current_round is properly formatted for the template
     pairings = []
     current_round_obj = None
     
@@ -1045,6 +1013,7 @@ def submit_result(tournament_id, pairing_id):
 
 @tournament_bp.route('/<int:tournament_id>/standings')
 @login_required
+@share_link_required('can_view_standings')
 def standings(tournament_id):
     """View tournament standings."""
     try:
@@ -1119,6 +1088,7 @@ def standings(tournament_id):
 
 @tournament_bp.route('/<int:tournament_id>/rounds', methods=['GET', 'POST'])
 @login_required
+@share_link_required('can_view_rounds')
 def rounds(tournament_id):
     """View and manage all rounds in the tournament."""
     try:
@@ -1179,6 +1149,7 @@ def rounds(tournament_id):
 
 @tournament_bp.route('/round/<int:round_id>')
 @login_required
+@share_link_required('can_manage_rounds')
 def view_round(round_id):
     """View a specific round's pairings."""
     db = get_db()

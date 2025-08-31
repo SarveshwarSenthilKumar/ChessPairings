@@ -164,22 +164,41 @@
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
-                    {% if session.get('name') %}
+                    {% if session.get('name') or g.get('share_link_permissions') %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-1"></i> {{ session.name }}
+                            {% if session.get('name') %}
+                                <i class="fas fa-user-circle me-1"></i> {{ session.name }}
+                            {% else %}
+                                <i class="fas fa-link me-1"></i> Share Link Access
+                            {% endif %}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-user-cog me-2"></i>Profile</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            {% if session.get('name') %}
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-user-cog me-2"></i>Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
                             <li>
                                 <a class="dropdown-item" href="#" id="theme-toggle">
                                     <i id="theme-icon" class="bi bi-moon-fill me-2"></i>
                                     <span id="theme-text">Dark Mode</span>
                                 </a>
                             </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                            {% if g.get('share_link_permissions') %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form action="{{ url_for('auth.logout_share_link', tournament_id=request.view_args.get('tournament_id')) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="dropdown-item">
+                                            <i class="fas fa-unlink me-2"></i>Exit Share Link Access
+                                        </button>
+                                    </form>
+                                </li>
+                            {% endif %}
+                            {% if session.get('name') %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                            {% endif %}
                         </ul>
                     </li>
                     {% else %}

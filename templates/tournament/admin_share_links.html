@@ -38,8 +38,13 @@
         <div class="card-body">
             <form method="POST" action="/tournament/{{ tournament_id }}/admin/share/create">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                
-                
+                <input type="hidden" name="permissions" value="can_edit_settings">
+                <input type="hidden" name="permissions" value="can_manage_players">
+                <input type="hidden" name="permissions" value="can_manage_rounds">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    This share link will grant full administrative access to the tournament, including the ability to edit settings, manage players, and control pairings.
+                </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="expires_days" class="form-label">Link Expires After (days)</label>
