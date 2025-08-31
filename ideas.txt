@@ -1,4 +1,6 @@
-fix podium and pairings results buttons for dark mode
+fix podium and pairings results buttons for dark mode and light mode 
+
+update player stats and widgets to work with new scoring
 
 Add a assign teams and view teams button
 
