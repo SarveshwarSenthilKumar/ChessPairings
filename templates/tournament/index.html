@@ -148,14 +148,25 @@
                 </div>
             </div>
             <div class="card-footer">
-                <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-primary">
-                    View Tournament
-                </a>
-                {% if tournament.status == 'ongoing' %}
-                <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" class="btn btn-sm btn-success ms-2">
-                    Manage Pairings
-                </a>
-                {% endif %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-primary">
+                            View Tournament
+                        </a>
+                        {% if tournament.status == 'ongoing' %}
+                        <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" class="btn btn-sm btn-success ms-2">
+                            Manage Pairings
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% if tournament.via_share_link %}
+                    <button class="btn btn-sm btn-outline-secondary hide-tournament" 
+                            data-tournament-id="{{ tournament.id }}"
+                            title="Hide this tournament">
+                        <i class="fas fa-eye-slash"></i>
+                    </button>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -168,6 +179,48 @@
 <script>
     // Initialize tooltips and search functionality
     document.addEventListener('DOMContentLoaded', function() {
+        // Handle hide tournament button clicks
+        document.querySelectorAll('.hide-tournament').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tournamentId = this.dataset.tournamentId;
+                if (confirm('Are you sure you want to hide this tournament? You can access it again using the original share link.')) {
+                    fetch(`/tournament/${tournamentId}/hide`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token() }}'
+                        },
+                        credentials: 'same-origin'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Remove the tournament card from the DOM
+                            const card = this.closest('.col-12.col-md-6.col-lg-4');
+                            if (card) {
+                                card.style.display = 'none';
+                                
+                                // If no more tournaments are visible, show the empty state
+                                const visibleCards = document.querySelectorAll('.col-12.col-md-6.col-lg-4[style*="display: none"]');
+                                const totalCards = document.querySelectorAll('.col-12.col-md-6.col-lg-4').length;
+                                
+                                if (visibleCards.length === totalCards) {
+                                    window.location.reload(); // Reload to show empty state if needed
+                                }
+                            }
+                        } else {
+                            alert('Failed to hide tournament. Please try again.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while hiding the tournament.');
+                    });
+                }
+            });
+        });
+        
         // Initialize Bootstrap tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         tooltipTriggerList.map(function(tooltipTriggerEl) {
