@@ -39,20 +39,6 @@
             <form method="POST" action="/tournament/{{ tournament_id }}/admin/share/create">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
-                <div class="mb-3">
-                    <label class="form-label">Permissions</label>
-                    <div class="border rounded p-3">
-                        {% for perm_key, perm_desc in available_permissions.items() %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="permissions" value="{{ perm_key }}" id="perm-{{ loop.index }}">
-                            <label class="form-check-label" for="perm-{{ loop.index }}">
-                                {{ perm_desc }}
-                            </label>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <div class="form-text">Select the permissions to grant with this share link.</div>
-                </div>
                 
                 <div class="row mb-3">
                     <div class="col-md-6">
@@ -71,69 +57,6 @@
                     <i class="fas fa-link me-1"></i> Create Share Link
                 </button>
             </form>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Active Share Links</h5>
-        </div>
-        <div class="card-body">
-            {% if not links %}
-                <p class="text-muted">No share links have been created yet.</p>
-            {% else %}
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Created</th>
-                                <th>Permissions</th>
-                                <th>Uses</th>
-                                <th>Expires</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for link in links %}
-                            <tr>
-                                <td>{{ link.created_at|datetimeformat('%b %d, %Y') }}</td>
-                                <td>
-                                    {% if link.permissions_display %}
-                                        <ul class="mb-0 ps-3">
-                                            {% for perm in link.permissions_display %}
-                                                <li>{{ perm }}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        <span class="text-muted">No permissions</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {{ link.use_count }}
-                                    {% if link.max_uses %}/ {{ link.max_uses }}{% endif %}
-                                </td>
-                                <td>
-                                    {% if link.expires_at %}
-                                        {{ link.expires_at|datetimeformat('%b %d, %Y') }}
-                                    {% else %}
-                                        <span class="text-muted">Never</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <form method="POST" action="/tournament/{{ tournament_id }}/admin/share/{{ link.id }}/revoke" class="d-inline">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" 
-                                                onclick="return confirm('Are you sure you want to revoke this share link?')">
-                                            <i class="fas fa-ban"></i> Revoke
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% endif %}
         </div>
     </div>
 </div>
