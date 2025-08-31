@@ -315,30 +315,35 @@ def view(tournament_id):
             flash('Tournament not found.', 'danger')
             return redirect(url_for('tournament.index'))
             
-        # Ensure tournament is a dictionary
-        if not isinstance(tournament, dict):
-            tournament = dict(tournament)
-            
         # Check if user is the creator of the tournament or has a valid share link
         creator_id = tournament.get('creator_id')
         user_id = session.get('user_id')
         
-        # Check for valid share token in the URL
-        token = request.args.get('token')
+        # Check for valid share token in session or URL
+        share_link_key = f'share_link_{tournament_id}'
         has_valid_share_link = False
         
-        if token:
+        # Check session first
+        if share_link_key in session:
+            token = session[share_link_key]
             is_valid, _ = validate_share_link(token, tournament_id)
             if is_valid:
                 has_valid_share_link = True
         
+        # If no valid session, check URL token
+        if not has_valid_share_link:
+            token = request.args.get('token')
+            if token:
+                is_valid, _ = validate_share_link(token, tournament_id)
+                if is_valid:
+                    # Store the token in session for future requests
+                    session[share_link_key] = token
+                    session.permanent = True
+                    has_valid_share_link = True
+        
         if creator_id != user_id and not has_valid_share_link:
             flash('You do not have permission to view this tournament.', 'danger')
             return redirect(url_for('tournament.index'))
-            
-        # Ensure prize_winners exists in tournament
-        if 'prize_winners' not in tournament:
-            tournament['prize_winners'] = 0
             
         # Get current round and its pairings
         current_round = db.get_current_round(tournament_id)

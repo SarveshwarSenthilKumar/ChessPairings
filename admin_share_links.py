@@ -184,42 +184,68 @@ def revoke_share_link(link_id, user_id):
         conn.close()
 
 def share_link_required(permission=None):
-    """Decorator to check for valid share link with required permission."""
+    """Decorator to check for valid share link with required permission.
+    
+    Args:
+        permission (str, optional): Specific permission required to access the route.
+                                  If None, any valid share link will be accepted.
+    
+    Returns:
+        function: Decorated route function with permission checks
+    """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            from flask import session, redirect, url_for, flash
+            from flask import session, redirect, url_for, flash, request, g
             
             # If user is already logged in, use their normal permissions
             if 'user_id' in session:
                 return f(*args, **kwargs)
                 
-            # Check for share token in query params
-            token = request.args.get('token')
-            if not token:
-                flash('Share token is required', 'danger')
-                return redirect(url_for('auth.login'))
-                
-            # Get tournament_id from route
+            # Get tournament_id from route parameters or request args
             tournament_id = kwargs.get('tournament_id')
+            if not tournament_id and 'tournament_id' in request.args:
+                tournament_id = request.args.get('tournament_id')
+                
             if not tournament_id:
                 flash('Invalid tournament', 'danger')
                 return redirect(url_for('tournament.index'))
-                
-            # Validate token
-            is_valid, permissions = validate_share_link(token, tournament_id)
-            if not is_valid:
-                flash('Invalid or expired share link', 'danger')
-                return redirect(url_for('tournament.index'))
-                
-            # Check if specific permission is required
-            if permission and permission not in permissions:
-                flash('You do not have permission to access this page', 'danger')
-                return redirect(url_for('tournament.index'))
-                
-            # Store permissions in session for this request
-            g.share_link_permissions = permissions
             
-            return f(*args, **kwargs)
+            # Check for valid share link in session first
+            share_link_key = f'share_link_{tournament_id}'
+            if share_link_key in session:
+                token = session[share_link_key]
+                is_valid, permissions = validate_share_link(token, tournament_id)
+                if is_valid:
+                    # Store permissions in g for use in templates
+                    g.share_link_permissions = permissions
+                    # If no specific permission required or permission is granted
+                    if not permission or permission in permissions:
+                        return f(*args, **kwargs)
+                    else:
+                        flash('You do not have permission to access this page', 'danger')
+                        return redirect(url_for('tournament.view', tournament_id=tournament_id))
+            
+            # If no valid session, check for token in query params
+            token = request.args.get('token')
+            if token:
+                is_valid, permissions = validate_share_link(token, tournament_id)
+                if is_valid:
+                    # Store the token in session for future requests
+                    session[share_link_key] = token
+                    session.permanent = True
+                    # Store permissions in g for use in templates
+                    g.share_link_permissions = permissions
+                    # If no specific permission required or permission is granted
+                    if not permission or permission in permissions:
+                        return f(*args, **kwargs)
+                    else:
+                        flash('You do not have permission to access this page', 'danger')
+                        return redirect(url_for('tournament.view', tournament_id=tournament_id))
+            
+            # If we get here, no valid token was found
+            flash('A valid share link is required to access this page', 'danger')
+            return redirect(url_for('tournament.view', tournament_id=tournament_id))
+            
         return decorated_function
     return decorator
