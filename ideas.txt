@@ -1,5 +1,7 @@
 fix podium and pairings results buttons for dark mode
 
+add a hide tournament button for every tournament
+
 add filter and sorting functions for tournament page
 
 Create an ai synopsys for rounds and the entire tournament as well
