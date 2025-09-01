@@ -5,6 +5,50 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tournament.css') }}">
 <style>
+    /* Top three standings styling */
+    .first-place {
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 193, 7, 0.15) 100%) !important;
+        position: relative;
+        --text-color: #212529;
+    }
+
+    .second-place {
+        background: linear-gradient(135deg, rgba(192, 192, 192, 0.12) 0%, rgba(160, 160, 160, 0.12) 100%) !important;
+        position: relative;
+        --text-color: #212529;
+    }
+
+    .third-place {
+        background: linear-gradient(135deg, rgba(205, 127, 50, 0.12) 0%, rgba(139, 69, 19, 0.12) 100%) !important;
+        position: relative;
+        --text-color: #212529;
+    }
+
+    .medal-icon {
+        transition: transform 0.3s ease;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+    }
+
+    .medal-icon:hover {
+        transform: scale(1.2) rotate(10deg);
+    }
+
+    /* Dark mode adjustments */
+    [data-bs-theme="dark"] .first-place {
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(218, 165, 32, 0.25) 100%) !important;
+        --text-color: #f8f9fa;
+    }
+
+    [data-bs-theme="dark"] .second-place {
+        background: linear-gradient(135deg, rgba(192, 192, 192, 0.2) 0%, rgba(160, 160, 160, 0.2) 100%) !important;
+        --text-color: #f8f9fa;
+    }
+
+    [data-bs-theme="dark"] .third-place {
+        background: linear-gradient(135deg, rgba(205, 127, 50, 0.25) 0%, rgba(139, 69, 19, 0.25) 100%) !important;
+        --text-color: #f8f9fa;
+    }
+
     /* Additional inline styles specific to this template */
     .print-section {
         display: none !important;
@@ -346,8 +390,18 @@
                             </thead>
                             <tbody>
                                 {% for item in standings[:10] %}
-                                <tr class="{% if loop.index <= 3 %}table-{{ ['success', 'info', 'warning'][loop.index0] }}{% endif %} {% if item.status == 'withdrawn' %}player-removed{% endif %}">
-                                    <td>{{ loop.index }}
+                                <tr class="{% if loop.index == 1 %}first-place{% elif loop.index == 2 %}second-place{% elif loop.index == 3 %}third-place{% endif %} {% if item.status == 'withdrawn' %}player-removed{% endif %}">
+                                    <td class="position-relative">
+                                        <span class="d-flex align-items-center">
+                                            <span class="me-1">{{ loop.index }}</span>
+                                            {% if loop.index == 1 %}
+                                                <i class="fas fa-trophy medal-icon" style="color: #ffd700;"></i>
+                                            {% elif loop.index == 2 %}
+                                                <i class="fas fa-medal medal-icon" style="color: #c0c0c0;"></i>
+                                            {% elif loop.index == 3 %}
+                                                <i class="fas fa-award medal-icon" style="color: #cd7f32;"></i>
+                                            {% endif %}
+                                        </span>
                                         {% if item.status == 'withdrawn' %}
                                             <span class="badge bg-danger ms-1" title="Removed from tournament">X</span>
                                         {% endif %}

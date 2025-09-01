@@ -1,5 +1,7 @@
 fix podium and pairings results buttons for dark mode and light mode 
 
+update team calculations to include new scoring system
+
 update player stats and widgets to work with new scoring
 
 Add a assign teams and view teams button
@@ -9,6 +11,8 @@ add a hide tournament button for every tournament
 add filter and sorting functions for tournament page
 
 Create an ai synopsys for rounds and the entire tournament as well
+
+Add an admin dashboard to track total users and tournaments
 
 Add feature to make it into a graph type thing
 
