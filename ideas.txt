@@ -3,7 +3,7 @@ update player stats and widgets to work with new scoring
 
 Add a assign teams and view teams button
 
-add a hide tournament button for every tournament
+add a view hidden tournaments button
 
 add filter and sorting functions for tournament page
 

@@ -149,20 +149,27 @@ def player_history(tournament_id, player_id):
 def hide_tournament(tournament_id):
     """Hide a tournament from the user's view."""
     try:
-        # Remove the share link from the session
+        db = get_db()
+        user_id = session.get('user_id')
+        
+        # Add to hidden tournaments for this user
+        hidden_key = f'hidden_tournaments_{user_id}'
+        hidden_tournaments = set(session.get(hidden_key, []))
+        hidden_tournaments.add(tournament_id)
+        session[hidden_key] = list(hidden_tournaments)
+        
+        # Also clean up any share links
         share_link_key = f'share_link_{tournament_id}'
         if share_link_key in session:
             del session[share_link_key]
-            session.modified = True
             
             # Also remove any associated share link data
             share_data_key = f'share_link_data_{tournament_id}'
             if share_data_key in session:
                 del session[share_data_key]
-                
-            return jsonify({'success': True})
         
-        return jsonify({'success': False, 'message': 'Tournament not found in your shared links'}), 404
+        session.modified = True
+        return jsonify({'success': True})
         
     except Exception as e:
         print(f"Error hiding tournament: {e}")
@@ -172,21 +179,18 @@ def hide_tournament(tournament_id):
 @tournament_bp.route('/')
 @login_required
 def index():
-    """Show tournaments created by the current user."""
+    """Show tournaments created by the current user, excluding hidden ones."""
+    db = get_db()
+    user_id = session.get('user_id')
+    
     try:
-        db = get_db()
-        user_id = session.get('user_id')
-
-        tournaments = []
+        # Get tournaments where user is the creator
+        tournaments = db.get_tournaments_by_creator(user_id)
         
-        # Get tournaments created by the user
-        if user_id:
-            tournaments = db.get_tournaments_by_creator(user_id)
-            
-        # Get tournaments accessed via share links
+        # Get shared tournaments from session
         share_link_tournaments = []
-        for key in session.keys():
-            if key.startswith('share_link_') and session[key]:
+        for key in list(session.keys()):
+            if key.startswith('share_link_') and key != f'share_link_{user_id}':
                 try:
                     tournament_id = int(key.split('_')[-1])
                     tournament = db.get_tournament(tournament_id)
@@ -199,7 +203,14 @@ def index():
         # Combine both lists
         all_tournaments = tournaments + share_link_tournaments
         
-        return render_template('tournament/index.html', tournaments=all_tournaments)
+        # Get hidden tournaments for this user
+        hidden_key = f'hidden_tournaments_{user_id}'
+        hidden_tournaments = set(session.get(hidden_key, []))
+        
+        # Filter out hidden tournaments
+        visible_tournaments = [t for t in all_tournaments if t['id'] not in hidden_tournaments]
+        
+        return render_template('tournament/index.html', tournaments=visible_tournaments)
     except Exception as e:
         print(f"Error retrieving tournaments: {e}")
         import traceback

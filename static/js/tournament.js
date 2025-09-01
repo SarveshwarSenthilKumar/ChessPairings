@@ -1,3 +1,78 @@
+// Handle hide tournament button clicks
+function initHideTournament() {
+    document.addEventListener('click', async function(e) {
+        const hideBtn = e.target.closest('.hide-tournament');
+        if (!hideBtn) return;
+        
+        e.preventDefault();
+        const tournamentId = hideBtn.dataset.tournamentId;
+        
+        if (!tournamentId) {
+            console.error('No tournament ID found on hide button');
+            return;
+        }
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (!csrfToken) {
+            console.error('CSRF token not found');
+            showErrorToast('Security error. Please refresh the page and try again.');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/tournament/${tournamentId}/hide`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Remove the tournament card from the DOM
+                const card = hideBtn.closest('.col-12.col-md-6.col-lg-4.mb-4');
+                if (card) {
+                    card.style.opacity = '0';
+                    setTimeout(() => {
+                        card.remove();
+                        
+                        // If no more tournaments, show empty state
+                        const tournamentContainer = document.querySelector('.row');
+                        const tournamentCards = tournamentContainer.querySelectorAll('.col-12.col-md-6.col-lg-4.mb-4');
+                        
+                        if (tournamentCards.length === 0) {
+                            const emptyState = `
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-body text-center py-5">
+                                            <i class="fas fa-trophy fa-4x text-muted mb-3"></i>
+                                            <h3>No Tournaments Visible</h3>
+                                            <p class="text-muted">You have hidden all tournaments</p>
+                                            <a href="${window.location.pathname}" class="btn btn-primary">
+                                                <i class="fas fa-sync-alt me-1"></i> Refresh Page
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            tournamentContainer.insertAdjacentHTML('beforeend', emptyState);
+                        }
+                    }, 300);
+                }
+            } else {
+                showErrorToast(data.message || 'Failed to hide tournament');
+            }
+        } catch (error) {
+            console.error('Error hiding tournament:', error);
+            showErrorToast('An error occurred while hiding the tournament');
+        }
+    });
+}
+
 // Tournament management functionality
 function initMassDelete() {
     console.log('Initializing mass delete functionality');
