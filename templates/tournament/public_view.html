@@ -4,6 +4,44 @@
 
 {% block extra_css %}
 <style>
+    /* Top three standings styling */
+    .first-place {
+        background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 221, 0, 0.25) 100%) !important;
+        position: relative;
+        --text-color: #212529;
+        border-left: 3px solid #ffc107 !important;
+    }
+
+    .second-place {
+        background: linear-gradient(135deg, rgba(158, 158, 158, 0.15) 0%, rgba(189, 189, 189, 0.15) 100%) !important;
+        position: relative;
+        --text-color: #212529;
+        border-left: 3px solid #9e9e9e !important;
+    }
+
+    .third-place {
+        background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 171, 64, 0.2) 100%) !important;
+        position: relative;
+        --text-color: #212529;
+        border-left: 3px solid #ff9800 !important;
+    }
+
+    /* Dark mode adjustments */
+    [data-bs-theme="dark"] .first-place {
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(218, 165, 32, 0.25) 100%) !important;
+        --text-color: #f8f9fa;
+    }
+
+    [data-bs-theme="dark"] .second-place {
+        background: linear-gradient(135deg, rgba(192, 192, 192, 0.2) 0%, rgba(160, 160, 160, 0.2) 100%) !important;
+        --text-color: #f8f9fa;
+    }
+
+    [data-bs-theme="dark"] .third-place {
+        background: linear-gradient(135deg, rgba(205, 127, 50, 0.25) 0%, rgba(139, 69, 19, 0.25) 100%) !important;
+        --text-color: #f8f9fa;
+    }
+
     .player-removed {
         background-color: #fff0f0 !important;
         position: relative;
@@ -163,7 +201,7 @@
                 </thead>
                 <tbody id="standingsTable">
                     {% for item in standings %}
-                    <tr class="player-row {% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 %}table-warning{% endif %} {% if item.status == 'withdrawn' %}player-removed{% endif %}" 
+                    <tr class="player-row {% if loop.index == 1 %}first-place{% elif loop.index == 2 %}second-place{% elif loop.index == 3 %}third-place{% endif %} {% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 and loop.index > 3 %}table-warning{% endif %} {% if item.status == 'withdrawn' %}player-removed{% endif %}" 
                         {% if item.status == 'withdrawn' %}title="Player has been removed from the tournament"{% endif %}
                         data-player-id="{{ item.id }}" 
                         style="cursor: pointer;">

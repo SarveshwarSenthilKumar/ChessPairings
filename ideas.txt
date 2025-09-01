@@ -1,6 +1,4 @@
 
-add podium colors for light mode
-
 get rid of export results button in tournament actions
 
 update team calculations to include new scoring system
@@ -34,3 +32,5 @@ add categories for tournaments
 allow users to highlight different tournaments
 
 add a profile page and add stats
+
+go through everything and update database scheme, delete unnecessary files
