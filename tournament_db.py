@@ -2022,7 +2022,14 @@ class TournamentDB:
         return self.get_standings(tournament_id, 'individual')
     
     def get_team_standings(self, tournament_id: int) -> List[Dict[str, Any]]:
-        """Get current tournament standings grouped by team."""
+        """Get current tournament standings grouped by team using the tournament's scoring system.
+        
+        Args:
+            tournament_id: ID of the tournament
+            
+        Returns:
+            List of team standings with scores and player details
+        """
         # Get tournament point settings first
         self.cursor.execute("""
             SELECT win_points, draw_points, loss_points, bye_points
@@ -2039,47 +2046,63 @@ class TournamentDB:
         
         # Get team standings with player details
         query = """
-        WITH player_stats AS (
+        WITH player_matches AS (
             SELECT 
                 p.id as player_id,
                 p.name as player_name,
                 p.team,
-                COALESCE(SUM(
-                    CASE 
-                        WHEN (pr.white_player_id = p.id AND pr.result = '1-0') OR 
-                             (pr.black_player_id = p.id AND pr.result = '0-1') THEN ?
-                        WHEN (pr.white_player_id = p.id AND pr.result = '0-1') OR 
-                             (pr.black_player_id = p.id AND pr.result = '1-0') THEN ?
-                        WHEN pr.result = '0.5-0.5' THEN ?
-                        WHEN pr.status = 'bye' THEN ?
-                        ELSE 0
-                    END
-                ), 0) as points,
-                SUM(CASE 
+                pr.id as pairing_id,
+                pr.white_player_id,
+                pr.black_player_id,
+                pr.result,
+                pr.status,
+                CASE 
+                    WHEN pr.white_player_id = p.id AND pr.result = '1-0' THEN ?  -- Win as white
+                    WHEN pr.black_player_id = p.id AND pr.result = '0-1' THEN ?  -- Win as black
+                    WHEN pr.white_player_id = p.id AND pr.result = '0-1' THEN ?  -- Loss as white
+                    WHEN pr.black_player_id = p.id AND pr.result = '1-0' THEN ?  -- Loss as black
+                    WHEN pr.result = '0.5-0.5' THEN ?  -- Draw
+                    WHEN pr.status = 'bye' THEN ?  -- Bye
+                    ELSE 0
+                END as points_earned,
+                CASE 
                     WHEN (pr.white_player_id = p.id AND pr.result = '1-0') OR 
-                         (pr.black_player_id = p.id AND pr.result = '0-1') THEN 1
+                         (pr.black_player_id = p.id AND pr.result = '0-1') THEN 1  -- Win
                     ELSE 0
-                END) as wins,
-                SUM(CASE 
+                END as is_win,
+                CASE 
                     WHEN (pr.white_player_id = p.id AND pr.result = '0-1') OR 
-                         (pr.black_player_id = p.id AND pr.result = '1-0') THEN 1
+                         (pr.black_player_id = p.id AND pr.result = '1-0') THEN 1  -- Loss
                     ELSE 0
-                END) as losses,
-                SUM(CASE 
-                    WHEN pr.result = '0.5-0.5' THEN 1
+                END as is_loss,
+                CASE 
+                    WHEN pr.result = '0.5-0.5' THEN 1  -- Draw
                     ELSE 0
-                END) as draws,
-                SUM(CASE 
-                    WHEN pr.status = 'bye' THEN 1
+                END as is_draw,
+                CASE 
+                    WHEN pr.status = 'bye' THEN 1  -- Bye
                     ELSE 0
-                END) as byes
+                END as is_bye
             FROM players p
             JOIN tournament_players tp ON p.id = tp.player_id
-            LEFT JOIN pairings pr ON (pr.white_player_id = p.id OR pr.black_player_id = p.id)
+            LEFT JOIN pairings pr ON (pr.white_player_id = p.id OR pr.black_player_id = p.id) 
+                                  AND pr.status = 'completed'
             LEFT JOIN rounds r ON pr.round_id = r.id
             WHERE tp.tournament_id = ?
             AND p.team IS NOT NULL AND p.team != ''
-            GROUP BY p.id, p.name, p.team
+        ),
+        player_stats AS (
+            SELECT 
+                player_id,
+                player_name,
+                team,
+                SUM(points_earned) as points,
+                SUM(is_win) as wins,
+                SUM(is_loss) as losses,
+                SUM(is_draw) as draws,
+                SUM(is_bye) as byes
+            FROM player_matches
+            GROUP BY player_id, player_name, team
         )
         SELECT 
             team,
@@ -2090,7 +2113,7 @@ class TournamentDB:
             SUM(draws) as match_draws,
             SUM(byes) as byes,
             ROUND(SUM(points) * 1.0 / COUNT(DISTINCT player_id), 2) as avg_points_per_player,
-            GROUP_CONCAT(player_name || ' (' || points || ' pts)', ', ') as player_details
+            GROUP_CONCAT(player_name || ' (' || ROUND(points, 2) || ' pts)', ', ') as player_details
         FROM player_stats
         WHERE team IS NOT NULL AND team != ''
         GROUP BY team
@@ -2100,12 +2123,14 @@ class TournamentDB:
             ROUND(SUM(points) * 1.0 / COUNT(DISTINCT player_id), 2) DESC
         """
         
-        # Pass point values as parameters
+        # Pass point values as parameters - order is important for the CASE statement
         params = (
-            win_pts,  # Win points
-            loss_pts,  # Loss points
-            draw_pts,  # Draw points
-            bye_pts,   # Bye points
+            win_pts,   # Win as white
+            win_pts,   # Win as black
+            loss_pts,  # Loss as white
+            loss_pts,  # Loss as black
+            draw_pts,  # Draw
+            bye_pts,   # Bye
             tournament_id
         )
         
@@ -2120,12 +2145,13 @@ class TournamentDB:
                     'total_points': float(row['total_points'] or 0),
                     'player_count': row['player_count'],
                     'avg_points_per_player': float(row['avg_points_per_player'] or 0),
-                    'match_wins': row['match_wins'] or 0,
-                    'match_losses': row['match_losses'] or 0,
-                    'match_draws': row['match_draws'] or 0,
+                    'match_wins': int(row['match_wins'] or 0),
+                    'match_losses': int(row['match_losses'] or 0),
+                    'match_draws': int(row['match_draws'] or 0),
+                    'byes': int(row['byes'] or 0),
                     'player_details': row['player_details'] or ''
                 })
-                
+            
             return standings
             
         except sqlite3.Error as e:

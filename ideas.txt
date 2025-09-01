@@ -1,8 +1,4 @@
 
-get rid of export results button in tournament actions
-
-update team calculations to include new scoring system
-
 update player stats and widgets to work with new scoring
 
 Add a assign teams and view teams button
