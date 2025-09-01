@@ -144,6 +144,52 @@ def player_history(tournament_id, player_id):
     
     return jsonify(response)
 
+@tournament_bp.route('/hidden')
+@login_required
+def hidden_tournaments():
+    """View hidden tournaments for the current user."""
+    db = get_db()
+    user_id = session.get('user_id')
+    
+    try:
+        # Get all tournaments created by the user
+        all_tournaments = db.get_tournaments_by_creator(user_id)
+        
+        # Get hidden tournaments for this user
+        hidden_key = f'hidden_tournaments_{user_id}'
+        hidden_tournament_ids = set(session.get(hidden_key, []))
+        
+        # Filter hidden tournaments
+        hidden_tournaments = [t for t in all_tournaments if t['id'] in hidden_tournament_ids]
+        
+        return render_template('tournament/hidden.html', tournaments=hidden_tournaments)
+    except Exception as e:
+        print(f"Error retrieving hidden tournaments: {e}")
+        flash('An error occurred while retrieving hidden tournaments.', 'error')
+        return redirect(url_for('tournament.index'))
+
+@tournament_bp.route('/<int:tournament_id>/unhide', methods=['POST'])
+@login_required
+def unhide_tournament(tournament_id):
+    """Unhide a tournament for the current user."""
+    try:
+        db = get_db()
+        user_id = session.get('user_id')
+        
+        # Remove from hidden tournaments for this user
+        hidden_key = f'hidden_tournaments_{user_id}'
+        hidden_tournaments = set(session.get(hidden_key, []))
+        
+        if tournament_id in hidden_tournaments:
+            hidden_tournaments.remove(tournament_id)
+            session[hidden_key] = list(hidden_tournaments)
+            session.modified = True
+            
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error unhiding tournament: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while unhiding the tournament'}), 500
+
 @tournament_bp.route('/<int:tournament_id>/hide', methods=['POST'])
 @login_required
 def hide_tournament(tournament_id):

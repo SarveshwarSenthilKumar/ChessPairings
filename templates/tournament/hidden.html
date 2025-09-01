@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Hidden Tournaments{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Hidden Tournaments</h1>
+        <a href="{{ url_for('tournament.index') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> Back to Tournaments
+        </a>
+    </div>
+
+    {% if tournaments %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for tournament in tournaments %}
+                <div class="col">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ tournament.name }}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                {{ tournament.start_date }} to {{ tournament.end_date }}
+                            </h6>
+                            <p class="card-text">{{ tournament.description or 'No description' }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-{{ 'success' if tournament.status == 'completed' else 'primary' if tournament.status == 'in_progress' else 'secondary' }}">
+                                    {{ tournament.status|title }}
+                                </span>
+                                <button class="btn btn-sm btn-outline-success unhide-tournament" 
+                                        data-tournament-id="{{ tournament.id }}">
+                                    <i class="bi bi-eye"></i> Unhide
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            You don't have any hidden tournaments.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle unhide tournament button clicks
+    document.querySelectorAll('.unhide-tournament').forEach(button => {
+        button.addEventListener('click', function() {
+            const tournamentId = this.dataset.tournamentId;
+            const button = this;
+            
+            fetch(`/tournament/${tournamentId}/unhide`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove the tournament card from the UI
+                    button.closest('.col').remove();
+                    
+                    // Show a success message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success alert-dismissible fade show mt-3';
+                    alert.role = 'alert';
+                    alert.innerHTML = `
+                        Tournament has been unhidden.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.querySelector('.container').prepend(alert);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while unhiding the tournament.');
+            });
+        });
+    });
+});
+</script>
+{% endblock %}
