@@ -1,4 +1,8 @@
 fix podium and pairings results buttons for dark mode and light mode 
+players and team switcher
+add podium colors
+
+get rid of export results button in tournament actions
 
 update team calculations to include new scoring system
 
