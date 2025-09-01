@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% set regex = '\s*\(\d+\)$|^\d+\.\s*' %}
 
 {% block title %}{{ tournament.name }} - Chess Tournament Manager{% endblock %}
 
@@ -471,21 +472,23 @@
                                                 {% endif %}
                                             </a>
                                         {% else %}
+                                            {% set clean_name = item.name|replace(regex, '') %}
                                             <a href="#" class="text-decoration-none player-name" 
                                                data-tournament-id="{{ tournament.id }}"
                                                data-player-id="{{ item.id }}"
-                                               data-player-name="{{ item.name|e }}"
-                                               data-player-rating="{{ item.rating if item.rating is defined else '0' }}">
-                                                {{ item.name }}
-                                                {% if item.rating is defined and item.rating %}
-                                                    <span class="text-muted small ms-1">({{ item.rating }})</span>
-                                                {% endif %}
-                                                {% if loop.index <= 3 %}
-                                                    <span class="badge bg-{{ ['success', 'info', 'warning'][loop.index0] }} ms-1">
-                                                        {{ loop.index|ordinal }}
-                                                    </span>
-                                                {% endif %}
+                                               data-player-name="{{ clean_name|e }}"
+                                               {% if item.rating %}
+                                               data-player-rating="{{ item.rating }}">
+                                               {% else %}
+                                               data-player-rating="0">
+                                               {% endif %}
+                                                {{ clean_name }}
                                             </a>
+                                            {% if loop.index <= 3 %}
+                                                <span class="badge bg-{{ ['success', 'info', 'warning'][loop.index0] }} ms-1">
+                                                    {{ loop.index|ordinal }}
+                                                </span>
+                                            {% endif %}
                                         {% endif %}
                                     </td>
                                     {% if view_type == 'team' %}
