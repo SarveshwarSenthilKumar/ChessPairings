@@ -424,6 +424,8 @@
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- Tournament JS -->
+    <script src="{{ url_for('static', filename='js/tournament.js') }}"></script>
     
     <script>
     // Format rating with leading zero if needed
@@ -624,30 +626,45 @@
                 const modal = new bootstrap.Modal(document.getElementById('playerHistoryModal'));
                 modal.show();
                 
-                // Add tooltips
-                $('[data-bs-toggle="tooltip"]').tooltip();
             });
     }
-    
+
     // Make the function available globally
     window.showPlayerHistory = showPlayerHistory;
     
     // Handle player name clicks using event delegation
-    document.addEventListener('DOMContentLoaded', function() {
-        document.body.addEventListener('click', function(e) {
-            const playerLink = e.target.closest('.player-name');
-            if (playerLink) {
-                e.preventDefault();
-                const tournamentId = playerLink.dataset.tournamentId;
-                const playerId = playerLink.dataset.playerId;
-                const playerName = playerLink.dataset.playerName;
-                const playerRating = parseInt(playerLink.dataset.playerRating) || 0;
-                showPlayerHistory(tournamentId, playerId, playerName, playerRating);
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('player-name')) {
+            e.preventDefault();
+            const tournamentId = e.target.closest('[data-tournament-id]')?.dataset.tournamentId;
+            const playerId = e.target.dataset.playerId;
+            const playerName = e.target.textContent.trim();
+            const rating = e.target.dataset.rating || '';
+            
+            if (tournamentId && playerId) {
+                showPlayerHistory(tournamentId, playerId, playerName, rating);
             }
+        }
+    });
+    
+    // Initialize tooltips and popovers when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Initialize popovers
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        popoverTriggerList.forEach(function(popoverTriggerEl) {
+            new bootstrap.Popover(popoverTriggerEl);
         });
     });
-    </script>
-    
-    {% block extra_js %}{% endblock %}
+</script>
+
+<!-- Extra JavaScript block for child templates -->
+{% block extra_js %}{% endblock %}
+
 </body>
 </html>

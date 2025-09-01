@@ -1811,53 +1811,68 @@ class TournamentDB:
             bool: True if deletion was successful, False otherwise
         """
         try:
-            # First verify the user is the creator
+            # First verify the user is the creator and the tournament exists
             self.cursor.execute(
-                "SELECT creator_id FROM tournaments WHERE id = ?",
+                "SELECT id, creator_id FROM tournaments WHERE id = ?",
                 (tournament_id,)
             )
             result = self.cursor.fetchone()
             
-            if not result or result[0] != creator_id:
+            if not result or result[1] != creator_id:
                 return False
+            
+            # Start transaction
+            self.cursor.execute("BEGIN TRANSACTION")
+            
+            try:
+                # 1. Delete pairings results first
+                self.cursor.execute("""
+                    DELETE FROM pairings 
+                    WHERE round_id IN (SELECT id FROM rounds WHERE tournament_id = ?)
+                """, (tournament_id,))
                 
-            # Delete all related data in the correct order to maintain referential integrity
-            # 1. Delete manual byes
-            self.cursor.execute(
-                "DELETE FROM manual_byes WHERE tournament_id = ?",
-                (tournament_id,)
-            )
-            
-            # 2. Delete pairings
-            self.cursor.execute("""
-                DELETE FROM pairings 
-                WHERE round_id IN (SELECT id FROM rounds WHERE tournament_id = ?)
-            """, (tournament_id,))
-            
-            # 3. Delete rounds
-            self.cursor.execute(
-                "DELETE FROM rounds WHERE tournament_id = ?",
-                (tournament_id,)
-            )
-            
-            # 4. Delete tournament players
-            self.cursor.execute(
-                "DELETE FROM tournament_players WHERE tournament_id = ?",
-                (tournament_id,)
-            )
-            
-            # 5. Finally delete the tournament
-            self.cursor.execute(
-                "DELETE FROM tournaments WHERE id = ?",
-                (tournament_id,)
-            )
-            
-            self.conn.commit()
-            return True
+                # 2. Delete manual byes
+                self.cursor.execute(
+                    "DELETE FROM manual_byes WHERE tournament_id = ?",
+                    (tournament_id,)
+                )
+                
+                # 3. Delete rounds
+                self.cursor.execute(
+                    "DELETE FROM rounds WHERE tournament_id = ?",
+                    (tournament_id,)
+                )
+                
+                # 4. Delete tournament players
+                self.cursor.execute(
+                    "DELETE FROM tournament_players WHERE tournament_id = ?",
+                    (tournament_id,)
+                )
+                
+                # 5. Delete admin share links
+                self.cursor.execute(
+                    "DELETE FROM admin_share_links WHERE tournament_id = ?",
+                    (tournament_id,)
+                )
+                
+                # 6. Delete the tournament
+                self.cursor.execute(
+                    "DELETE FROM tournaments WHERE id = ?",
+                    (tournament_id,)
+                )
+                
+                self.conn.commit()
+                return True
+                
+            except Exception as e:
+                self.conn.rollback()
+                print(f"Error in transaction while deleting tournament {tournament_id}: {e}")
+                return False
             
         except Exception as e:
-            print(f"Error deleting tournament: {e}")
-            self.conn.rollback()
+            print(f"Error preparing to delete tournament {tournament_id}: {e}")
+            if 'self.conn' in locals() and self.conn:
+                self.conn.rollback()
             return False
             
     def is_tournament_complete(self, tournament_id: int) -> bool:

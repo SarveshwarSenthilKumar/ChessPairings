@@ -4,6 +4,57 @@
 
 {% block extra_css %}
 <style>
+    /* Mass delete mode styles */
+    .mass-delete-mode .tournament-card {
+        border: 2px solid var(--bs-danger);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .mass-delete-mode .tournament-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(220, 53, 69, 0.05);
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    .mass-delete-mode .tournament-card.selected {
+        border-color: var(--bs-danger);
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+    }
+    
+    .mass-delete-mode .tournament-card .form-check-input {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 2;
+        width: 1.25rem;
+        height: 1.25rem;
+        cursor: pointer;
+    }
+    
+    .mass-delete-actions {
+        display: none;
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: var(--bs-body-bg);
+        padding: 10px 20px;
+        border-radius: 50px;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .mass-delete-mode .mass-delete-actions {
+        display: flex;
+        gap: 10px;
+    }
     .tournament-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         height: 100%;
@@ -81,11 +132,51 @@
 {% endblock %}
 
 {% block content %}
+{{ super() }}
+<!-- Toast Notifications -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <!-- Success Toast -->
+    <div id="deleteSuccessToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-check-circle me-2"></i>
+                <span class="toast-message">Tournament(s) deleted successfully.</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    
+    <!-- Error Toast -->
+    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <span class="toast-message">An error occurred. Please try again.</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="fas fa-trophy me-2"></i>Tournaments</h1>
-    <a href="{{ url_for('tournament.create') }}" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i> New Tournament
-    </a>
+    <div>
+        <button id="toggleMassDelete" class="btn btn-outline-danger me-2">
+            <i class="fas fa-trash-alt me-1"></i> Mass Delete
+        </button>
+        <a href="{{ url_for('tournament.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> New Tournament
+        </a>
+    </div>
+</div>
+
+<!-- Mass Delete Actions -->
+<div class="mass-delete-actions">
+    <button id="deleteSelected" class="btn btn-danger">
+        <i class="fas fa-trash-alt me-1"></i> Delete Selected (0)
+    </button>
+    <button id="cancelMassDelete" class="btn btn-outline-secondary">
+        <i class="fas fa-times me-1"></i> Cancel
+    </button>
 </div>
 
 <!-- Search Bar -->
@@ -117,7 +208,8 @@
     {% else %}
     {% for tournament in tournaments %}
     <div class="col-12 col-md-6 col-lg-4 mb-4">
-        <div class="card tournament-card h-100">
+        <div class="card tournament-card h-100 position-relative">
+                <input type="checkbox" class="form-check-input tournament-checkbox" value="{{ tournament.id }}" style="display: none;">
             <div class="card-header position-relative">
                 {% if tournament.via_share_link %}
                 <span class="position-absolute top-0 end-0 m-2" data-bs-toggle="tooltip" title="Access via share link">
@@ -173,87 +265,98 @@
     {% endfor %}
     {% endif %}
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteConfirmationModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>You are about to delete <span id="deleteCount">0</span> tournament(s). This action cannot be undone.</p>
+                <p class="mb-0"><strong>All tournament data, including players, pairings, and results, will be permanently removed.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" id="confirmDelete" class="btn btn-danger">
+                    <i class="fas fa-trash-alt me-1"></i> Delete Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
+{{ super() }}
+<!-- Tournament Management JS -->
+<script src="{{ url_for('static', filename='js/tournament.js') }}"></script>
+
 <script>
-    // Initialize tooltips and search functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        // Handle hide tournament button clicks
-        document.querySelectorAll('.hide-tournament').forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                const tournamentId = this.dataset.tournamentId;
-                if (confirm('Are you sure you want to hide this tournament? You can access it again using the original share link.')) {
-                    fetch(`/tournament/${tournamentId}/hide`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token() }}'
-                        },
-                        credentials: 'same-origin'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Remove the tournament card from the DOM
-                            const card = this.closest('.col-12.col-md-6.col-lg-4');
-                            if (card) {
-                                card.style.display = 'none';
-                                
-                                // If no more tournaments are visible, show the empty state
-                                const visibleCards = document.querySelectorAll('.col-12.col-md-6.col-lg-4[style*="display: none"]');
-                                const totalCards = document.querySelectorAll('.col-12.col-md-6.col-lg-4').length;
-                                
-                                if (visibleCards.length === totalCards) {
-                                    window.location.reload(); // Reload to show empty state if needed
-                                }
-                            }
-                        } else {
-                            alert('Failed to hide tournament. Please try again.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('An error occurred while hiding the tournament.');
-                    });
+// Initialize tooltips, modals, and toasts
+document.addEventListener('DOMContentLoaded', function() {
+    // Tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Initialize delete confirmation modal if it exists
+    var deleteModalEl = document.getElementById('deleteConfirmationModal');
+    if (deleteModalEl) {
+        // Initialize the modal
+        var deleteModal = new bootstrap.Modal(deleteModalEl);
+        
+        // Make it available globally for the tournament.js
+        window.deleteConfirmationModal = deleteModal;
+    }
+    
+    // Initialize toasts
+    var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    toastElList.forEach(function(toastEl) {
+        new bootstrap.Toast(toastEl, { autohide: true, delay: 5000 });
+    });
+    
+    // Initialize mass delete functionality
+    if (typeof initMassDelete === 'function') {
+        initMassDelete();
+    }
+});
+
+// Setup search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('tournamentSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const tournamentCards = document.querySelectorAll('.tournament-card');
+            
+            tournamentCards.forEach(card => {
+                const name = card.getAttribute('data-name') || '';
+                const location = card.getAttribute('data-location') || '';
+                const status = card.getAttribute('data-status') || '';
+                
+                const matches = name.toLowerCase().includes(searchTerm) || 
+                              location.toLowerCase().includes(searchTerm) ||
+                              status.toLowerCase().includes(searchTerm);
+                
+                card.style.display = matches ? 'block' : 'none';
+                
+                // Update the parent row's display if all cards are hidden
+                const row = card.closest('.row');
+                if (row) {
+                    const visibleCards = row.querySelectorAll('.tournament-card[style*="display: block"]');
+                    row.style.display = visibleCards.length > 0 ? '' : 'none';
                 }
             });
         });
-        
-        // Initialize Bootstrap tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function(tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-        
-        // Setup search functionality
-        const searchInput = document.getElementById('tournamentSearch');
-        if (searchInput) {
-            searchInput.addEventListener('input', function(e) {
-                const searchTerm = e.target.value.toLowerCase();
-                const tournamentCards = document.querySelectorAll('.tournament-card');
-                
-                tournamentCards.forEach(card => {
-                    const name = card.getAttribute('data-name') || '';
-                    const location = card.getAttribute('data-location') || '';
-                    const status = card.getAttribute('data-status') || '';
-                    
-                    const matches = name.toLowerCase().includes(searchTerm) || 
-                                  location.toLowerCase().includes(searchTerm) ||
-                                  status.toLowerCase().includes(searchTerm);
-                    
-                    card.style.display = matches ? 'block' : 'none';
-                    
-                    // Update the parent row's display if all cards are hidden
-                    const row = card.closest('.row');
-                    if (row) {
-                        const visibleCards = row.querySelectorAll('.tournament-card[style*="display: block"]');
-                        row.style.display = visibleCards.length > 0 ? '' : 'none';
-                    }
-                });
-            });
-        }
+    }
 });
 </script>
 {% endblock %}

@@ -1368,6 +1368,90 @@ def delete_tournament(tournament_id):
         flash('Failed to delete tournament. Please try again.', 'error')
         return redirect(url_for('tournament.view', tournament_id=tournament_id))
 
+@tournament_bp.route('/mass_delete', methods=['POST'], endpoint='mass_delete')
+@login_required
+def mass_delete_tournaments():
+    """Delete multiple tournaments at once."""
+    db = get_db()
+    user_id = session.get('user_id')
+    
+    if not user_id:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    try:
+        data = request.get_json()
+        tournament_ids = data.get('tournament_ids', [])
+        
+        if not tournament_ids:
+            return jsonify({'success': False, 'message': 'No tournaments selected'}), 400
+        
+        success_count = 0
+        failed_count = 0
+        failed_ids = []
+        
+        for tournament_id in tournament_ids:
+            try:
+                # Verify the tournament exists and belongs to the user
+                tournament = db.get_tournament(tournament_id)
+                if not tournament:
+                    failed_count += 1
+                    failed_ids.append(tournament_id)
+                    continue
+                    
+                if tournament['creator_id'] != user_id:
+                    failed_count += 1
+                    failed_ids.append(tournament_id)
+                    continue
+                    
+                # Delete the tournament
+                if db.delete_tournament(tournament_id, user_id):
+                    success_count += 1
+                else:
+                    failed_count += 1
+                    failed_ids.append(tournament_id)
+                    
+            except sqlite3.IntegrityError as e:
+                print(f"Integrity error deleting tournament {tournament_id}: {e}")
+                failed_count += 1
+                failed_ids.append(tournament_id)
+                continue
+            except Exception as e:
+                print(f"Error deleting tournament {tournament_id}: {e}")
+                failed_count += 1
+                failed_ids.append(tournament_id)
+                continue
+        
+        if success_count > 0 and failed_count == 0:
+            return jsonify({
+                'success': True,
+                'message': f'Successfully deleted {success_count} tournament(s).'
+            })
+        elif failed_count > 0 and success_count == 0:
+            return jsonify({
+                'success': False,
+                'message': f'Failed to delete {failed_count} tournament(s).',
+                'failed_ids': failed_ids
+            }), 400
+        elif failed_count > 0 and success_count > 0:
+            return jsonify({
+                'success': True,
+                'message': f'Successfully deleted {success_count} tournament(s). Failed to delete {failed_count} tournament(s).',
+                'failed_ids': failed_ids
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No valid tournaments were selected for deletion.'
+            }), 400
+            
+    except Exception as e:
+        import traceback
+        current_app.logger.error(f'Error in mass_delete_tournaments: {str(e)}\n{traceback.format_exc()}')
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred while processing your request.'
+        }), 500
+
 # Teardown function to close database connection
 @tournament_bp.teardown_app_request
 def teardown_db(exception=None):

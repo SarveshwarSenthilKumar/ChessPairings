@@ -1,6 +1,5 @@
-fix podium and pairings results buttons for dark mode and light mode 
-players and team switcher
-add podium colors
+
+add podium colors for light mode
 
 get rid of export results button in tournament actions
 
@@ -24,8 +23,6 @@ create terms of conditions and privacy policy
 
 Update README and add details of how to initialize everything
 
-Create a mass delete mode in tournaments
-
 Go back at the end and refresh the UI and make sure it looks good
 
 Add an attendance check-in feature
@@ -35,3 +32,5 @@ add a select all to present option so peopele can be presumed to be there and ca
 add categories for tournaments 
 
 allow users to highlight different tournaments
+
+add a profile page and add stats
