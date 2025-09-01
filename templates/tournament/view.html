@@ -357,14 +357,62 @@
                 <h5 class="mb-0">
                     <i class="fas fa-trophy me-2"></i>Current Standings
                 </h5>
-                <div class="btn-group btn-group-sm" role="group">
-                    <a href="?view=individual" class="btn btn-sm {% if view_type == 'individual' %}btn-light{% else %}btn-outline-light{% endif %}">
+                <div class="btn-group btn-group-sm view-toggle" role="group">
+                    <a href="?view=individual" class="btn btn-sm {% if view_type == 'individual' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
                         <i class="fas fa-user me-1"></i> Players
                     </a>
-                    <a href="?view=team" class="btn btn-sm {% if view_type == 'team' %}btn-light{% else %}btn-outline-light{% endif %}">
+                    <a href="?view=team" class="btn btn-sm {% if view_type == 'team' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
                         <i class="fas fa-users me-1"></i> Teams
                     </a>
                 </div>
+                <style>
+                    /* View toggle styles */
+                    .view-toggle {
+                        border-radius: 20px;
+                        overflow: hidden;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    
+                    .view-toggle .btn {
+                        border-radius: 0;
+                        padding: 0.25rem 0.75rem;
+                        font-weight: 500;
+                        transition: all 0.2s ease;
+                    }
+                    
+                    .view-toggle .btn:first-child {
+                        border-top-left-radius: 20px;
+                        border-bottom-left-radius: 20px;
+                    }
+                    
+                    .view-toggle .btn:last-child {
+                        border-top-right-radius: 20px;
+                        border-bottom-right-radius: 20px;
+                    }
+                    
+                    .view-toggle .btn-outline-secondary {
+                        background-color: #f8f9fa;
+                        border-color: #dee2e6;
+                        color: #495057;
+                    }
+                    
+                    .view-toggle .btn-outline-secondary:hover {
+                        background-color: #e9ecef;
+                        border-color: #ced4da;
+                    }
+                    
+                    /* Dark mode adjustments */
+                    [data-bs-theme="dark"] .view-toggle .btn-outline-secondary {
+                        background-color: #2b3035;
+                        border-color: #495057;
+                        color: #e9ecef;
+                    }
+                    
+                    [data-bs-theme="dark"] .view-toggle .btn-outline-secondary:hover {
+                        background-color: #343a40;
+                        border-color: #6c757d;
+                    }
+                </style>
             </div>
             <div class="card-body p-0">
                 {% if standings %}
