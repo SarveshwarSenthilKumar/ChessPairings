@@ -1,9 +1,4 @@
 
-
-Add a assign teams and view teams button
-
-add filter and sorting functions for tournament page
-
 Create an ai synopsys for rounds and the entire tournament as well
 
 Add an admin dashboard to track total users and tournaments
