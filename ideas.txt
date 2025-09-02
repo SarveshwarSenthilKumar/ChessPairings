@@ -8,17 +8,11 @@ Create an ai synopsys for rounds and the entire tournament as well
 
 Add an admin dashboard to track total users and tournaments
 
-Add feature to make it into a graph type thing
-
-create terms of conditions and privacy policy
-
-Update README and add details of how to initialize everything
-
-Go back at the end and refresh the UI and make sure it looks good
-
 Add an attendance check-in feature
 
-add a select all to present option so peopele can be presumed to be there and can tick off people not there and base pairings on this
+add a select all to present option so people can be presumed to be there and can tick off people not there and base pairings on this
+
+Add feature to make it into a graph type thing
 
 add categories for tournaments 
 
@@ -26,6 +20,13 @@ allow users to highlight different tournaments
 
 add a profile page and add stats
 
+add a drag drop interface to manually create pairings
+
+create terms of conditions and privacy policy
+
+Go back at the end and refresh the UI and make sure it looks good
+
 go through everything and update database scheme, delete unnecessary files
 
-add a drag drop interface to manually create pairings
+Update README and add details of how to initialize everything
+
