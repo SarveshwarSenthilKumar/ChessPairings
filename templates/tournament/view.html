@@ -125,14 +125,23 @@
     </div>
     <div>
         {% if tournament.status != 'completed' %}
-            <a href="{{ url_for('tournament.manage_players', tournament_id=tournament.id) }}" class="btn btn-outline-primary me-2">
-                <i class="fas fa-users me-1"></i> Manage Players
-            </a>
-            <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" class="btn btn-primary me-2">
-                <i class="fas fa-chess-board me-1"></i> Manage Pairings
-            </a>
-            <a href="{{ url_for('tournament.manage_byes', tournament_id=tournament.id) }}" class="btn btn-outline-info me-2">
-                <i class="fas fa-user-clock me-1"></i> Manage Byes
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="{{ url_for('tournament.manage_players', tournament_id=tournament.id) }}" class="btn btn-primary">
+                    <i class="fas fa-users me-1"></i> Manage Players
+                </a>
+                <a href="{{ url_for('tournament.manage_teams', tournament_id=tournament.id) }}" class="btn btn-info text-white">
+                    <i class="fas fa-users-between-lines me-1"></i> Manage Teams
+                </a>
+                <a href="{{ url_for('tournament.manage_pairings', tournament_id=tournament.id) }}" class="btn btn-primary me-2">
+                    <i class="fas fa-chess-board me-1"></i> Manage Pairings
+                </a>
+                <a href="{{ url_for('tournament.manage_byes', tournament_id=tournament.id) }}" class="btn btn-outline-info me-2">
+                    <i class="fas fa-user-clock me-1"></i> Manage Byes
+                </a>
+                <a href="{{ url_for('tournament.rounds', tournament_id=tournament.id) }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-list-ol me-1"></i> View All Rounds
+                </a>
+            </div>
             </a>
             <a href="{{ url_for('tournament.rounds', tournament_id=tournament.id) }}" class="btn btn-outline-secondary">
                 <i class="fas fa-list-ol me-1"></i> View All Rounds

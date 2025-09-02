@@ -2,9 +2,10 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_wtf.csrf import generate_csrf
 from flask_wtf import FlaskForm
 from wtforms import SelectField, BooleanField, IntegerField, StringField, TextAreaField, SubmitField, DateField, FloatField
-from wtforms.validators import DataRequired, NumberRange
+from wtforms.validators import DataRequired, NumberRange, InputRequired
 import os
 import pandas as pd
+import random
 from werkzeug.utils import secure_filename
 from functools import wraps
 from types import SimpleNamespace
@@ -14,7 +15,7 @@ import sqlite3
 from datetime import datetime
 from decorators import check_tournament_active
 import json
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 def regenerate_current_round_pairings(db: TournamentDB, tournament_id: int) -> bool:
     """Regenerate pairings for the current round, preserving any existing results.
@@ -406,6 +407,146 @@ def tournament_settings(tournament_id):
     )
 
 from admin_share_links import validate_share_link
+
+@tournament_bp.route('/<int:tournament_id>/teams', methods=['GET'])
+@login_required
+@get_db
+def manage_teams(tournament_id):
+    """Manage team assignments for a tournament."""
+    db = g.db
+    
+    # Check if tournament exists and user has permission
+    tournament = db.get_tournament(tournament_id)
+    if not tournament:
+        flash('Tournament not found.', 'danger')
+        return redirect(url_for('tournament.index'))
+    
+    # Get all players in the tournament
+    players = db.get_players(tournament_id)
+    
+    # Separate players with and without teams
+    unassigned_players = [p for p in players if not p.get('team')]
+    
+    # Group players by team
+    teams = {}
+    for player in players:
+        if player.get('team'):
+            team_name = player['team']
+            if team_name not in teams:
+                teams[team_name] = []
+            teams[team_name].append(player)
+    
+    return render_template('tournament/manage_teams.html', 
+                         tournament=tournament,
+                         unassigned_players=unassigned_players,
+                         teams=teams)
+
+@tournament_bp.route('/<int:tournament_id>/assign-team/<int:player_id>', methods=['POST'])
+@login_required
+@get_db
+def assign_team(tournament_id, player_id):
+    """Assign a player to a team."""
+    db = g.db
+    data = request.get_json()
+    team_name = data.get('team', '').strip()
+    
+    if not team_name:
+        return jsonify({'success': False, 'message': 'Team name is required'}), 400
+    
+    try:
+        # Update player's team
+        db.cursor.execute(
+            "UPDATE players SET team = ? WHERE id = ?",
+            (team_name, player_id)
+        )
+        db.conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Team assigned successfully'
+        })
+    except Exception as e:
+        db.conn.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error assigning team: {str(e)}'
+        }), 500
+
+@tournament_bp.route('/<int:tournament_id>/remove-team/<int:player_id>', methods=['POST'])
+@login_required
+@get_db
+def remove_team(tournament_id, player_id):
+    """Remove a player from their team."""
+    db = g.db
+    
+    try:
+        # Remove player's team assignment
+        db.cursor.execute(
+            "UPDATE players SET team = NULL WHERE id = ?",
+            (player_id,)
+        )
+        db.conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Player removed from team'
+        })
+    except Exception as e:
+        db.conn.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error removing from team: {str(e)}'
+        }), 500
+
+@tournament_bp.route('/<int:tournament_id>/create-random-teams', methods=['POST'])
+@login_required
+@get_db
+def create_random_teams(tournament_id):
+    """Create random teams for unassigned players."""
+    db = g.db
+    
+    # Get form data
+    team_size = request.form.get('team_size', type=int, default=4)
+    preserve_existing = request.form.get('preserve_existing') == 'on'
+    
+    if team_size < 2:
+        flash('Team size must be at least 2', 'danger')
+        return redirect(url_for('tournament.manage_teams', tournament_id=tournament_id))
+    
+    try:
+        # Get players to assign to teams
+        if preserve_existing:
+            players = db.get_players(tournament_id)
+            players_to_assign = [p for p in players if not p.get('team')]
+        else:
+            # Clear all team assignments if not preserving existing
+            db.cursor.execute("UPDATE players SET team = NULL")
+            players_to_assign = db.get_players(tournament_id)
+        
+        # Shuffle players randomly
+        random.shuffle(players_to_assign)
+        
+        # Create teams
+        team_number = 1
+        for i in range(0, len(players_to_assign), team_size):
+            team_name = f"Team {team_number}"
+            team_players = players_to_assign[i:i + team_size]
+            
+            for player in team_players:
+                db.cursor.execute(
+                    "UPDATE players SET team = ? WHERE id = ?",
+                    (team_name, player['id'])
+                )
+            team_number += 1
+        
+        db.conn.commit()
+        flash(f'Created {team_number - 1} random teams', 'success')
+        
+    except Exception as e:
+        db.conn.rollback()
+        flash(f'Error creating random teams: {str(e)}', 'danger')
+    
+    return redirect(url_for('tournament.manage_teams', tournament_id=tournament_id))
 
 @tournament_bp.route('/<int:tournament_id>')
 @login_required
