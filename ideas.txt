@@ -29,3 +29,5 @@ allow users to highlight different tournaments
 add a profile page and add stats
 
 go through everything and update database scheme, delete unnecessary files
+
+add a drag drop interface to manually create pairings

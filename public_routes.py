@@ -87,64 +87,47 @@ def debug_player_history():
 @public_bp.route('/tournament/<token>/player/<int:player_id>/history')
 @public_tournament_required
 def player_history(tournament, player_id):
-    """Get player's match history for public view."""
-    print(f"\n=== Player History Request ===")
-    print(f"Tournament ID: {tournament['id']}")
-    print(f"Player ID: {player_id}")
-    print(f"Tournament Token: {tournament.get('share_token')}")
-    
+    """Get a player's match history in a tournament."""
     db = get_db()
     
     # Get player info
     player = db.get_player(player_id)
     if not player:
-        print(f"Player {player_id} not found in database")
-        if request.args.get('format') == 'json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'error': 'Player not found'}), 404
-        return "Player not found", 404
-        
-    print(f"Found player: {player['name']} (ID: {player_id})")
+        return jsonify({'error': 'Player not found'}), 404
     
-    # Get player's history
-    print("\nFetching player history...")
-    history = db.get_player_history(player_id)
-    print(f"Retrieved {len(history)} matches for player {player_id}")
+    # Get tournament for additional context
+    tournament_id = tournament['id']
+    
+    # Get match history with detailed stats
+    try:
+        history = db.get_player_match_history(tournament_id, player_id)
+    except Exception as e:
+        print(f"Error getting player match history: {e}")
+        return jsonify({'error': 'Failed to retrieve match history'}), 500
     
     # Get player's current tournament stats
-    print("\nFetching tournament standings...")
-    standings = db.get_standings(tournament['id'])
+    standings = db.get_standings(tournament_id)
     player_stats = next((p for p in standings if p['id'] == player_id), None)
     
-    if player_stats:
-        print(f"Player stats in current tournament: {player_stats}")
-    else:
-        print(f"Player {player_id} not found in current tournament standings")
-    
-    # Always return JSON for this endpoint since it's only used via AJAX
-    response_data = {
+    # Prepare response with player info, matches, and stats
+    response = {
         'success': True,
-        'player': dict(player) if player else None,
-        'history': history,  # This is already a list of dicts from get_player_history
-        'tournament': dict(tournament) if tournament else None,
-        'player_stats': dict(player_stats) if player_stats else None
+        'player': {
+            'id': player['id'],
+            'name': player['name'],
+            'rating': player.get('rating')
+        },
+        'tournament': {
+            'id': tournament['id'],
+            'name': tournament['name'],
+            'status': tournament['status']
+        },
+        'matches': history.get('matches', []),
+        'stats': history.get('stats', {}),
+        'tournament_stats': player_stats
     }
     
-    class CustomJSONEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if hasattr(obj, 'isoformat'):  # Handle datetime objects
-                return obj.isoformat()
-            elif hasattr(obj, '__dict__'):  # Handle SQLAlchemy model instances
-                return {k: v for k, v in obj.__dict__.items() if not k.startswith('_')}
-            return str(obj)  # Convert anything else to string
-    
-    response = make_response(
-        json.dumps(response_data, cls=CustomJSONEncoder, ensure_ascii=False),
-        200
-    )
-    response.headers['Content-Type'] = 'application/json; charset=utf-8'
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    return response
+    return jsonify(response)
 
 @public_bp.route('/t/<token>/export/<format>')
 @public_tournament_required
