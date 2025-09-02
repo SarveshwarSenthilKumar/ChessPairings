@@ -2092,12 +2092,12 @@ class TournamentDB:
                 pr.result,
                 pr.status,
                 CASE 
+                    WHEN pr.white_player_id = p.id AND pr.black_player_id IS NULL THEN ?  -- Bye
                     WHEN pr.white_player_id = p.id AND pr.result = '1-0' THEN ?  -- Win as white
                     WHEN pr.black_player_id = p.id AND pr.result = '0-1' THEN ?  -- Win as black
                     WHEN pr.white_player_id = p.id AND pr.result = '0-1' THEN ?  -- Loss as white
                     WHEN pr.black_player_id = p.id AND pr.result = '1-0' THEN ?  -- Loss as black
                     WHEN pr.result = '0.5-0.5' THEN ?  -- Draw
-                    WHEN pr.status = 'bye' THEN ?  -- Bye
                     ELSE 0
                 END as points_earned,
                 CASE 
@@ -2120,7 +2120,8 @@ class TournamentDB:
                 END as is_bye
             FROM players p
             JOIN tournament_players tp ON p.id = tp.player_id
-            LEFT JOIN pairings pr ON (pr.white_player_id = p.id OR pr.black_player_id = p.id) 
+            LEFT JOIN pairings pr ON (pr.white_player_id = p.id OR pr.black_player_id = p.id OR 
+                                  (pr.white_player_id = p.id AND pr.black_player_id IS NULL))
                                   AND pr.status = 'completed'
             LEFT JOIN rounds r ON pr.round_id = r.id
             WHERE tp.tournament_id = ?
@@ -2158,14 +2159,14 @@ class TournamentDB:
             ROUND(SUM(points) * 1.0 / COUNT(DISTINCT player_id), 2) DESC
         """
         
-        # Pass point values as parameters - order is important for the CASE statement
+        # Pass point values as parameters - order must match the CASE statement
         params = (
+            bye_pts,   # Bye (first condition in CASE)
             win_pts,   # Win as white
             win_pts,   # Win as black
             loss_pts,  # Loss as white
             loss_pts,  # Loss as black
             draw_pts,  # Draw
-            bye_pts,   # Bye
             tournament_id
         )
         
