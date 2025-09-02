@@ -419,203 +419,337 @@
                     <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
                     <input type="text" id="searchStandings" class="form-control" placeholder="Search {% if view_type == 'team' %}teams{% else %}players{% endif %}...">
                 </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#legendModal">
+                        <i class="fas fa-info-circle me-1"></i> View Legend
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#tiebreakInfoModal">
+                        <i class="fas fa-question-circle me-1"></i> Tiebreak Info
+                    </button>
+                </div>
             </div>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="text-center" style="width: 60px;">#</th>
+                        <th style="width: 50px;">#</th>
                         <th>{% if view_type == 'team' %}Team{% else %}Player{% endif %}</th>
-                        {% if view_type != 'team' %}
-                            <th class="text-center">Team</th>
-                            <th class="text-center">Rating</th>
+                        {% if view_type == 'team' %}
+                        <th class="text-center">Players</th>
+                        <th class="text-center">Match Record</th>
+                        <th class="text-center">Total Points</th>
+                        <th class="text-center">Avg. Points</th>
                         {% else %}
-                            <th class="text-center">Players</th>
-                        {% endif %}
-                        <th class="text-center" data-bs-toggle="tooltip" title="Points: 1 for a win, 0.5 for a draw">Pts</th>
-                        {% if view_type != 'team' %}
-                            <th class="text-center d-none d-md-table-cell" data-bs-toggle="tooltip" title="Buchholz: Sum of opponents' scores. Higher is better.">Buchholz</th>
-                            <th class="text-center d-none d-md-table-cell" data-bs-toggle="tooltip" title="Performance: Expected performance based on opponents' ratings">Perf</th>
-                        {% else %}
-                            <th class="text-center d-none d-md-table-cell" data-bs-toggle="tooltip" title="Average points per player">Avg Pts</th>
+                        <th class="text-center">Pts</th>
+                        <th class="text-center">Tiebreak</th>
+                        <th class="text-center d-none d-md-table-cell">Rating</th>
+                        <th class="text-center d-none d-lg-table-cell">W</th>
+                        <th class="text-center d-none d-lg-table-cell">L</th>
+                        <th class="text-center d-none d-lg-table-cell">D</th>
+                        <th class="text-center d-none d-xl-table-cell">Buchholz</th>
+                        <th class="text-center d-none d-xl-table-cell">S-B</th>
+                        <th class="text-center d-none d-xl-table-cell">Perf</th>
                         {% endif %}
                     </tr>
                 </thead>
                 <tbody id="standingsTable">
-                    {% for item in standings %}
-                    <tr class="{% if loop.index == 1 %}first-place{% elif loop.index == 2 %}second-place{% elif loop.index == 3 %}third-place{% endif %} {% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 and loop.index > 3 %}table-warning{% endif %} {% if item.status == 'withdrawn' %}player-removed{% endif %}" 
-                        {% if item.status == 'withdrawn' %}title="Player has been removed from the tournament"{% endif %}>
-                        <td class="text-center fw-bold">
-                            {{ loop.index }}
-                            {% if loop.index == 1 %}
-                                <i class="fas fa-trophy text-warning ms-1"></i>
-                            {% elif loop.index == 2 %}
-                                <i class="fas fa-medal text-secondary ms-1"></i>
-                            {% elif loop.index == 3 %}
-                                <i class="fas fa-award text-bronze ms-1"></i>
-                            {% endif %}
-                            {% if item.status == 'withdrawn' %}
-                                <span class="badge bg-danger ms-1" title="Removed from tournament">X</span>
-                            {% endif %}
-                        </td>
-                        <td class="{% if item.status == 'withdrawn' %}player-removed{% endif %}">
-                            <div class="d-flex align-items-center">
-                                <div class="ms-2">
-                                    <div class="fw-medium">
-                                        {% if view_type == 'team' %}
-                                            {{ item.team }}
-                                        {% else %}
-                                            <span class="player-stats-link" 
-                                                  data-player-id="{{ item.id }}"
-                                                  data-player-name="{{ item.name }}"
-                                                  data-player-rating="{{ item.rating or 'Unrated' }}"
-                                                  style="cursor: pointer; text-decoration: underline; color: #0d6efd;">
-                                                {{ item.name }}
-                                            </span>
-                                        {% endif %}
+                    {% if view_type == 'team' %}
+                        {% for team in standings %}
+                        <tr class="{% if loop.index == 1 %}first-place{% elif loop.index == 2 %}second-place{% elif loop.index == 3 %}third-place{% endif %} {% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 and loop.index > 3 %}table-warning{% endif %}">
+                            <td class="align-middle">
+                                <span class="fw-bold">{{ loop.index }}</span>
+                                {% if loop.index <= 3 %}
+                                    <span class="badge bg-{{ ['success', 'info', 'warning'][loop.index0] }} ms-1">
+                                        {{ loop.index }}{% if loop.index == 1 %}st{% elif loop.index == 2 %}nd{% else %}rd{% endif %}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                <strong>{{ team.name or 'No Team' }}</strong>
+                                {% if team.player_details %}
+                                    <div class="small text-muted mt-1">
+                                        {{ team.player_details }}
                                     </div>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">{{ team.player_count or 0 }}</td>
+                            <td class="text-center align-middle">
+                                {{ team.match_wins or 0 }}-{{ team.match_losses or 0 }}{% if team.match_draws > 0 %}-{{ team.match_draws }}{% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                <span class="badge bg-primary">{{ "%.1f"|format(team.total_points) if team.total_points is defined else '0.0' }}</span>
+                            </td>
+                            <td class="text-center align-middle">
+                                <span class="badge bg-info text-dark">{{ "%.2f"|format(team.avg_points_per_player) if team.avg_points_per_player is defined else '0.00' }}</span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="fas fa-users-slash fa-3x mb-3"></i>
+                                    <p class="mb-0">No team standings available yet</p>
                                 </div>
-                            </div>
-                        </td>
-                        {% if view_type != 'team' %}
-                            <td class="text-center">{{ item.team or '—' }}</td>
-                            <td class="text-center">{{ item.rating or '—' }}</td>
-                        {% else %}
-                            <td class="text-center">{{ item.player_count or '—' }}</td>
-                        {% endif %}
-                        <td class="text-center fw-bold">{{ "%.1f"|format(item.points|default(0)) }}</td>
-                        {% if view_type != 'team' %}
-                            <td class="text-center d-none d-md-table-cell">{{ "%.1f"|format(item.buchholz) if item.buchholz is defined else '—' }}</td>
-                            <td class="text-center d-none d-md-table-cell">{{ "%.0f"|format(item.performance) if item.performance is defined else '—' }}</td>
-                        {% else %}
-                            <td class="text-center d-none d-md-table-cell">{{ "%.2f"|format(item.avg_points_per_player) if item.avg_points_per_player is defined else '—' }}</td>
-                        {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
                     {% else %}
-                    <tr>
-                        <td colspan="{% if view_type == 'team' %}5{% else %}7{% endif %}" class="text-center py-5">
-                            <div class="text-muted">
-                                <i class="fas fa-{% if view_type == 'team' %}users{% else %}user{% endif %}-slash fa-3x mb-3 d-block"></i>
-                                No {% if view_type == 'team' %}teams{% else %}players{% endif %} registered yet.
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
+                        {% for item in standings %}
+                        <tr class="{% if loop.index == 1 %}first-place{% elif loop.index == 2 %}second-place{% elif loop.index == 3 %}third-place{% endif %} {% if tournament.prize_winners is defined and loop.index <= tournament.prize_winners and tournament.prize_winners > 0 and loop.index > 3 %}table-warning{% endif %} {% if item.status == 'withdrawn' %}player-removed{% endif %}" 
+                            {% if item.status == 'withdrawn' %}title="Player has been removed from the tournament"{% endif %}>
+                            <td class="text-center fw-bold">
+                                {{ loop.index }}
+                                {% if loop.index == 1 %}
+                                    <i class="fas fa-trophy text-warning ms-1"></i>
+                                {% elif loop.index == 2 %}
+                                    <i class="fas fa-medal text-secondary ms-1"></i>
+                                {% elif loop.index == 3 %}
+                                    <i class="fas fa-award text-bronze ms-1"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="#" class="player-stats-link text-decoration-none" 
+                                   data-player-id="{{ item.id }}" 
+                                   data-player-name="{{ item.name }}"
+                                   data-player-rating="{{ item.rating }}"
+                                   data-bs-toggle="modal" 
+                                   data-bs-target="#playerStatsModal">
+                                    {% if item.team %}<span class="badge bg-primary me-1">{{ item.team }}</span>{% endif %}
+                                    {{ item.name }}
+                                    {% if item.status == 'withdrawn' %}
+                                        <span class="badge bg-danger ms-1">Withdrawn</span>
+                                    {% endif %}
+                                </a>
+                            </td>
+                            <td class="text-center fw-bold">{{ "%.1f"|format(item.points) if item.points is defined else '0.0' }}</td>
+                            <td class="text-center">{{ "%.2f"|format(item.tiebreak1) if item.tiebreak1 is defined else '0.00' }}</td>
+                            <td class="text-center d-none d-md-table-cell">{{ item.rating or '—' }}</td>
+                            <td class="text-center d-none d-lg-table-cell">{{ item.wins or 0 }}</td>
+                            <td class="text-center d-none d-lg-table-cell">{{ item.losses or 0 }}</td>
+                            <td class="text-center d-none d-lg-table-cell">{{ item.draws or 0 }}</td>
+                            <td class="text-center d-none d-xl-table-cell">{{ "%.2f"|format(item.buchholz) if item.buchholz is defined else '—' }}</td>
+                            <td class="text-center d-none d-xl-table-cell">{{ "%.2f"|format(item.sonneborn_berger) if item.sonneborn_berger is defined else '—' }}</td>
+                            <td class="text-center d-none d-xl-table-cell">{{ item.performance_rating if item.performance_rating is defined else '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="11" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="fas fa-users-slash fa-3x mb-3"></i>
+                                    <p class="mb-0">No standings available yet</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>
-        <div class="card-footer bg-white">
-            <div class="d-flex justify-content-between align-items-center">
+        <div class="card-footer bg-transparent border-top">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+                <div class="text-muted small mb-2 mb-md-0">
+                    <i class="fas {% if view_type == 'team' %}fa-users-between-lines{% else %}fa-users{% endif %} me-1"></i>
+                    Showing <strong>{{ standings|length }}</strong> {% if view_type == 'team' %}{% if standings|length == 1 %}team{% else %}teams{% endif %}{% else %}{% if standings|length == 1 %}player{% else %}players{% endif %}{% endif %}
+                </div>
                 <div class="text-muted small">
-                    Showing <strong>{{ standings|length }}</strong> {% if view_type == 'team' %}teams{% else %}players{% endif %}
-                </div>
-                <div class="text-end small">
-                    <span class="text-muted">Last updated: {{ now|datetimeformat('short') if now else 'Just now' }}</span>
+                    <i class="far fa-clock me-1"></i>
+                    Last updated: {{ now.strftime('%Y-%m-%d %H:%M:%S') }}
                 </div>
             </div>
         </div>
     </div>
-    <div class="card-footer bg-white">
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="text-muted small">
-                Showing <strong>{{ standings|length }}</strong> players
-            </div>
-            <div class="text-end small">
-                <span class="text-muted">Last updated: {{ now|datetimeformat('short') if now else 'Just now' }}</span>
+    <!-- Legend Modal -->
+    <div class="modal fade" id="legendModal" tabindex="-1" aria-labelledby="legendModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="legendModalLabel"><i class="fas fa-info-circle me-2"></i>Standings Legend</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-3 text-primary"><i class="fas fa-trophy me-2"></i>Podium Positions</h6>
+                                    <div class="d-flex flex-column gap-2">
+                                        <div class="d-flex align-items-center p-2 rounded bg-light">
+                                            <i class="fas fa-trophy text-warning me-3" style="font-size: 1.25rem;"></i>
+                                            <div>
+                                                <div class="fw-medium">1st Place</div>
+                                                <small class="text-muted">Tournament Champion</small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center p-2 rounded bg-light">
+                                            <i class="fas fa-medal text-secondary me-3" style="font-size: 1.25rem;"></i>
+                                            <div>
+                                                <div class="fw-medium">2nd Place</div>
+                                                <small class="text-muted">Runner-up</small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center p-2 rounded bg-light">
+                                            <i class="fas fa-medal text-bronze me-3" style="font-size: 1.25rem;"></i>
+                                            <div>
+                                                <div class="fw-medium">3rd Place</div>
+                                                <small class="text-muted">Bronze Medalist</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-3 text-primary"><i class="fas fa-info-circle me-2"></i>Status Indicators</h6>
+                                    <div class="d-flex flex-column gap-2">
+                                        <div class="d-flex align-items-center p-2 rounded bg-light">
+                                            <span class="badge bg-warning me-3" style="width: 20px; height: 20px;"></span>
+                                            <div>
+                                                <div class="fw-medium">Prize Winner</div>
+                                                <small class="text-muted">Top finishing positions</small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center p-2 rounded bg-light">
+                                            <span class="badge bg-danger bg-opacity-10 text-danger me-3" style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">W/D</span>
+                                            <div>
+                                                <div class="fw-medium">Withdrawn</div>
+                                                <small class="text-muted">Player has left the tournament</small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center p-2 rounded bg-light">
+                                            <i class="fas fa-chess me-3 text-muted" style="font-size: 1.25rem; width: 20px; text-align: center;"></i>
+                                            <div>
+                                                <div class="fw-medium">Match Results</div>
+                                                <small class="text-muted">Hover for detailed results</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it!</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Legend -->
-<div class="row mt-3">
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-3">
-                <h6 class="card-title mb-3"><i class="fas fa-info-circle me-2"></i>Standings Legend</h6>
-                <div class="d-flex flex-wrap gap-3">
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-warning bg-opacity-10 text-warning me-2">1st</span>
-                        <small class="text-muted">Champion</small>
+    <!-- Tiebreak Info Modal -->
+    <div class="modal fade" id="tiebreakInfoModal" tabindex="-1" aria-labelledby="tiebreakInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-trophy me-2"></i>Tiebreak Information</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-4" id="tiebreakTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if view_type != 'team' %}active{% endif %}" id="individual-tab" data-bs-toggle="tab" data-bs-target="#individual-tiebreaks" type="button" role="tab" aria-controls="individual" aria-selected="{% if view_type != 'team' %}true{% else %}false{% endif %}">
+                                <i class="fas fa-user me-1"></i> Individual
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if view_type == 'team' %}active{% endif %}" id="team-tab" data-bs-toggle="tab" data-bs-target="#team-tiebreaks" type="button" role="tab" aria-controls="team" aria-selected="{% if view_type == 'team' %}true{% else %}false{% endif %}">
+                                <i class="fas fa-users me-1"></i> Team
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="tiebreakTabContent">
+                        <!-- Individual Tiebreaks -->
+                        <div class="tab-pane fade {% if view_type != 'team' %}show active{% endif %}" id="individual-tiebreaks" role="tabpanel" aria-labelledby="individual-tab">
+                            <div class="mb-4">
+                                <h5 class="mb-3"><i class="fas fa-list-ol me-2"></i>Tiebreak Order</h5>
+                                <ol class="list-group list-group-numbered">
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Sonneborn-Berger (SB)</div>
+                                            Sum of the scores of the players you've beaten, plus half the scores of those you've drawn with.
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">TB1</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Buchholz (BH)</div>
+                                            Sum of the scores of all your opponents, excluding the lowest-scoring one.
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">TB2</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Direct Encounter</div>
+                                            The result of the game between tied players, if applicable.
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Performance Rating</div>
+                                            The rating that would result in the player's current score against the opponents faced.
+                                        </div>
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <!-- Team Tiebreaks -->
+                        <div class="tab-pane fade {% if view_type == 'team' %}show active{% endif %}" id="team-tiebreaks" role="tabpanel" aria-labelledby="team-tab">
+                            <div class="mb-4">
+                                <h5 class="mb-3"><i class="fas fa-users-between-lines me-2"></i>Team Standings Tiebreaks</h5>
+                                <ol class="list-group list-group-numbered">
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Match Points (MP)</div>
+                                            Total points earned in team matches (2 for win, 1 for draw, 0 for loss).
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">Primary</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Game Points (GP)</div>
+                                            Sum of individual game points from all matches.
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">TB1</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Direct Match Result</div>
+                                            The result between the tied teams, if they've played each other.
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">TB2</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Buchholz (BH)</div>
+                                            Sum of the match points of all opponents, excluding the lowest-scoring one.
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">TB3</span>
+                                    </li>
+                                </ol>
+                                
+                                <div class="alert alert-info mt-4">
+                                    <h6><i class="fas fa-info-circle me-2"></i>How Team Standings Work</h6>
+                                    <ul class="mb-0">
+                                        <li>Teams are ranked by <strong>Match Points (MP)</strong> first.</li>
+                                        <li>If tied, <strong>Game Points (GP)</strong> determine the ranking.</li>
+                                        <li>If still tied, the <strong>direct match result</strong> between the teams is used.</li>
+                                        <li>If teams haven't played or drew, <strong>Buchholz</strong> is the final tiebreak.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-secondary bg-opacity-10 text-secondary me-2">2nd</span>
-                        <small class="text-muted">Runner-up</small>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-orange bg-opacity-10" style="color: #cd7f32;" class="me-2">3rd</span>
-                        <small class="text-muted">Third Place</small>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-danger bg-opacity-10 text-danger me-2">W/D</span>
-                        <small class="text-muted">Withdrawn</small>
-                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
     </div>
-        <div class="card">
-            <div class="card-body p-3">
-                <h6 class="card-title mb-3"><i class="fas fa-info-circle me-2"></i>Legend</h6>
-                <div class="d-flex flex-wrap gap-3">
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-warning me-2" style="width: 16px; height: 16px;"></span>
-                        <small>Prize Winner</small>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-trophy text-warning me-2"></i>
-                        <small>1st Place</small>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-medal text-secondary me-2"></i>
-                        <small>2nd Place</small>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-medal text-bronze me-2"></i>
-                        <small>3rd Place</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body p-3">
-                <h5 class="card-title mb-3"><i class="fas fa-trophy me-2"></i>Tiebreak Information</h5>
-                <div class="row">
-                    <div class="col-6">
-                        <div class="mb-2">
-                            <small class="text-muted d-block">Buchholz</small>
-                            <small>Sum of opponents' scores</small>
-                        </div>
-                        {% if view_type == 'player' %}
-                        <div>
-                            <small class="text-muted d-block">Sonneborn-Berger</small>
-                            <small>Sum of defeated opponents' scores + ½ sum of drawn opponents' scores</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="col-6">
-                        {% if view_type == 'player' %}
-                        <div class="mb-2">
-                            <small class="text-muted d-block">Direct Encounter</small>
-                            <small>Result between tied players</small>
-                        </div>
-                        {% endif %}
-                        <div>
-                            <small class="text-muted d-block">{% if view_type == 'player' %}Rating{% else %}Match Points{% endif %}</small>
-                            <small>{% if view_type == 'player' %}Player's rating as last resort{% else %}Points from matches (2 for win, 1 for draw){% endif %}</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Rounds Section -->
-<div class="card mt-4">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
         <h5 class="mb-0">
             <i class="fas fa-flag-checkered me-2"></i>Rounds & Results
         </h5>

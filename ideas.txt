@@ -1,6 +1,4 @@
 
-update player stats and widgets to work with new scoring
-fix the stats modal and do not display superlative
 
 Add a assign teams and view teams button
 
