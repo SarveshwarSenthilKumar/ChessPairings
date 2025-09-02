@@ -216,6 +216,8 @@
                     <option value="name_asc">Name (A-Z)</option>
                     <option value="name_desc">Name (Z-A)</option>
                     <option value="start_date">Start Date</option>
+                    <option value="players_asc">Players (Fewest First)</option>
+                    <option value="players_desc">Players (Most First)</option>
                 </select>
             </div>
             
@@ -250,7 +252,9 @@
              data-tournament-id="{{ tournament.id }}"
              data-status="{{ tournament.status|default('upcoming') }}"
              data-start-date="{{ tournament.start_date|default('') }}"
-             data-created-at="{{ tournament.created_at|default('') }}">
+             data-created-at="{{ tournament.created_at|default('') }}"
+             data-name="{{ tournament.name|lower }}"
+             data-location="{{ tournament.location|default('')|lower }}">
                 <input type="checkbox" class="form-check-input tournament-checkbox" value="{{ tournament.id }}" style="display: none;">
             <div class="card-header position-relative">
                 {% if tournament.via_share_link %}
@@ -259,7 +263,7 @@
                 </span>
                 {% endif %}
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{{ tournament.name }}</h5>
+                    <h5 class="mb-0 card-title">{{ tournament.name }}</h5>
                     <span class="badge bg-{{ 'success' if tournament.status == 'completed' else 'primary' if tournament.status == 'in_progress' else 'secondary' }}">
                         {{ tournament.status|replace('_', ' ')|title }}
                     </span>
@@ -277,7 +281,7 @@
                     </div>
                     <div class="d-flex align-items-center">
                         <i class="fas fa-users me-2 text-muted"></i>
-                        <span>Players: {{ tournament.player_count }}</span>
+                        <span data-player-count>{{ tournament.player_count|default(0) }}</span>
                     </div>
                 </div>
             </div>
