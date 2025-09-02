@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 # Authentication Encryption Key (Replace with your actual encryption string)
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+#ENCRYPTION_KEY=SarvAuthAuthenticationKey
 
 allowedChar = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-'!#$%&()*+,./:;<=>?@[\]^_`{|}~ "
 
