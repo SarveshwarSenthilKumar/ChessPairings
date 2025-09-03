@@ -61,7 +61,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0 pt-0">
-                    <a href="#" class="text-dark small">View active <i class="fas fa-arrow-right ms-1"></i></a>
+                    <a href="#" class="text-dark small" data-bs-toggle="modal" data-bs-target="#activeTournamentsModal">View active <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
             </div>
         </div>
@@ -215,7 +215,43 @@
                             </tr>
                         </thead>
                         <tbody id="tournamentsTableBody">
-                            <!-- Tournaments will be loaded here via JavaScript -->
+                            <tr>
+                                <td colspan="4" class="text-center">Loading tournaments...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Tournaments Modal -->
+<div class="modal fade" id="activeTournamentsModal" tabindex="-1" aria-labelledby="activeTournamentsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="activeTournamentsModalLabel">Active Tournaments</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activeTournamentsTableBody">
+                            <tr>
+                                <td colspan="4" class="text-center">Loading active tournaments...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -280,11 +316,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Tournaments modal
-    const tournamentsModal = document.getElementById('allTournamentsModal');
-    if (tournamentsModal) {
-        tournamentsModal.addEventListener('show.bs.modal', function () {
-            console.log('Loading tournaments...');
+    // Active Tournaments modal
+    const activeTournamentsModal = document.getElementById('activeTournamentsModal');
+    if (activeTournamentsModal) {
+        activeTournamentsModal.addEventListener('show.bs.modal', function () {
+            console.log('Loading active tournaments...');
             fetch('/admin/api/tournaments')
                 .then(response => {
                     if (!response.ok) {
@@ -293,7 +329,74 @@ document.addEventListener('DOMContentLoaded', function() {
                     return response.json();
                 })
                 .then(tournaments => {
-                    console.log('Tournaments loaded:', tournaments);
+                    console.log('Active tournaments loaded:', tournaments);
+                    const tbody = document.getElementById('activeTournamentsTableBody');
+                    tbody.innerHTML = '';
+                    
+                    if (tournaments.error) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-center">${tournaments.error}</td></tr>`;
+                        return;
+                    }
+                    
+                    if (!tournaments || tournaments.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No active tournaments found</td></tr>';
+                        return;
+                    }
+                    
+                    // Filter for active tournaments
+                    const activeTournaments = tournaments.filter(t => 
+                        t.status && (t.status.toLowerCase().includes('ongoing') || 
+                                   t.status.toLowerCase().includes('in_progress') ||
+                                   t.status.toLowerCase().includes('in progress'))
+                    );
+                    
+                    if (activeTournaments.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No active tournaments found</td></tr>';
+                        return;
+                    }
+                    
+                    activeTournaments.forEach(tournament => {
+                        const row = document.createElement('tr');
+                        const createdDate = tournament.created_at ? new Date(tournament.created_at).toLocaleDateString() : 'N/A';
+                        const statusClass = tournament.status === 'completed' ? 'success' : 
+                                          (tournament.status === 'ongoing' || tournament.status === 'in_progress') ? 'primary' : 'secondary';
+                        
+                        row.innerHTML = `
+                            <td>${tournament.id || 'N/A'}</td>
+                            <td>${tournament.name || 'Unnamed Tournament'}</td>
+                            <td><span class="badge bg-${statusClass}">${(tournament.status || 'upcoming').replace('_', ' ')}</span></td>
+                            <td>${createdDate}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading active tournaments:', error);
+                    const tbody = document.getElementById('activeTournamentsTableBody');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-danger">
+                                Error loading active tournaments: ${error.message}
+                            </td>
+                        </tr>`;
+                });
+        });
+    }
+    
+    // All Tournaments modal
+    const tournamentsModal = document.getElementById('allTournamentsModal');
+    if (tournamentsModal) {
+        tournamentsModal.addEventListener('show.bs.modal', function () {
+            console.log('Loading all tournaments...');
+            fetch('/admin/api/tournaments')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(tournaments => {
+                    console.log('All tournaments loaded:', tournaments);
                     const tbody = document.getElementById('tournamentsTableBody');
                     tbody.innerHTML = '';
                     
