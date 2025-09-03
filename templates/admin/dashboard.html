@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Chess Tournament Manager{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard</h1>
+        <div>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Site
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-0">Total Users</h6>
+                            <h2 class="mb-0">{{ total_users }}</h2>
+                        </div>
+                        <i class="fas fa-users fa-3x opacity-50"></i>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 pt-0">
+                    <a href="#" class="text-white small" data-bs-toggle="modal" data-bs-target="#allUsersModal">View all users <i class="fas fa-arrow-right ms-1"></i></a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-0">Total Tournaments</h6>
+                            <h2 class="mb-0">{{ total_tournaments }}</h2>
+                        </div>
+                        <i class="fas fa-trophy fa-3x opacity-50"></i>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 pt-0">
+                    <a href="#" class="text-white small" data-bs-toggle="modal" data-bs-target="#allTournamentsModal">View all tournaments <i class="fas fa-arrow-right ms-1"></i></a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card bg-warning text-dark h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-0">Active Tournaments</h6>
+                            <h2 class="mb-0">{{ active_tournaments }}</h2>
+                        </div>
+                        <i class="fas fa-play-circle fa-3x opacity-50"></i>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 pt-0">
+                    <a href="#" class="text-dark small">View active <i class="fas fa-arrow-right ms-1"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Tournaments -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Recent Tournaments</h5>
+                    <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_tournaments %}
+                        <div class="list-group list-group-flush">
+                            {% for tournament in recent_tournaments %}
+                            <a href="#" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ tournament.name if tournament.name else 'Unnamed Tournament' }}</h6>
+                                    <small class="text-muted">{{ tournament.created_at.split(' ')[0] if tournament.created_at else 'N/A' }}</small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-{{ 'success' if tournament.status == 'completed' else 'primary' if tournament.status in ['ongoing', 'in_progress'] else 'secondary' }}">
+                                        {{ (tournament.status if tournament.status else 'upcoming')|replace('_', ' ')|title }}
+                                    </span>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center p-4">
+                            <p class="text-muted mb-0">No tournaments found.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Users -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Recent Users</h5>
+                    <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_users %}
+                        <div class="list-group list-group-flush">
+                            {% for user in recent_users %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">{{ user.name if user.name else user.username if user.username else 'N/A' }}</h6>
+                                        <small class="text-muted">@{{ user.username if user.username else 'N/A' }}</small>
+                                        {% if user.email %}
+                                        <div class="text-truncate text-muted small" style="max-width: 200px;" title="{{ user.email }}">
+                                            {{ user.email }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center p-4">
+                            <p class="text-muted mb-0">No users found.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Info -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>System Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <th width="30%">Database Path</th>
+                            <td>{{ config['DATABASE'] }}</td>
+                        </tr>
+                        <tr>
+                            <th>Debug Mode</th>
+                            <td>{{ 'Enabled' if config['DEBUG'] else 'Disabled' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Environment</th>
+                            <td>{{ config['ENV'] }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- All Users Modal -->
+<div class="modal fade" id="allUsersModal" tabindex="-1" aria-labelledby="allUsersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="allUsersModalLabel">All Users</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Users will be loaded here via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- All Tournaments Modal -->
+<div class="modal fade" id="allTournamentsModal" tabindex="-1" aria-labelledby="allTournamentsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="allTournamentsModalLabel">All Tournaments</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tournamentsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tournamentsTableBody">
+                            <!-- Tournaments will be loaded here via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Wait for the document to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Users modal
+    const usersModal = document.getElementById('allUsersModal');
+    if (usersModal) {
+        usersModal.addEventListener('show.bs.modal', function () {
+            console.log('Loading users...');
+            fetch('/admin/api/users')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(users => {
+                    console.log('Users loaded:', users);
+                    const tbody = document.getElementById('usersTableBody');
+                    tbody.innerHTML = '';
+                    
+                    if (users.error) {
+                        tbody.innerHTML = `<tr><td colspan="2" class="text-center">${users.error}</td></tr>`;
+                        return;
+                    }
+                    
+                    if (!users || users.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="2" class="text-center">No users found</td></tr>';
+                        return;
+                    }
+                    
+                    users.forEach(user => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${user.id || 'N/A'}</td>
+                            <td>${user.username || 'N/A'}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading users:', error);
+                    const tbody = document.getElementById('usersTableBody');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="2" class="text-center text-danger">
+                                Error loading users: ${error.message}
+                            </td>
+                        </tr>`;
+                });
+        });
+    }
+    
+    // Tournaments modal
+    const tournamentsModal = document.getElementById('allTournamentsModal');
+    if (tournamentsModal) {
+        tournamentsModal.addEventListener('show.bs.modal', function () {
+            console.log('Loading tournaments...');
+            fetch('/admin/api/tournaments')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(tournaments => {
+                    console.log('Tournaments loaded:', tournaments);
+                    const tbody = document.getElementById('tournamentsTableBody');
+                    tbody.innerHTML = '';
+                    
+                    if (tournaments.error) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-center">${tournaments.error}</td></tr>`;
+                        return;
+                    }
+                    
+                    if (!tournaments || tournaments.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No tournaments found</td></tr>';
+                        return;
+                    }
+                    
+                    tournaments.forEach(tournament => {
+                        const status = tournament.status || 'upcoming';
+                        const statusClass = status === 'completed' ? 'success' : 
+                                         status === 'ongoing' ? 'primary' : 'secondary';
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${tournament.id || 'N/A'}</td>
+                            <td>${tournament.name || 'Unnamed Tournament'}</td>
+                            <td>${tournament.created_at ? tournament.created_at.split(' ')[0] : 'N/A'}</td>
+                            <td><span class="badge bg-${statusClass}">${status.replace('_', ' ').toUpperCase()}</span></td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading tournaments:', error);
+                    const tbody = document.getElementById('tournamentsTableBody');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-danger">
+                                Error loading tournaments: ${error.message}
+                            </td>
+                        </tr>`;
+                });
+        });
+    }
+});
+</script>
+{% endblock %}
+
+</div>
+{% endblock %}

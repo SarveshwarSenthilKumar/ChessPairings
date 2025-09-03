@@ -5,6 +5,7 @@ from auth import auth_blueprint
 from tournament_routes import tournament_bp
 from public_routes import public_bp
 from admin_share_routes import bp as admin_share_bp
+from admin_routes import admin_bp as admin_blueprint
 from dev_routes import init_dev_routes
 from SarvAuth import *
 from sql import *
@@ -87,6 +88,7 @@ app.jinja_env.filters['ordinal'] = ordinal
 
 # Register blueprints
 app.register_blueprint(auth_blueprint)
+app.register_blueprint(admin_blueprint, url_prefix='/admin')
 app.register_blueprint(tournament_bp, url_prefix='/tournament')
 app.register_blueprint(public_bp, url_prefix='/public')
 
