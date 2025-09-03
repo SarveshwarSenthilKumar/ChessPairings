@@ -993,6 +993,7 @@
 
 {% block extra_js %}
 {{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 // Handle initial page load with hash and initialize tooltips
 document.addEventListener('DOMContentLoaded', function() {
@@ -2023,5 +2024,223 @@ $('#searchStandings').on('keyup', function() {
         $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
     });
 });
+
+// AI Analysis Modal Functionality
+function initializeAIAnalysis() {
+    const analyzeBtn = document.getElementById('analyzeTournamentBtn');
+    const refreshBtn = document.getElementById('refreshAnalysis');
+    const modalEl = document.getElementById('aiAnalysisModal');
+    const loadingEl = document.getElementById('aiAnalysisLoading');
+    const contentEl = document.getElementById('aiAnalysisContent');
+    let modal = null;
+
+    if (!analyzeBtn || !modalEl) return;
+
+    // Get the tournament token from the URL
+    const urlParts = window.location.pathname.split('/');
+    const token = urlParts[urlParts.length - 1];
+    
+    function showError(message) {
+        console.error('AI Analysis Error:', message);
+        contentEl.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                ${message}
+            </div>
+        `;
+        loadingEl.classList.add('d-none');
+        contentEl.classList.remove('d-none');
+    }
+
+    function loadAnalysis() {
+        // Check if marked library is loaded
+        if (typeof marked === 'undefined') {
+            showError('Markdown rendering library not loaded. Please refresh the page and try again.');
+            return;
+        }
+        
+        if (!token) {
+            showError('Unable to load tournament data. Please refresh the page and try again.');
+            return;
+        }
+
+        // Show loading state
+        loadingEl.classList.remove('d-none');
+        contentEl.classList.add('d-none');
+        contentEl.innerHTML = '';
+
+        // Store the currently focused element to return focus when modal closes
+        const focusedElementBeforeModal = document.activeElement;
+        
+        // Initialize and show the modal if not already shown
+        if (!modal) {
+            modal = new bootstrap.Modal(modalEl, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+            
+            // Handle modal hidden event to clean up
+            modalEl.addEventListener('hidden.bs.modal', function onHidden() {
+                console.log('Modal hidden event triggered');
+                loadingEl.classList.add('d-none');
+                contentEl.classList.remove('d-none');
+                
+                // Return focus to the element that had it before the modal was opened
+                if (focusedElementBeforeModal) {
+                    focusedElementBeforeModal.focus();
+                }
+            }, { once: true });
+            
+            // Add event listener for when the modal is shown
+            modalEl.addEventListener('shown.bs.modal', function onShown() {
+                console.log('Modal shown event triggered');
+                // Focus the close button when modal is shown
+                const closeButton = modalEl.querySelector('[data-bs-dismiss="modal"]');
+                if (closeButton) {
+                    closeButton.focus();
+                }
+            }, { once: true });
+        }
+        
+        // Show the modal
+        modal.show();
+        
+        // Fetch AI analysis with error handling
+        console.log('Starting AI analysis fetch...');
+        fetch(`/public/t/${token}/ai-analysis`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response;
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('This tournament does not have AI analysis enabled.');
+                    }
+                    return response.json().then(err => {
+                        throw new Error(err.error || `HTTP error! status: ${response.status}`);
+                    }).catch(() => {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                    console.log('AI analysis data received:', data);
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to generate analysis');
+                    }
+                    
+                    // Check if marked is available
+                    if (typeof marked === 'undefined') {
+                        throw new Error('Markdown rendering library not available');
+                    }
+                    
+                    // Sanitize and render the markdown
+                    try {
+                        const analysisHTML = marked.parse(data.analysis || 'No analysis available');
+                        contentEl.innerHTML = analysisHTML;
+                    } catch (error) {
+                        console.error('Error rendering markdown:', error);
+                        // Fallback to plain text if markdown rendering fails
+                        contentEl.innerHTML = `<div class="alert alert-warning">${data.analysis || 'No analysis available'}</div>`;
+                    }
+                    
+                    // Apply syntax highlighting to code blocks
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                    
+                    // Show content and hide loading
+                    loadingEl.classList.add('d-none');
+                    contentEl.classList.remove('d-none');
+                })
+                .catch(error => {
+                    console.error('Error in AI analysis fetch:', error);
+                    showError(`Failed to load analysis: ${error.message || 'Please try again later.'}`);
+                });
+    }
+
+    // Set up event listeners
+    analyzeBtn.addEventListener('click', loadAnalysis);
+    
+    // Refresh analysis button
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadAnalysis);
+    }
+}
+
+// Initialize AI Analysis when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    const header = document.querySelector('.d-flex.justify-content-between.align-items-center.mb-4');
+    if (header) {
+        // Check if button already exists
+        if (!document.getElementById('analyzeTournamentBtn')) {
+            const analyzeBtn = document.createElement('button');
+            analyzeBtn.id = 'analyzeTournamentBtn';
+            analyzeBtn.className = 'btn btn-primary';
+            analyzeBtn.innerHTML = '<i class="fas fa-robot me-1"></i> AI Analysis';
+            
+            // Add the button to the header
+            const headerActions = header.querySelector('div:last-child');
+            if (headerActions) {
+                headerActions.prepend(analyzeBtn);
+                analyzeBtn.classList.add('me-2');
+            }
+        }
+        
+        // Initialize the AI Analysis functionality
+        initializeAIAnalysis();
+    }
+});
 </script>
+
+<!-- AI Analysis Modal -->
+<div class="modal fade" id="aiAnalysisModal" tabindex="-1" role="dialog" aria-labelledby="aiAnalysisModalLabel" aria-modal="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h2 class="modal-title h5" id="aiAnalysisModalLabel">
+                    <i class="fas fa-robot me-2" aria-hidden="true"></i>
+                    Tournament Analysis
+                    <span class="badge bg-light text-primary ms-2">Powered by AI</span>
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close modal">
+                    <span class="visually-hidden">Close</span>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="aiAnalysisLoading" class="text-center p-5">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Analyzing...</span>
+                    </div>
+                    <h5 class="mt-4 mb-2">Analyzing Tournament Data</h5>
+                    <p class="text-muted mb-0">Examining players and their match history...</p>
+                    <div class="progress mt-4" style="height: 6px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div id="aiAnalysisContent" class="d-none p-4 markdown-content" style="max-height: 70vh; overflow-y: auto;">
+                    <!-- Markdown content will be rendered here -->
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <div class="text-muted small me-auto">
+                    <i class="fas fa-info-circle me-1"></i> Analysis is based on current tournament data
+                </div>
+                <button type="button" class="btn btn-primary" id="refreshAnalysis">
+                    <i class="fas fa-sync-alt me-1"></i> Refresh Analysis
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

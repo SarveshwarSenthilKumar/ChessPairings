@@ -1,6 +1,5 @@
 import json
 import os
-import openai
 from flask import Blueprint, render_template, redirect, url_for, flash, current_app, send_file, g, request, jsonify, make_response
 from flask_wtf.csrf import generate_csrf
 from functools import wraps
@@ -10,10 +9,13 @@ from datetime import datetime
 from tournament_db import TournamentDB
 import pandas as pd
 from io import BytesIO
+import openai
 
 # Load environment variables
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Initialize OpenAI client
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Create blueprint
 public_bp = Blueprint('public', __name__, template_folder='templates')
@@ -28,7 +30,11 @@ def get_db():
 def public_tournament_required(f):
     """Decorator to check if the tournament exists and is accessible via share token."""
     @wraps(f)
-    def decorated_function(token, *args, **kwargs):
+    def decorated_function(*args, **kwargs):
+        token = kwargs.get('token')
+        if not token:
+            return jsonify({'success': False, 'error': 'Missing tournament token'}), 400
+            
         db = get_db()
         tournament = db.get_tournament_by_share_token(token)
         if not tournament:
@@ -36,7 +42,7 @@ def public_tournament_required(f):
                 return jsonify({'success': False, 'error': 'Invalid or expired tournament link'}), 404
             flash('Invalid or expired tournament link.', 'error')
             return redirect(url_for('index'))
-        return f(tournament, *args, **kwargs)
+        return f(tournament)
     return decorated_function
 
 @public_bp.route('/t/<token>')
@@ -225,15 +231,22 @@ def public_export(tournament, format):
     flash('Invalid export format.', 'error')
     return redirect(url_for('public.public_tournament_view', token=tournament['share_token']))
 
-@public_bp.route('/t/<string:token>/ai-analysis')
+@public_bp.route('/t/<token>/ai-analysis', methods=['GET'])
 @public_tournament_required
-def ai_analysis(tournament, token):
+def ai_analysis(tournament):
     """Generate an AI analysis of the tournament."""
+    print(f"[DEBUG] AI Analysis - Received request for tournament: {tournament.get('name')}")
+    print(f"[DEBUG] Tournament data: {tournament}")
+    
+    if not tournament:
+        print("[ERROR] No tournament found for the given token")
+        return jsonify({'success': False, 'error': 'Tournament not found'}), 404
+        
     db = get_db()
     tournament_id = tournament['id']
+    print(f"[DEBUG] Processing tournament ID: {tournament_id}")
     
     try:
-        tournament_id = tournament['id']
         
         # Get tournament data
         players = db.get_players(tournament_id)
@@ -242,6 +255,15 @@ def ai_analysis(tournament, token):
                 'success': False,
                 'error': 'No players found in this tournament'
             })
+            
+        print(f"[DEBUG] Players data: {players}")
+        
+        # Ensure all players have required fields
+        for player in players:
+            if 'name' not in player:
+                player['name'] = 'Unknown Player'
+            if 'rating' not in player:
+                player['rating'] = 'Unrated'
             
         rounds = db.get_rounds(tournament_id)
         if not rounds:
@@ -253,9 +275,21 @@ def ai_analysis(tournament, token):
         pairings = []
         for round_ in rounds:
             round_pairings = db.get_pairings(round_['id'])
+            print(f"[DEBUG] Round {round_['round_number']} pairings: {round_pairings}")
+            
             for pairing in round_pairings:
+                # Ensure all required fields are present
+                if 'white_player' not in pairing:
+                    pairing['white_player'] = 'Unknown Player'
+                if 'black_player' not in pairing:
+                    pairing['black_player'] = 'Unknown Player'
+                if 'result' not in pairing:
+                    pairing['result'] = '*'  # Default to ongoing game
+                    
                 pairing['round_number'] = round_['round_number']
                 pairings.append(pairing)
+                
+        print(f"[DEBUG] All pairings: {pairings}")
     
         # Get standings
         standings = db.get_standings(tournament_id)
@@ -264,6 +298,13 @@ def ai_analysis(tournament, token):
                 'success': False,
                 'error': 'Could not generate tournament standings'
             })
+            
+        print(f"[DEBUG] Standings data: {standings}")
+        
+        # Ensure all standings have required fields
+        for i, standing in enumerate(standings, 1):
+            if 'rank' not in standing:
+                standing['rank'] = i
         
         # Prepare data for AI
         tournament_data = {

@@ -1,7 +1,7 @@
 
-Create an ai synopsys for rounds and the entire tournament as well
-
 Add an admin dashboard to track total users and tournaments
+
+Add additional comments feature
 
 Add an attendance check-in feature
 
