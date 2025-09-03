@@ -127,10 +127,14 @@ def register():
             )
             print("User created successfully")
 
-            userid = db.execute("SELECT * FROM users WHERE emailAddress = :email", email=email)
+            # Get the newly created user
+            user = db.execute("SELECT * FROM users WHERE emailAddress = :email", email=email)
             
+            if not user:
+                raise Exception("Failed to retrieve user after creation")
+                
             # Log the user in
-            session["user_id"] = userid["id"]
+            session["user_id"] = user[0]["id"]  # Access first row, then 'id' column
             session["name"] = username
             session["email"] = email
             return redirect('/tournament/')

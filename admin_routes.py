@@ -40,7 +40,8 @@ def dashboard():
             from sql import SQL
             db = SQL("sqlite:///users.db")
             
-            # Get total users
+            # Get total users(
+            print(db.execute("SELECT * FROM users"))
             result = db.execute("SELECT COUNT(*) as count FROM users")
             total_users = result[0]['count'] if result else 0
             current_app.logger.info(f"Found {total_users} total users")
