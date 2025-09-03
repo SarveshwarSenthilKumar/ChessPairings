@@ -72,6 +72,15 @@
                             {% endfor %}
                         </div>
                         
+                        <div class="mb-3">
+                            {{ form.comments.label(class="form-label") }}
+                            {{ form.comments(class="form-control" + (" is-invalid" if form.comments.errors else ""), rows=3) }}
+                            <div class="form-text">{{ form.comments.description }}</div>
+                            {% for error in form.comments.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
                         <!-- Point Settings Section -->
                         <div class="card mb-4">
                             <div class="card-header">

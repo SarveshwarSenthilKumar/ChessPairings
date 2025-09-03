@@ -365,6 +365,7 @@ def tournament_settings(tournament_id):
                 rounds=form.rounds.data,
                 time_control=form.time_control.data or None,
                 description=form.description.data or None,
+                comments=form.comments.data or None,
                 win_points=form.win_points.data,
                 draw_points=form.draw_points.data,
                 loss_points=form.loss_points.data,
@@ -384,6 +385,7 @@ def tournament_settings(tournament_id):
     if request.method == 'GET':
         form.name.data = tournament.get('name')
         form.location.data = tournament.get('location')
+        form.comments.data = tournament.get('comments')
         
         # Handle date conversion safely
         if tournament.get('start_date'):
@@ -880,6 +882,8 @@ class TournamentSettingsForm(FlaskForm):
     rounds = IntegerField('Number of Rounds', render_kw={'readonly': True})
     time_control = StringField('Time Control')
     description = TextAreaField('Description')
+    comments = TextAreaField('Additional Comments', render_kw={'rows': 3}, 
+                           description='Additional notes or information about the tournament')
     
     # Point settings
     win_points = IntegerField('Points for a Win', default=1, validators=[NumberRange(min=0)])

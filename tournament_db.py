@@ -166,7 +166,7 @@ class TournamentDB:
             return False
             
         allowed_fields = ['name', 'location', 'start_date', 'end_date', 
-                        'rounds', 'time_control', 'description',
+                        'rounds', 'time_control', 'description', 'comments',
                         'win_points', 'draw_points', 'loss_points', 'bye_points']
         
         updates = []
