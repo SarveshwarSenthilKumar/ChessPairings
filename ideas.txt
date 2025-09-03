@@ -1,6 +1,4 @@
 
-Add an admin dashboard to track total users and tournaments
-
 Add additional comments feature to the tournament settings page and make it so it updates the description with additional information at time
 
 update public view to show the description
