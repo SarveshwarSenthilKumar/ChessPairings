@@ -4,7 +4,9 @@
 {% block title %}{{ tournament.name }} - Chess Tournament Manager{% endblock %}
 
 {% block extra_css %}
+{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tournament.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
 <style>
     /* Top three standings styling */
     .first-place {
@@ -79,17 +81,20 @@
     </div>
     {% endif %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center">
-        <h1 class="mb-0">
-            <i class="fas fa-trophy me-2"></i>{{ tournament.name }}
-            <span class="badge bg-{{ 'success' if tournament.status == 'ongoing' else 'secondary' }} ms-2">
-                {% if tournament.status == 'completed' %}
-                <i class="fas fa-trophy me-1"></i>
-            {% endif %}
-            {{ tournament.status|title }}
-            </span>
-        </h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center">
+            <h1 class="mb-0">
+                <i class="fas fa-trophy me-2"></i>{{ tournament.name }}
+                <span class="badge bg-{{ 'success' if tournament.status == 'ongoing' else 'secondary' }} ms-2">
+                    {% if tournament.status == 'completed' %}
+                    <i class="fas fa-trophy me-1"></i>
+                    {% endif %}
+                    {{ tournament.status|title }}
+                </span>
+                <button type="button" class="btn btn-outline-info btn-sm ms-3" id="analyzeTournamentBtn" data-tournament-id="{{ tournament.id }}" title="Get AI-powered tournament analysis">
+                    <i class="fas fa-robot me-1"></i> AI Analysis
+                </button>
+            </h1>
         <div class="dropdown ms-3">
             <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="shareDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="fas fa-share-alt me-1"></i> Share
@@ -618,10 +623,154 @@
                         <a href="/tournament/{{ tournament.id }}/admin/share" class="stretched-link"></a>
                     </div>
                 </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Analysis Modal -->
+<div class="modal fade" id="aiAnalysisModal" tabindex="-1" role="dialog" aria-labelledby="aiAnalysisModalLabel" aria-modal="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h2 class="modal-title h5" id="aiAnalysisModalLabel">
+                    <i class="fas fa-robot me-2" aria-hidden="true"></i>
+                    Tournament Analysis
+                    <span class="badge bg-light text-primary ms-2">Powered by AI</span>
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close modal">
+                    <span class="visually-hidden">Close</span>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="aiAnalysisLoading" class="text-center p-5">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Analyzing...</span>
+                    </div>
+                    <h5 class="mt-4 mb-2">Analyzing Tournament Data</h5>
+                    <p class="text-muted mb-0">Examining {{ tournament.player_count }} players and their match history...</p>
+                    <div class="progress mt-4" style="height: 6px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div id="aiAnalysisContent" class="d-none p-4 markdown-content" style="max-height: 70vh; overflow-y: auto;">
+                    <!-- Markdown content will be rendered here -->
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <div class="text-muted small me-auto">
+                    <i class="fas fa-info-circle me-1"></i> Analysis is based on current tournament data
+                </div>
+                <button type="button" class="btn btn-primary" id="refreshAnalysis" data-tournament-id="{{ tournament.id }}">
+                    <i class="fas fa-sync-alt me-1"></i> Refresh Analysis
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Close
+                </button>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+/* Markdown content styling */
+.markdown-content {
+    line-height: 1.7;
+    font-size: 1.05rem;
+}
+
+.markdown-content h1, 
+.markdown-content h2, 
+.markdown-content h3, 
+.markdown-content h4, 
+.markdown-content h5, 
+.markdown-content h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    color: var(--bs-heading-color);
+}
+
+.markdown-content h1 { font-size: 1.8rem; border-bottom: 1px solid var(--bs-border-color); padding-bottom: 0.5rem; }
+.markdown-content h2 { font-size: 1.5rem; border-bottom: 1px solid var(--bs-border-color-translucent); padding-bottom: 0.3rem; }
+.markdown-content h3 { font-size: 1.3rem; }
+.markdown-content h4 { font-size: 1.1rem; }
+
+.markdown-content p {
+    margin-bottom: 1.2rem;
+}
+
+.markdown-content ul, 
+.markdown-content ol {
+    margin-bottom: 1.2rem;
+    padding-left: 1.8rem;
+}
+
+.markdown-content li {
+    margin-bottom: 0.5rem;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid var(--bs-primary);
+    padding: 0.5rem 1rem;
+    margin: 1.5rem 0;
+    background-color: var(--bs-light-bg-subtle);
+    border-radius: 0 4px 4px 0;
+}
+
+.markdown-content code {
+    background-color: var(--bs-secondary-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: var(--bs-font-monospace);
+    font-size: 0.9em;
+}
+
+.markdown-content pre {
+    background-color: var(--bs-dark-bg-subtle);
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin-bottom: 1.2rem;
+}
+
+.markdown-content pre code {
+    background: none;
+    padding: 0;
+}
+
+.markdown-content table {
+    width: 100%;
+    margin-bottom: 1.2rem;
+    border-collapse: collapse;
+}
+
+.markdown-content th,
+.markdown-content td {
+    padding: 0.75rem;
+    border: 1px solid var(--bs-border-color);
+}
+
+.markdown-content th {
+    background-color: var(--bs-light-bg-subtle);
+    text-align: left;
+}
+
+.markdown-content tr:nth-child(even) {
+    background-color: var(--bs-light-bg-subtle);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .markdown-content {
+        font-size: 1rem;
+        padding: 1rem;
+    }
+    
+    .markdown-content h1 { font-size: 1.5rem; }
+    .markdown-content h2 { font-size: 1.3rem; }
+    .markdown-content h3 { font-size: 1.2rem; }
+}
+</style>
 
 <!-- Complete Round Modal -->
 <div class="modal fade" id="completeRoundModal" tabindex="-1" aria-labelledby="completeRoundModalLabel" aria-hidden="true">
@@ -629,7 +778,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="completeRoundModalLabel">Complete Round {{ current_round.round_number }}</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to complete the current round? This will:</p>
@@ -661,7 +810,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="exportModalLabel">Export Tournament Data</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -719,7 +868,7 @@
                 <h5 class="modal-title text-white" id="deleteTournamentModalLabel">
                     <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete the tournament <strong>{{ tournament.name }}</strong>? This action cannot be undone.</p>
@@ -741,33 +890,177 @@
 </div>
 {% endif %}
 
+<!-- AI Analysis Modal -->
+<div class="modal fade" id="aiAnalysisModal" tabindex="-1" aria-labelledby="aiAnalysisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="aiAnalysisModalLabel">AI Analysis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="aiAnalysisLoading" class="d-none text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div id="aiAnalysisContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="refreshAnalysis">
+                    <i class="fas fa-sync-alt me-1"></i> Refresh Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Analysis Button -->
+<button type="button" class="btn btn-primary" id="analyzeTournamentBtn" data-tournament-id="{{ tournament.id }}">
+    <i class="fas fa-robot me-1"></i> AI Analysis
+</button>
+
 {% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Copy share link to clipboard
+    // Initialize elements
+    const analyzeBtn = document.getElementById('analyzeTournamentBtn');
+    const refreshBtn = document.getElementById('refreshAnalysis');
     const copyLinkBtn = document.getElementById('copyLinkBtn');
-    if (copyLinkBtn) {
-        copyLinkBtn.addEventListener('click', function() {
-            const shareLink = document.getElementById('shareLink');
-            shareLink.select();
-            document.execCommand('copy');
+    const confirmComplete = document.getElementById('confirmComplete');
+    const completeRoundBtn = document.getElementById('completeRoundBtn');
+    const exportBtn = document.getElementById('exportBtn');
+
+    // AI Analysis functionality
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', function() {
+            const tournamentId = this.dataset.tournamentId;
+            const modalEl = document.getElementById('aiAnalysisModal');
+            const loadingEl = document.getElementById('aiAnalysisLoading');
+            const contentEl = document.getElementById('aiAnalysisContent');
             
-            // Change button icon to checkmark temporarily
-            const icon = this.querySelector('i');
-            const originalIcon = icon.className;
-            icon.className = 'fas fa-check';
+            // Show loading state
+            loadingEl.classList.remove('d-none');
+            contentEl.classList.add('d-none');
             
-            // Revert back after 2 seconds
-            setTimeout(() => {
-                icon.className = originalIcon;
-            }, 2000);
+            // Store the currently focused element to return focus when modal closes
+            const focusedElementBeforeModal = document.activeElement;
+            
+            // Initialize and show the modal
+            const modal = new bootstrap.Modal(modalEl, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+            
+            // Show the modal
+            modal.show();
+            
+            // Handle modal hidden event to clean up
+            function onModalHidden() {
+                console.log('Modal hidden event triggered');
+                loadingEl.classList.add('d-none');
+                contentEl.classList.remove('d-none');
+                contentEl.innerHTML = '';
+                
+                // Return focus to the element that had it before the modal was opened
+                if (focusedElementBeforeModal) {
+                    focusedElementBeforeModal.focus();
+                }
+                
+                // Clean up the modal instance
+                modal.dispose();
+            }
+            
+            // Add event listener for when the modal is fully hidden
+            modalEl.addEventListener('hidden.bs.modal', onModalHidden, { once: true });
+            
+            // Add event listener for when the modal is shown
+            modalEl.addEventListener('shown.bs.modal', function onShown() {
+                console.log('Modal shown event triggered');
+                // Focus the close button when modal is shown
+                const closeButton = modalEl.querySelector('[data-bs-dismiss="modal"]');
+                if (closeButton) {
+                    closeButton.focus();
+                }
+            }, { once: true });
+            
+            // Fetch AI analysis with error handling
+            console.log('Starting AI analysis fetch...');
+            fetch(`/tournament/${tournamentId}/ai-analysis`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('AI analysis data received:', data);
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    // Render markdown content
+                    contentEl.innerHTML = marked.parse(data.analysis || 'No analysis available.');
+                    // Apply syntax highlighting to code blocks
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                    // Show content and hide loading
+                    loadingEl.classList.add('d-none');
+                    contentEl.classList.remove('d-none');
+                })
+                .catch(error => {
+                    console.error('Error in AI analysis fetch:', error);
+                    contentEl.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Failed to load analysis: ${error.message || 'Unknown error'}
+                        </div>
+                    `;
+                    loadingEl.classList.add('d-none');
+                    contentEl.classList.remove('d-none');
+                })
+                .finally(() => {
+                    console.log('AI analysis fetch completed');
+                });
         });
     }
     
-    // Enable/disable complete round button based on confirmation
-    const confirmComplete = document.getElementById('confirmComplete');
-    const completeRoundBtn = document.getElementById('completeRoundBtn');
+    // Refresh analysis button
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            document.getElementById('analyzeTournamentBtn')?.click();
+        });
+    }
     
+    // Copy share link to clipboard
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', function() {
+            const shareLink = document.getElementById('shareLink');
+            if (shareLink) {
+                shareLink.select();
+                document.execCommand('copy');
+                
+                // Change button icon to checkmark temporarily
+                const icon = this.querySelector('i');
+                if (icon) {
+                    const originalIcon = icon.className;
+                    icon.className = 'fas fa-check';
+                    
+                    // Revert back after 2 seconds
+                    setTimeout(() => {
+                        icon.className = originalIcon;
+                    }, 2000);
+                }
+            }
+        });
+    }
+    
+    // Complete round functionality
     if (confirmComplete && completeRoundBtn) {
         confirmComplete.addEventListener('change', function() {
             completeRoundBtn.disabled = !this.checked;
@@ -784,11 +1077,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Export button handler
-    const exportBtn = document.getElementById('exportBtn');
     if (exportBtn) {
         exportBtn.addEventListener('click', function() {
-            const format = document.getElementById('exportFormat').value;
-            const includeGames = document.getElementById('includeGames').checked;
+            const format = document.getElementById('exportFormat')?.value || 'pgn';
+            const includeGames = document.getElementById('includeGames')?.checked || false;
             
             // Add your export logic here
             alert(`Exporting as ${format.toUpperCase()} (Include Games: ${includeGames})`);

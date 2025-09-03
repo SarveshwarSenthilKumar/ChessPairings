@@ -16,6 +16,14 @@ from datetime import datetime
 from decorators import check_tournament_active
 import json
 from typing import Dict, List, Optional, Tuple, Any
+from openai import OpenAI
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Initialize the OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def regenerate_current_round_pairings(db: TournamentDB, tournament_id: int) -> bool:
     """Regenerate pairings for the current round, preserving any existing results.
@@ -407,6 +415,148 @@ def tournament_settings(tournament_id):
     )
 
 from admin_share_links import validate_share_link
+import openai
+
+@tournament_bp.route('/<int:tournament_id>/ai-analysis')
+@login_required
+@get_db
+def ai_analysis(tournament_id):
+    """Generate an AI analysis of the tournament."""
+    db = g.db
+    tournament = db.get_tournament(tournament_id)
+    
+    if not tournament:
+        return jsonify({'success': False, 'error': 'Tournament not found'}), 404
+    
+    try:
+        # Get tournament data
+        players = db.get_players(tournament_id)
+        rounds = db.get_rounds(tournament_id)
+        pairings = []
+        
+        for round_ in rounds:
+            round_pairings = db.get_pairings(round_['id'])
+            for pairing in round_pairings:
+                pairing['round_number'] = round_['round_number']
+                pairings.append(pairing)
+    
+        # Get standings and ensure we have valid data
+        standings = db.get_standings(tournament_id) or []
+        
+        # Check if we have enough data
+        if not players or not rounds:
+            return jsonify({
+                'success': False,
+                'error': 'Not enough tournament data available for analysis'
+            })
+        
+        # Prepare player name mapping for lookups
+        player_name_map = {p['id']: p['name'] for p in players}
+        
+        # Prepare standings with safe access to fields
+        safe_standings = []
+        for i, s in enumerate(standings, 1):
+            safe_standings.append({
+                'rank': s.get('rank', i),  # Use position in list if rank is missing
+                'name': s.get('name', 'Unknown Player'),
+                'points': s.get('points', 0),
+                'tiebreak1': s.get('tiebreak1', 0),
+                'tiebreak2': s.get('tiebreak2', 0)
+            })
+        
+        # Prepare pairings with safe access to fields
+        safe_pairings = []
+        for p in pairings:
+            white_id = p.get('white_player_id')
+            black_id = p.get('black_player_id')
+            
+            safe_pairings.append({
+                'round': p.get('round_number', 0),
+                'white': player_name_map.get(white_id, 'Unknown') if white_id else 'Bye',
+                'black': player_name_map.get(black_id, 'Unknown') if black_id else 'Bye',
+                'result': p.get('result', 'Not played')
+            })
+        
+        # Prepare tournament data
+        tournament_data = {
+            'name': tournament.get('name', 'Unnamed Tournament'),
+            'status': tournament.get('status', 'Unknown'),
+            'start_date': tournament.get('start_date', 'Unknown'),
+            'end_date': tournament.get('end_date', 'Ongoing'),
+            'total_players': len(players),
+            'total_rounds': len(rounds),
+            'players': [{
+                'name': p.get('name', 'Unknown Player'),
+                'rating': p.get('rating'),
+                'team': p.get('team_name')
+            } for p in players],
+            'standings': safe_standings,
+            'pairings': safe_pairings
+        }
+        
+        # Prepare the prompt for the AI
+        prompt = f"""Analyze this chess tournament data and provide insights:
+        
+Tournament: {tournament_data['name']}
+Status: {tournament_data['status'].capitalize()}
+Players: {tournament_data['total_players']}
+Rounds: {tournament_data['total_rounds']}
+
+Top Players:
+"""
+        # Add top 5 players to the prompt
+        for i, player in enumerate(tournament_data['standings'][:5], 1):
+            prompt += f"{i}. {player['name']} - {player['points']} points\n"
+        
+        prompt += "\nRecent Pairings:\n"
+        # Add recent pairings to the prompt
+        for pairing in tournament_data['pairings'][-10:]:
+            prompt += f"Round {pairing['round']}: {pairing['white']} vs {pairing['black']} - {pairing['result']}\n"
+        
+        prompt += """
+        
+Provide a brief analysis of the tournament, including:
+1. Top performers and their performance
+2. Interesting matchups or results
+3. Any notable trends or patterns
+4. Predictions for the final standings if the tournament is still in progress
+
+Keep the analysis concise and focused on the most interesting aspects.
+"""
+        
+        try:
+            # Call OpenAI API
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a chess tournament analyst. Provide insightful and concise analysis of the tournament data."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=500,
+                temperature=0.7
+            )
+            
+            analysis = response.choices[0].message.content.strip()
+        except Exception as api_error:
+            print(f"OpenAI API error: {str(api_error)}")
+            # Fallback to a simple analysis if API call fails
+            top_players = "\n".join(
+                f"{i+1}. {s['name']} ({s['points']} pts)" 
+                for i, s in enumerate(tournament_data['standings'][:5])
+            )
+            analysis = f"## Tournament Analysis\n\n### Top Players\n{top_players}\n\n*Note: Detailed AI analysis is currently unavailable. Please try again later.*"
+        
+        return jsonify({
+            'success': True,
+            'analysis': analysis
+        })
+        
+    except Exception as e:
+        print(f"Error generating AI analysis: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error generating analysis: {str(e)}'
+        }), 500
 
 @tournament_bp.route('/<int:tournament_id>/teams', methods=['GET'])
 @login_required

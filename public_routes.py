@@ -1,12 +1,19 @@
 import json
+import os
+import openai
 from flask import Blueprint, render_template, redirect, url_for, flash, current_app, send_file, g, request, jsonify, make_response
 from flask_wtf.csrf import generate_csrf
 from functools import wraps
 import io
+from dotenv import load_dotenv
 from datetime import datetime
 from tournament_db import TournamentDB
 import pandas as pd
 from io import BytesIO
+
+# Load environment variables
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Create blueprint
 public_bp = Blueprint('public', __name__, template_folder='templates')
@@ -218,6 +225,125 @@ def public_export(tournament, format):
     flash('Invalid export format.', 'error')
     return redirect(url_for('public.public_tournament_view', token=tournament['share_token']))
 
-# Add this to your app.py:
-# from public_routes import public_bp
-# app.register_blueprint(public_bp, url_prefix='/public')
+@public_bp.route('/t/<string:token>/ai-analysis')
+@public_tournament_required
+def ai_analysis(tournament, token):
+    """Generate an AI analysis of the tournament."""
+    db = get_db()
+    tournament_id = tournament['id']
+    
+    try:
+        tournament_id = tournament['id']
+        
+        # Get tournament data
+        players = db.get_players(tournament_id)
+        if not players:
+            return jsonify({
+                'success': False,
+                'error': 'No players found in this tournament'
+            })
+            
+        rounds = db.get_rounds(tournament_id)
+        if not rounds:
+            return jsonify({
+                'success': False,
+                'error': 'No rounds found in this tournament'
+            })
+            
+        pairings = []
+        for round_ in rounds:
+            round_pairings = db.get_pairings(round_['id'])
+            for pairing in round_pairings:
+                pairing['round_number'] = round_['round_number']
+                pairings.append(pairing)
+    
+        # Get standings
+        standings = db.get_standings(tournament_id)
+        if not standings:
+            return jsonify({
+                'success': False,
+                'error': 'Could not generate tournament standings'
+            })
+        
+        # Prepare data for AI
+        tournament_data = {
+            'name': tournament['name'],
+            'status': tournament['status'],
+            'start_date': tournament['start_date'],
+            'end_date': tournament.get('end_date', 'Ongoing'),
+            'total_players': len(players),
+            'total_rounds': len(rounds),
+            'players': [{
+                'name': p['name'],
+                'rating': p.get('rating'),
+                'team': p.get('team_name')
+            } for p in players],
+            'standings': [{
+                'rank': s['rank'],
+                'name': s['name'],
+                'points': s['points'],
+                'tiebreak1': s.get('tiebreak1', 0),
+                'tiebreak2': s.get('tiebreak2', 0)
+            } for s in standings],
+            'pairings': [{
+                'round': p['round_number'],
+                'white': next((pl['name'] for pl in players if pl['id'] == p['white_player_id']), 'Unknown'),
+                'black': next((pl['name'] for pl in players if pl['id'] == p['black_player_id']), 'Unknown') if p['black_player_id'] else 'Bye',
+                'result': p.get('result', 'Not played')
+            } for p in pairings]
+        }
+        
+        # Prepare the prompt for the AI
+        prompt = f"""Analyze this chess tournament data and provide insights:
+        
+Tournament: {tournament_data['name']}
+Status: {tournament_data['status'].capitalize()}
+Players: {tournament_data['total_players']}
+Rounds: {tournament_data['total_rounds']}
+
+Top Players:
+"""
+        # Add top 5 players to the prompt
+        for i, player in enumerate(tournament_data['standings'][:5], 1):
+            prompt += f"{i}. {player['name']} - {player['points']} points\n"
+        
+        prompt += "\nRecent Pairings:\n"
+        # Add recent pairings to the prompt
+        for pairing in tournament_data['pairings'][-10:]:
+            prompt += f"Round {pairing['round']}: {pairing['white']} vs {pairing['black']} - {pairing['result']}\n"
+        
+        prompt += """
+        
+Provide a brief analysis of the tournament, including:
+1. Top performers and their performance
+2. Interesting matchups or results
+3. Any notable trends or patterns
+4. Predictions for the final standings if the tournament is still in progress
+
+Keep the analysis concise and focused on the most interesting aspects.
+"""
+        
+        # Call OpenAI API with the latest model
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a chess tournament analyst. Provide insightful and concise analysis of the tournament data."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
+            temperature=0.7
+        )
+        
+        analysis = response.choices[0].message.content.strip()
+        
+        return jsonify({
+            'success': True,
+            'analysis': analysis
+        })
+        
+    except Exception as e:
+        print(f"Error generating AI analysis: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error generating analysis: {str(e)}'
+        }), 500

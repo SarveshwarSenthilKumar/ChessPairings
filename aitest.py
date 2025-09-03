@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 import base64
 import requests
 from dotenv import load_dotenv
@@ -8,7 +8,9 @@ from io import BytesIO
 
 # Load environment variables
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Initialize the OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 IMGBB_API_KEY = os.getenv("IMGBB_API_KEY")
 STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
 
