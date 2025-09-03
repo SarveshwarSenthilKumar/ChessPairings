@@ -42,6 +42,11 @@ def public_tournament_required(f):
                 return jsonify({'success': False, 'error': 'Invalid or expired tournament link'}), 404
             flash('Invalid or expired tournament link.', 'error')
             return redirect(url_for('index'))
+        
+        # Pass through the player_id if it exists in kwargs
+        player_id = kwargs.get('player_id')
+        if player_id is not None:
+            return f(tournament, player_id)
         return f(tournament)
     return decorated_function
 

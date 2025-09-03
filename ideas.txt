@@ -1,6 +1,4 @@
 
-Add additional comments feature to the tournament settings page and make it so it updates the description with additional information at time
-
 update public view to show the description
 
 Add an attendance check-in feature
