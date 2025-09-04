@@ -1,6 +1,4 @@
 
-update to show all info in public such as desc, location, additional comments, time control, status, rounds, players
-
 update to show additional comments in view.html
 
 update to allow for floating numbers in the tournament settings

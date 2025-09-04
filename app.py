@@ -12,6 +12,8 @@ from sql import *
 from datetime import datetime, date
 import simplejson as json
 import secrets
+from markupsafe import Markup
+import re
 
 # Custom JSON provider
 class CustomJSONProvider:
@@ -82,9 +84,16 @@ def ordinal(n):
         suffix = ['th', 'st', 'nd', 'rd', 'th'][min(n % 10, 4)]
     return f"{n}{suffix}"
 
+def nl2br(value):
+    """Convert newlines to <br> tags in text."""
+    if value is None:
+        return ''
+    return Markup(value.replace('\n', '<br>'))
+
 # Register the filters with Jinja2
 app.jinja_env.filters['datetimeformat'] = format_datetime
 app.jinja_env.filters['ordinal'] = ordinal
+app.jinja_env.filters['nl2br'] = nl2br
 
 # Register blueprints
 app.register_blueprint(auth_blueprint)
