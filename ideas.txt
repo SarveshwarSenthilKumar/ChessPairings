@@ -1,6 +1,4 @@
 
-update to allow for floating numbers in the tournament settings
-
 Add an attendance check-in feature
 
 add a select all to present option so people can be presumed to be there and can tick off people not there and base pairings on this

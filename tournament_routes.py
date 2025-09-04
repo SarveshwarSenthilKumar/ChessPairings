@@ -886,7 +886,7 @@ class TournamentSettingsForm(FlaskForm):
                            description='Additional notes or information about the tournament')
     
     # Point settings
-    win_points = IntegerField('Points for a Win', default=1, validators=[NumberRange(min=0)])
+    win_points = FloatField('Points for a Win', default=1.0, validators=[NumberRange(min=0)])
     draw_points = FloatField('Points for a Draw', default=0.5, validators=[NumberRange(min=0)])
     loss_points = FloatField('Points for a Loss', default=0.0, validators=[NumberRange(min=0)])
     bye_points = FloatField('Points for a Bye', default=1.0, validators=[NumberRange(min=0)])
