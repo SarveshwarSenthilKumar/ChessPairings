@@ -1651,8 +1651,68 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-</script>
-<script>
+
+// Close modal handler
+document.addEventListener('DOMContentLoaded', function() {
+    const closeButton = document.getElementById('closePlayerStatsModal');
+    if (closeButton) {
+        closeButton.addEventListener('click', function() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('playerStatsModal'));
+            if (modal) {
+                modal.hide();
+            }
+        });
+    }
+    
+    // Handle modal hidden event to clean up
+    const modal = document.getElementById('playerStatsModal');
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', function () {
+            // Remove the modal backdrop if it remains
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+            // Re-enable body scrolling
+            document.body.style.overflow = 'auto';
+            document.body.style.paddingRight = '';
+        });
+    }
+});
+
+// Close modal handler
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('playerStatsModal');
+    if (modal) {
+        // Handle ESC key
+        modal.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+            }
+        });
+        
+        // Handle hidden event
+        modal.addEventListener('hidden.bs.modal', function () {
+            // Remove the modal backdrop if it remains
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+            // Re-enable body scrolling
+            document.body.style.overflow = 'auto';
+            document.body.style.paddingRight = '';
+            // Set focus back to the button that opened the modal
+            const focusedElementBeforeModal = document.activeElement;
+            if (focusedElementBeforeModal) {
+                focusedElementBeforeModal.focus();
+            }
+        });
+    }
+});
+
 // Player stats modal functionality
 function showPlayerStats(playerId, playerName, playerRating, position) {
     console.log('Showing player stats:', { playerId, playerName, playerRating, position });
@@ -1709,12 +1769,17 @@ function showPlayerStats(playerId, playerName, playerRating, position) {
                     const points = match.points || 0;
                     const color = match.color || '—';
                     
-                    // Update stats
-                    if (result === '1-0' || result === '0-1' || result === '1' || result === '0') {
+                    // Update stats - handle byes first
+                    if (opponentName === 'Bye' || match.is_bye) {
+                        byes++;
+                        totalPoints += parseFloat(points); // Add points from the bye
+                    } 
+                    // Then handle regular results
+                    else if (result === '1-0' || result === '0-1' || result === '1' || result === '0') {
                         if ((result === '1-0' || result === '1') && points > 0) wins++;
                         else if ((result === '0-1' || result === '0') && points === 0) losses++;
-                        else if (result === '½-½') draws++;
-                    } else if (result === '½-½') {
+                        else if (result === '½-½' || result === '0.5-0.5') draws++;
+                    } else if (result === '½-½' || result === '0.5-0.5') {
                         draws++;
                     }
                     
@@ -1836,17 +1901,20 @@ document.addEventListener('click', function(e) {
                             const result = match.result || '—';
                             const points = match.points_earned !== undefined ? parseFloat(match.points_earned) : 0;
                             
-                            // Update stats based on result
-                            if (result === '1-0' || result === '1.0-0.0') {
+                            // Update stats based on result - handle byes first
+                            if (result === 'Bye' || opponent === 'Bye' || match.is_bye) {
+                                byes++;
+                                if (!isNaN(points)) totalPoints += parseFloat(points);
+                            }
+                            // Then handle regular results
+                            else if (result === '1-0' || result === '1.0-0.0') {
                                 if (color === 'white') wins++;
-                                else losses++;
+                                else if (color === 'black') losses++;
                             } else if (result === '0-1' || result === '0.0-1.0') {
                                 if (color === 'black') wins++;
-                                else losses++;
+                                else if (color === 'white') losses++;
                             } else if (result === '0.5-0.5' || result === '½-½' || result === '0.5-0.5 ') {
                                 draws++;
-                            } else if (result === 'Bye' || match.is_bye) {
-                                byes++;
                             }
                             
                             // Add points if available
