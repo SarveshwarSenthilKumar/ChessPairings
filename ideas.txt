@@ -1,6 +1,4 @@
 
-update to show additional comments in view.html
-
 update to allow for floating numbers in the tournament settings
 
 Add an attendance check-in feature

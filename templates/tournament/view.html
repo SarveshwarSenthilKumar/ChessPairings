@@ -60,6 +60,28 @@
         display: none !important;
     }
     
+    .icon-circle {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    [data-bs-theme="dark"] .card {
+        background-color: #1e1e2d;
+        border-color: #2b2b40;
+    }
+    
+    [data-bs-theme="dark"] .bg-light {
+        background-color: #2b2b40 !important;
+    }
+    
+    [data-bs-theme="dark"] .text-muted {
+        color: #8c8ea4 !important;
+    }
+    
     @media print {
         .print-section {
             display: block !important;
@@ -167,38 +189,127 @@
 </div>
 
 <!-- Tournament Info -->
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-6">
-                <p><i class="far fa-calendar-alt me-2 text-muted"></i> 
-                    <strong>Dates:</strong> {{ tournament.start_date|datetimeformat('%b %d, %Y') }} - {{ tournament.end_date|datetimeformat('%b %d, %Y') }}
-                </p>
-                <p><i class="fas fa-flag-checkered me-2 text-muted"></i> 
-                    <strong>Rounds:</strong> {{ tournament.rounds }}
-                </p>
-                <p><i class="fas fa-users me-2 text-muted"></i> 
-                    <strong>Players:</strong> {{ tournament.player_count }}
-                </p>
+<div class="card border-0 shadow-sm mb-4 overflow-hidden">
+    <div class="card-header bg-primary bg-gradient text-white d-flex justify-content-between align-items-center py-3">
+        <h5 class="mb-0">
+            <i class="fas fa-trophy me-2"></i>Tournament Details
+        </h5>
+        <span class="badge bg-white text-primary">{{ tournament.status|title }}</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="row g-0">
+            <div class="col-lg-6 p-4">
+                {% if tournament.description %}
+                <div class="mb-4">
+                    <h6 class="text-uppercase text-muted small fw-bold mb-3">
+                        <i class="fas fa-info-circle me-2"></i>About This Tournament
+                    </h6>
+                    <div class="p-3 bg-light rounded">
+                        <p class="mb-0">{{ tournament.description|nl2br|safe }}</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="mb-4">
+                    <h6 class="text-uppercase text-muted small fw-bold mb-3">
+                        <i class="fas fa-calendar-day me-2"></i>Event Details
+                    </h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-3 pb-2 border-bottom">
+                            <div class="d-flex align-items-start">
+                                <div class="icon-circle bg-primary bg-opacity-10 text-primary p-2 me-3 rounded-circle">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                                <div>
+                                    <span class="d-block fw-medium text-dark">Event Dates</span>
+                                    <span class="text-muted">
+                                        {{ tournament.start_date|datetimeformat('%b %d, %Y') }}
+                                        {% if tournament.end_date and tournament.end_date != tournament.start_date %}
+                                             - {{ tournament.end_date|datetimeformat('%b %d, %Y') }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </li>
+                        
+                        <li class="mb-3 pb-2 border-bottom">
+                            <div class="d-flex align-items-start">
+                                <div class="icon-circle bg-primary bg-opacity-10 text-primary p-2 me-3 rounded-circle">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <div>
+                                    <span class="d-block fw-medium text-dark">Location</span>
+                                    <span class="text-muted">{{ tournament.location or 'Not specified' }}</span>
+                                </div>
+                            </div>
+                        </li>
+                        
+                        <li class="mb-3 pb-2">
+                            <div class="d-flex align-items-start">
+                                <div class="icon-circle bg-primary bg-opacity-10 text-primary p-2 me-3 rounded-circle">
+                                    <i class="fas fa-flag-checkered"></i>
+                                </div>
+                                <div>
+                                    <span class="d-block fw-medium text-dark">Tournament Format</span>
+                                    <div class="d-flex flex-wrap gap-2 mt-1">
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="fas fa-list-ol me-1"></i> {{ tournament.rounds }} Rounds
+                                        </span>
+                                        {% if tournament.time_control %}
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="fas fa-clock me-1"></i> {{ tournament.time_control }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
             </div>
-            <div class="col-md-6">
-                <p><i class="fas fa-clock me-2 text-muted"></i> 
-                    <strong>Time Control:</strong> {{ tournament.time_control or 'Not specified' }}
-                </p>
-                <p><i class="fas fa-map-marker-alt me-2 text-muted"></i> 
-                    <strong>Location:</strong> {{ tournament.location or 'Not specified' }}
-                </p>
-                <p><i class="fas fa-info-circle me-2 text-muted"></i> 
-                    <strong>Status:</strong> {{ tournament.status|title }}
-                </p>
+            
+            <div class="col-lg-6 bg-light p-4">
+                {% if tournament.comments %}
+                <div class="mb-4">
+                    <h6 class="text-uppercase text-muted small fw-bold mb-3">
+                        <i class="fas fa-comment-dots me-2"></i>Additional Information
+                    </h6>
+                    <div class="p-3 bg-white rounded">
+                        {{ tournament.comments|nl2br|safe }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="bg-white p-3 rounded">
+                    <h6 class="text-uppercase text-muted small fw-bold mb-3">
+                        <i class="fas fa-chart-line me-2"></i>Quick Stats
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-3">
+                                    <i class="fas fa-users text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="h5 mb-0">{{ tournament.player_count }}</div>
+                                    <small class="text-muted">Participants</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-3">
+                                    <i class="fas fa-chess-board text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="h5 mb-0">{{ rounds|length }}/{{ tournament.rounds }}</div>
+                                    <small class="text-muted">Rounds Played</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        {% if tournament.description %}
-        <div class="mt-3">
-            <h5>Description</h5>
-            <p class="mb-0">{{ tournament.description }}</p>
-        </div>
-        {% endif %}
     </div>
 </div>
 
