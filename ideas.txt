@@ -1,7 +1,5 @@
 
-Add an attendance check-in feature
-
-add a select all to present option so people can be presumed to be there and can tick off people not there and base pairings on this
+add a modal to pairings page to give multiple byes at once for use as an attendance feature
 
 Add feature to make it into a graph type thing
 
