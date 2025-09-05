@@ -1168,10 +1168,23 @@ def manage_pairings(tournament_id):
     if current_round:
         pairings = db.get_pairings(current_round.get('id'))
     
+    # Get players and current byes for the batch byes modal
+    players = db.get_tournament_players(tournament_id)
+    current_byes = set()
+    
+    if current_round:
+        # Get manual byes for the current round
+        byes = db.conn.execute(
+            "SELECT player_id FROM manual_byes WHERE tournament_id = ? AND round_number = ?",
+            (tournament_id, current_round['round_number'])
+        ).fetchall()
+        current_byes = {bye['player_id'] for bye in byes}
+    
     # Handle form submission for completing the current round
     if request.method == 'POST' and 'complete_round' in request.form:
+        # Verify the round exists and belongs to this tournament
         if not current_round:
-            flash('No active round to complete.', 'warning')
+            flash('No active round found.', 'danger')
             return redirect(url_for('tournament.manage_pairings', tournament_id=tournament_id))
             
         # Verify all results are in
@@ -1330,6 +1343,8 @@ def manage_pairings(tournament_id):
         tournament=tournament,
         current_round=current_round_obj,
         pairings=pairings,
+        players=players,
+        current_byes=current_byes,
         form=form,
         now=datetime.utcnow()
     )
@@ -1923,6 +1938,69 @@ def export_pairings(tournament_id, round_id, format):
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in {'xlsx', 'xls', 'csv'}
+
+@tournament_bp.route('/<int:tournament_id>/round/<int:round_id>/batch_byes', methods=['POST'])
+@login_required
+@get_db
+def batch_assign_byes(tournament_id, round_id):
+    """Assign byes to multiple players in a batch."""
+    try:
+        db = g.db
+        data = request.get_json()
+        player_ids = data.get('player_ids', [])
+        
+        if not isinstance(player_ids, list):
+            return jsonify({'success': False, 'message': 'Invalid player IDs format'}), 400
+        
+        current_round = db.get_round(round_id)
+        if not current_round or current_round['tournament_id'] != tournament_id:
+            return jsonify({'success': False, 'message': 'Invalid round'}), 400
+        
+        round_number = current_round['round_number']
+        
+        db.conn.execute('BEGIN TRANSACTION')
+        
+        try:
+            # Clear existing manual byes for this round
+            db.cursor.execute(
+                "DELETE FROM manual_byes WHERE tournament_id = ? AND round_number = ?",
+                (tournament_id, round_number)
+            )
+            
+            # Add new manual byes
+            for player_id in player_ids:
+                db.cursor.execute(
+                    """INSERT INTO manual_byes (tournament_id, player_id, round_number, created_by)
+                    VALUES (?, ?, ?, ?)""",
+                    (tournament_id, player_id, round_number, session['user_id'])
+                )
+            
+            # Regenerate pairings to account for the byes
+            success = db.generate_pairings(tournament_id, round_id, 'swiss')
+            if not success:
+                raise Exception("Failed to generate pairings")
+            
+            db.conn.commit()
+            return jsonify({
+                'success': True,
+                'message': f'Assigned byes to {len(player_ids)} players and regenerated pairings',
+                'redirect': url_for('tournament.manage_pairings', tournament_id=tournament_id)
+            })
+            
+        except Exception as e:
+            db.conn.rollback()
+            current_app.logger.error(f"Error in batch_byes transaction: {e}")
+            return jsonify({
+                'success': False,
+                'message': f'Error processing byes: {str(e)}'
+            }), 500
+            
+    except Exception as e:
+        current_app.logger.error(f"Error in batch_assign_byes: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred while processing your request'
+        }), 500
 
 @tournament_bp.route('/<int:tournament_id>/export-players')
 @login_required

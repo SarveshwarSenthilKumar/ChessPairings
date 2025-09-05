@@ -126,9 +126,14 @@
         <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary me-2">
             <i class="fas fa-arrow-left me-1"></i> Back to Tournament
         </a>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generatePairingsModal">
+        <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#generatePairingsModal">
             <i class="fas fa-random me-1"></i> Generate Pairings
         </button>
+        {% if current_round and not current_round.is_completed %}
+        <button type="button" class="btn btn-warning me-2" data-bs-toggle="modal" data-bs-target="#batchByesModal">
+            <i class="fas fa-user-clock me-1"></i> Batch Byes
+        </button>
+        {% endif %}
     </div>
 </div>
 
@@ -292,9 +297,14 @@
                 </div>
                 <h5>No Pairings Yet</h5>
                 <p class="text-muted">Generate pairings to get started with this round</p>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generatePairingsModal">
+                <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#generatePairingsModal">
                     <i class="fas fa-random me-1"></i> Generate Pairings
                 </button>
+                {% if current_round and not current_round.is_completed %}
+                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#batchByesModal">
+                    <i class="fas fa-user-clock me-1"></i> Batch Byes
+                </button>
+                {% endif %}
             </div>
         {% endif %}
     </div>
@@ -384,6 +394,66 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Batch Byes Modal -->
+<div class="modal fade" id="batchByesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Batch Assign Byes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Select players to assign a bye for the current round. The pairings will be regenerated automatically.
+                </div>
+                
+                <div class="mb-3">
+                    <input type="text" id="playerSearch" class="form-control" placeholder="Search players...">
+                </div>
+                
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover">
+                        <thead class="sticky-top bg-light">
+                            <tr>
+                                <th width="40"></th>
+                                <th>Player</th>
+                                <th>Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody id="playersList">
+                            {% for player in players %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input player-checkbox" type="checkbox" 
+                                               value="{{ player.id }}" id="player-{{ player.id }}"
+                                               {% if player.id in current_byes %}checked{% endif %}>
+                                    </div>
+                                </td>
+                                <td>
+                                    <label class="form-check-label" for="player-{{ player.id }}">
+                                        {{ player.name }}
+                                    </label>
+                                </td>
+                                <td>{{ player.rating }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="saveBatchByes">
+                    <span class="spinner-border spinner-border-sm d-none" id="batchByesSpinner" role="status" aria-hidden="true"></span>
+                    <span id="batchByesText">Save Byes</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -602,6 +672,75 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }, 300);
         }, 5000);
+    }
+    
+        // Handle player search in batch byes modal
+    const playerSearch = document.getElementById('playerSearch');
+    if (playerSearch) {
+        playerSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#playersList tr');
+            
+            rows.forEach(row => {
+                const playerName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                if (playerName.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // Handle batch byes submission
+    const saveBatchByesBtn = document.getElementById('saveBatchByes');
+    if (saveBatchByesBtn) {
+        saveBatchByesBtn.addEventListener('click', async function() {
+            const spinner = document.getElementById('batchByesSpinner');
+            const buttonText = document.getElementById('batchByesText');
+            const checkboxes = document.querySelectorAll('.player-checkbox:checked');
+            const playerIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            
+            // Show loading state
+            this.disabled = true;
+            spinner.classList.remove('d-none');
+            buttonText.textContent = 'Saving...';
+            
+            try {
+                const response = await fetch(`/tournament/{{ tournament.id }}/round/{{ current_round.id }}/batch_byes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ player_ids: playerIds })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('success', 'Success', data.message);
+                    // Close the modal and refresh the page
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('batchByesModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    // Refresh the page to show updated pairings
+                    window.location.href = data.redirect;
+                } else {
+                    throw new Error(data.message || 'Failed to save byes');
+                }
+            } catch (error) {
+                console.error('Error saving batch byes:', error);
+                showToast('error', 'Error', error.message || 'Failed to save byes. Please try again.');
+            } finally {
+                // Reset button state
+                this.disabled = false;
+                spinner.classList.add('d-none');
+                buttonText.textContent = 'Save Byes';
+            }
+        });
     }
     
     // Handle pairing search
