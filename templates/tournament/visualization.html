@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Tournament Visualization - {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Tournament Visualization: {{ tournament.name }}</h2>
+        <div class="btn-group">
+            <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Tournament
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="visualizationTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="pairings-tab" data-toggle="tab" href="#pairings" role="tab">
+                        Pairings Graph
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="standings-tab" data-toggle="tab" href="#standings" role="tab">
+                        Standings Chart
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="progress-tab" data-toggle="tab" href="#progress" role="tab">
+                        Player Progress
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="visualizationTabContent">
+                <div class="tab-pane fade show active" id="pairings" role="tabpanel">
+                    <div id="pairings-graph" style="height: 600px; width: 100%;"></div>
+                </div>
+                <div class="tab-pane fade" id="standings" role="tabpanel">
+                    <div id="standings-chart" style="height: 600px; width: 100%;"></div>
+                </div>
+                <div class="tab-pane fade" id="progress" role="tabpanel">
+                    <div class="form-group">
+                        <label for="player-select">Select Player:</label>
+                        <select id="player-select" class="form-control">
+                            {% for player in players %}
+                            <option value="{{ player.id }}">{{ player.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="player-progress-chart" style="height: 500px; width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include vis-network for graph visualization -->
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<!-- Include Chart.js for charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Initialize tabs
+$('#visualizationTabs a').on('click', function (e) {
+    e.preventDefault();
+    $(this).tab('show');
+});
+
+// Store tournament data from server
+const tournamentData = {
+    id: {{ tournament.id|tojson|safe }},
+    players: {{ players|tojson|safe }},
+    rounds: {{ rounds|tojson|safe }},
+    pairings: {{ pairings|tojson|safe }}
+};
+
+// Initialize visualizations when the page loads
+$(document).ready(function() {
+    initializePairingsGraph();
+    initializeStandingsChart();
+    initializePlayerProgress();
+    
+    // Update player progress when selection changes
+    $('#player-select').on('change', function() {
+        updatePlayerProgressChart($(this).val());
+    });
+});
+
+function initializePairingsGraph() {
+    const container = document.getElementById('pairings-graph');
+    
+    // Create nodes and edges for the graph
+    const nodes = new vis.DataSet([
+        // Add tournament node
+        { id: 'tournament', label: 'Tournament\n' + tournamentData.id, group: 'tournament', shape: 'box' },
+        // Add round nodes
+        ...tournamentData.rounds.map(round => ({
+            id: 'round-' + round.id,
+            label: 'Round ' + round.round_number,
+            group: 'round',
+            shape: 'circle'
+        })),
+        // Add player nodes
+        ...tournamentData.players.map(player => ({
+            id: 'player-' + player.id,
+            label: player.name,
+            group: 'player',
+            shape: 'ellipse'
+        }))
+    ]);
+    
+    const edges = new vis.DataSet([
+        // Connect tournament to rounds
+        ...tournamentData.rounds.map(round => ({
+            from: 'tournament',
+            to: 'round-' + round.id,
+            arrows: 'to'
+        })),
+        // Connect rounds to players based on pairings
+        ...tournamentData.pairings.flatMap(pairing => {
+            const edges = [];
+            if (pairing.white_player_id) {
+                edges.push({
+                    from: 'round-' + pairing.round_id,
+                    to: 'player-' + pairing.white_player_id,
+                    label: 'White',
+                    color: { color: '#000' }
+                });
+            }
+            if (pairing.black_player_id) {
+                edges.push({
+                    from: 'round-' + pairing.round_id,
+                    to: 'player-' + pairing.black_player_id,
+                    label: 'Black',
+                    color: { color: '#000' }
+                });
+            }
+            return edges;
+        })
+    ]);
+    
+    const data = { nodes, edges };
+    const options = {
+        nodes: {
+            font: {
+                size: 12,
+                face: 'Arial'
+            },
+            borderWidth: 2
+        },
+        edges: {
+            width: 2,
+            smooth: true,
+            font: { size: 10 }
+        },
+        groups: {
+            tournament: { color: { background: '#4e73df', border: '#2e59d9' }, font: { color: '#fff' } },
+            round: { color: { background: '#1cc88a', border: '#17a673' }, font: { color: '#fff' } },
+            player: { color: { background: '#f6c23e', border: '#dda20a' } }
+        },
+        layout: {
+            hierarchical: {
+                direction: 'LR',
+                sortMethod: 'directed',
+                nodeSpacing: 150,
+                levelSeparation: 100
+            }
+        },
+        physics: {
+            hierarchicalRepulsion: {
+                nodeDistance: 200
+            }
+        }
+    };
+    
+    new vis.Network(container, data, options);
+}
+
+function initializeStandingsChart() {
+    const ctx = document.getElementById('standings-chart').getContext('2d');
+    
+    // Group players by score for the chart
+    const scores = tournamentData.players.reduce((acc, player) => {
+        const score = player.score || 0;
+        acc[score] = (acc[score] || 0) + 1;
+        return acc;
+    }, {});
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(scores).map(score => `${score} points`),
+            datasets: [{
+                label: 'Number of Players',
+                data: Object.values(scores),
+                backgroundColor: 'rgba(78, 115, 223, 0.8)',
+                borderColor: 'rgba(78, 115, 223, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Players by Score',
+                    font: {
+                        size: 18
+                    }
+                },
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+function initializePlayerProgress() {
+    // Initialize with first player
+    if (tournamentData.players.length > 0) {
+        updatePlayerProgressChart(tournamentData.players[0].id);
+    }
+}
+
+function updatePlayerProgressChart(playerId) {
+    const player = tournamentData.players.find(p => p.id == playerId);
+    if (!player) return;
+    
+    // Get player's results over rounds
+    const playerRounds = tournamentData.rounds.map(round => {
+        const roundPairings = tournamentData.pairings.filter(p => p.round_id === round.id);
+        const playerPairing = roundPairings.find(p => 
+            p.white_player_id == playerId || p.black_player_id == playerId
+        );
+        
+        if (!playerPairing) return null;
+        
+        return {
+            round: round.round_number,
+            result: playerPairing.result,
+            opponent: playerPairing.white_player_id == playerId ? 
+                (tournamentData.players.find(p => p.id == playerPairing.black_player_id)?.name || 'Bye') :
+                (tournamentData.players.find(p => p.id == playerPairing.white_player_id)?.name || 'Bye'),
+            color: playerPairing.white_player_id == playerId ? 'White' : 'Black'
+        };
+    }).filter(Boolean);
+    
+    // Calculate cumulative score
+    let runningScore = 0;
+    const scores = playerRounds.map(round => {
+        let points = 0;
+        if (round.result) {
+            const [whiteScore, blackScore] = round.result.split('-').map(Number);
+            points = round.color === 'White' ? whiteScore : blackScore;
+        }
+        runningScore += points;
+        return runningScore;
+    });
+    
+    const ctx = document.getElementById('player-progress-chart').getContext('2d');
+    
+    // Destroy previous chart if it exists
+    if (window.playerProgressChart) {
+        window.playerProgressChart.destroy();
+    }
+    
+    window.playerProgressChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: playerRounds.map(r => `Round ${r.round}`),
+            datasets: [{
+                label: 'Cumulative Score',
+                data: scores,
+                borderColor: 'rgba(78, 115, 223, 1)',
+                backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: `Performance: ${player.name}`,
+                    font: {
+                        size: 18
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const round = playerRounds[context.dataIndex];
+                            return [
+                                `Opponent: ${round.opponent}`,
+                                `Color: ${round.color}`,
+                                `Result: ${round.result || 'No result'}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Cumulative Score'
+                    },
+                    ticks: {
+                        stepSize: 0.5
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Round'
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+
+<style>
+#pairings-graph {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.35rem;
+    background-color: #fff;
+}
+
+.tab-pane {
+    padding: 20px 0;
+}
+
+.vis-network:focus {
+    outline: none;
+}
+</style>
+{% endblock %}
