@@ -1,11 +1,9 @@
 
-add a modal to pairings page to give multiple byes at once for use as an attendance feature
-
-Add feature to make it into a graph type thing
+Add feature to make it into a graph type thing - more graphical version of stats and exports
 
 add categories for tournaments 
 
-allow users to highlight different tournaments
+allow users to highlight different tournaments, similar and opposite of hide
 
 add a profile page and add stats
 
