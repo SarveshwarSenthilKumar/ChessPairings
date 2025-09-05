@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% set regex = '\s*\(\d+\)$|^\d+\.\s*' %}
+
+{% block title %}{{ tournament.name }} - Graphical View - Chess Tournament Manager{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tournament.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css">
+<style>
+    #visualization {
+        width: 100%;
+        height: 800px;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        background-color: #fff;
+    }
+    
+    .vis-item.vis-box {
+        border-radius: 4px;
+        font-size: 12px;
+        color: #1A1A1A;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .vis-item.vis-box.win {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+    }
+    
+    .vis-item.vis-box.loss {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+    
+    .vis-item.vis-box.draw {
+        background-color: #fff3cd;
+        border-color: #ffeeba;
+    }
+    
+    .vis-item.vis-box.ongoing {
+        background-color: #e2e3e5;
+        border-color: #d6d8db;
+    }
+    
+    .vis-item.vis-dot {
+        border-width: 2px;
+        border-radius: 10px;
+    }
+    
+    .vis-item.vis-selected {
+        border-color: #0d6efd;
+        background-color: rgba(13, 110, 253, 0.1);
+    }
+    
+    .vis-time-axis .vis-grid.vis-minor {
+        border-color: #f0f0f0;
+    }
+    
+    .vis-time-axis .vis-grid.vis-major {
+        border-color: #e0e0e0;
+    }
+    
+    .player-node {
+        position: absolute;
+        padding: 5px 10px;
+        border-radius: 4px;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        z-index: 10;
+        font-size: 12px;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+    
+    .vis-timeline {
+        border: none;
+    }
+    
+    .vis-tooltip {
+        position: absolute;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 5px 10px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        max-width: 300px;
+    }
+    
+    .vis-item.vis-point.bye {
+        background-color: #6c757d;
+        border-color: #5a6268;
+    }
+    
+    .controls {
+        margin-bottom: 20px;
+    }
+    
+    .vis-custom-time {
+        background-color: #0d6efd;
+        width: 2px;
+        cursor: move;
+        z-index: 1;
+    }
+    
+    .vis-custom-time-marker {
+        position: absolute;
+        width: 100px;
+        left: -50px;
+        text-align: center;
+        color: #0d6efd;
+        font-weight: bold;
+        font-size: 14px;
+        padding: 5px;
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 4px;
+        white-space: nowrap;
+    }
+    
+    [data-bs-theme="dark"] #visualization {
+        background-color: #2b3035;
+        border-color: #495057;
+    }
+    
+    [data-bs-theme="dark"] .vis-item.vis-box {
+        background-color: #2b3035;
+        border-color: #495057;
+        color: #f8f9fa;
+    }
+    
+    [data-bs-theme="dark"] .player-node {
+        background-color: #2b3035;
+        border-color: #495057;
+        color: #f8f9fa;
+    }
+    
+    [data-bs-theme="dark"] .vis-tooltip {
+        background-color: #2b3035;
+        border-color: #495057;
+        color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ tournament.name }} - Graphical View</h2>
+        <div>
+            <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Tournament
+            </a>
+        </div>
+    </div>
+    
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="controls mb-3">
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label for="viewMode" class="form-label">View Mode</label>
+                        <select id="viewMode" class="form-select">
+                            <option value="timeline">Timeline</option>
+                            <option value="bracket">Bracket</option>
+                            <option value="standings">Standings Over Time</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filterPlayer" class="form-label">Filter Player</label>
+                        <select id="filterPlayer" class="form-select">
+                            <option value="">All Players</option>
+                            {% for player in players %}
+                            <option value="{{ player.id }}">{{ player.name }} {{ '(' + player.rating|string + ')' if player.rating else '' }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filterRound" class="form-label">Filter Round</label>
+                        <select id="filterRound" class="form-select">
+                            <option value="">All Rounds</option>
+                            {% for i in range(1, tournament.rounds + 1) %}
+                            <option value="{{ i }}">Round {{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button id="resetFilters" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-sync-alt me-1"></i> Reset Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="visualization"></div>
+            
+            <div class="mt-3 d-flex justify-content-between align-items-center">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="showPlayerLabels" checked>
+                    <label class="form-check-label" for="showPlayerLabels">Show Player Labels</label>
+                </div>
+                <div class="btn-group" role="group">
+                    <button id="zoomIn" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-search-plus"></i> Zoom In
+                    </button>
+                    <button id="zoomOut" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-search-minus"></i> Zoom Out
+                    </button>
+                    <button id="fitAll" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-expand"></i> Fit All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Legend</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center">
+                        <div class="legend-color win me-2" style="width: 20px; height: 20px;"></div>
+                        <span>Win</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center">
+                        <div class="legend-color loss me-2" style="width: 20px; height: 20px;"></div>
+                        <span>Loss</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center">
+                        <div class="legend-color draw me-2" style="width: 20px; height: 20px;"></div>
+                        <span>Draw</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center">
+                        <div class="legend-color ongoing me-2" style="width: 20px; height: 20px;"></div>
+                        <span>Ongoing</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center">
+                        <div class="legend-color" style="background-color: #6c757d; width: 20px; height: 20px; border-radius: 50%;"></div>
+                        <span class="ms-2">Bye</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Player Performance</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Player</th>
+                            <th>Rating</th>
+                            <th>Points</th>
+                            <th>Wins</th>
+                            <th>Draws</th>
+                            <th>Losses</th>
+                            <th>Performance</th>
+                            <th>Form</th>
+                        </tr>
+                    </thead>
+                    <tbody id="playerPerformance">
+                        {% for player in players %}
+                        <tr data-player-id="{{ player.id }}" class="player-row">
+                            <td>{{ loop.index }}</td>
+                            <td>{{ player.name }}</td>
+                            <td>{{ player.rating if player.rating else '—' }}</td>
+                            <td>{{ player.points|default(0) }}</td>
+                            <td>{{ player.wins|default(0) }}</td>
+                            <td>{{ player.draws|default(0) }}</td>
+                            <td>{{ player.losses|default(0) }}</td>
+                            <td>{{ '%.2f'|format(player.performance) if player.performance is defined else '—' }}</td>
+                            <td class="player-form">
+                                {% for result in player.form %}
+                                    {% if result == '1' %}
+                                        <span class="badge bg-success">W</span>
+                                    {% elif result == '0' %}
+                                        <span class="badge bg-warning text-dark">D</span>
+                                    {% elif result == '-' %}
+                                        <span class="badge bg-danger">L</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">—</span>
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tooltip container -->
+<div id="tooltip" class="vis-tooltip" style="display: none;"></div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+<script src="{{ url_for('static', filename='js/graphical_view.js') }}"></script>
+<script>
+    // Initialize the visualization with data from the server
+    document.addEventListener('DOMContentLoaded', function() {
+        const tournamentData = {
+            id: {{ tournament.id|tojson }},
+            name: {{ tournament.name|tojson }},
+            startDate: {{ tournament.start_date.isoformat()|tojson }},
+            endDate: {{ tournament.end_date.isoformat()|tojson }},
+            rounds: {{ tournament.rounds|tojson }},
+            currentRound: {{ current_round.round_number if current_else 0|tojson }},
+            players: {{ players|tojson|safe }},
+            roundsData: {{ rounds_data|tojson|safe }}
+        };
+        
+        initGraphicalView(tournamentData);
+    });
+</script>
+{% endblock %}
