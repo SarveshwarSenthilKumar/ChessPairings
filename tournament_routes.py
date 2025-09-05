@@ -1958,9 +1958,10 @@ def batch_assign_byes(tournament_id, round_id):
         
         round_number = current_round['round_number']
         
-        db.conn.execute('BEGIN TRANSACTION')
-        
         try:
+            # Use a savepoint for the byes update
+            db.cursor.execute('SAVEPOINT before_byes')
+            
             # Clear existing manual byes for this round
             db.cursor.execute(
                 "DELETE FROM manual_byes WHERE tournament_id = ? AND round_number = ?",
@@ -1975,12 +1976,19 @@ def batch_assign_byes(tournament_id, round_id):
                     (tournament_id, player_id, round_number, session['user_id'])
                 )
             
-            # Regenerate pairings to account for the byes
-            success = db.generate_pairings(tournament_id, round_id, 'swiss')
-            if not success:
-                raise Exception("Failed to generate pairings")
-            
+            # Commit the byes first
             db.conn.commit()
+            
+            # Now generate pairings - it will handle its own transaction
+            success = db.generate_pairings(tournament_id, round_id, 'swiss')
+            
+            if not success:
+                # If pairings fail, we've already committed the byes, so just return an error
+                return jsonify({
+                    'success': False,
+                    'message': 'Failed to generate pairings. The byes were saved but pairings could not be generated.'
+                }), 500
+            
             return jsonify({
                 'success': True,
                 'message': f'Assigned byes to {len(player_ids)} players and regenerated pairings',
@@ -1988,8 +1996,10 @@ def batch_assign_byes(tournament_id, round_id):
             })
             
         except Exception as e:
-            db.conn.rollback()
-            current_app.logger.error(f"Error in batch_byes transaction: {e}")
+            # Rollback to the savepoint if anything fails
+            db.cursor.execute('ROLLBACK TO before_byes')
+            db.conn.rollback()  # Ensure any changes after the savepoint are rolled back
+            current_app.logger.error(f"Error in batch_byes: {e}")
             return jsonify({
                 'success': False,
                 'message': f'Error processing byes: {str(e)}'
