@@ -18,6 +18,8 @@ import json
 from typing import Dict, List, Optional, Tuple, Any
 from openai import OpenAI
 from dotenv import load_dotenv
+from sql import SQL
+
 
 # Load environment variables
 load_dotenv()
@@ -798,6 +800,18 @@ def view(tournament_id):
         # Get standings based on view type
         standings = db.get_standings(tournament_id, view_type=view_type)
         
+        # Get creator's username
+        creator_username = 'System'
+        if tournament.get('creator_id'):
+            print(tournament['creator_id'])
+            db = SQL("sqlite:///users.db")
+            user = db.execute("SELECT * FROM users WHERE id = :id", id=tournament['creator_id'])
+
+            print(user)
+            if user:
+                creator_username = user[0]["username"]
+        
+        print(creator_username)
         from datetime import datetime
         
         return render_template('tournament/view.html', 
@@ -806,6 +820,7 @@ def view(tournament_id):
                             pairings=pairings,
                             standings=standings,
                             view_type=view_type,
+                            creator_username=creator_username,
                             now=datetime.utcnow())
     except Exception as e:
         print(f"Error viewing tournament {tournament_id}: {e}")
