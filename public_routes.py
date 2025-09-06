@@ -72,6 +72,15 @@ def view_tournament(token):
     pairings = db.get_round_pairings(current_round['id']) if current_round else []
     rounds = db.get_tournament_rounds(tournament['id'])
     
+    # Get creator's username
+    creator_username = 'System'
+    if tournament.get('creator_id'):
+        from sql import SQL
+        user_db = SQL("sqlite:///users.db")
+        user = user_db.execute("SELECT * FROM users WHERE id = :id", id=tournament['creator_id'])
+        if user:
+            creator_username = user[0]["username"]
+    
     return render_template(
         'tournament/public_view.html',
         tournament=tournament,
@@ -81,7 +90,8 @@ def view_tournament(token):
         rounds=rounds,
         view_type=view_type,
         now=datetime.utcnow(),
-        db=db
+        db=db,
+        creator_username=creator_username
     )
 
 # These routes are relative to the blueprint's url_prefix ('/public')
