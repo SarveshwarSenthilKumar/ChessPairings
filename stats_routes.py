@@ -75,12 +75,14 @@ def user_stats(user_id):
         total_tournaments = len(tournaments)
         total_players = sum(t.get('player_count', 0) for t in tournaments)
         total_games = sum(t.get('game_count', 0) for t in tournaments)
+        total_rounds = sum(t.get('rounds', 0) for t in tournaments)
         
         # Prepare data for template
         stats = {
             'total_tournaments': total_tournaments,
             'total_players': total_players,
             'total_games': total_games,
+            'total_rounds': total_rounds,
             'member_since': user.get('created_at', 'N/A'),
             'last_active': user.get('last_login', 'N/A'),
             'email': user.get('email', 'Email not available'),
