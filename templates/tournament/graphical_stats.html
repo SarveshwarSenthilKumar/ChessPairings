@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tournament.name }} - Graphical Statistics{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css" rel="stylesheet">
+<style>
+    .stat-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        height: 100%;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-card h3 {
+        margin-top: 0;
+        color: var(--bs-primary);
+        border-bottom: 2px solid var(--bs-primary);
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+    }
+    
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-box {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .stat-box:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-value {
+        font-size: 2.25rem;
+        font-weight: 700;
+        color: var(--bs-primary);
+        margin: 0.5rem 0;
+        line-height: 1.2;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 350px;
+        margin: 1.5rem 0;
+    }
+    
+    .player-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--bs-primary);
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        margin-right: 0.75rem;
+    }
+    
+    .recent-game {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        background: rgba(0, 0, 0, 0.02);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+    }
+    
+    .recent-game:hover {
+        background: rgba(0, 0, 0, 0.03);
+        transform: translateX(5px);
+    }
+    
+    .result-badge {
+        padding: 0.35em 0.65em;
+        font-size: 0.75em;
+        font-weight: 700;
+        border-radius: 50rem;
+    }
+    
+    .bg-win { background-color: #198754; color: white; }
+    .bg-loss { background-color: #dc3545; color: white; }
+    .bg-draw { background-color: #ffc107; color: #000; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">
+            <i class="fas fa-chart-network me-2"></i>
+            {{ tournament.name }} - Graphical Statistics
+        </h1>
+        <div>
+            <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left me-1"></i> Back to Tournament
+            </a>
+            <a href="{{ url_for('stats.tournament_stats', tournament_id=tournament.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-table me-1"></i> View Table View
+            </a>
+        </div>
+    </div>
+
+    <!-- Tournament Overview -->
+    <div class="stat-card">
+        <h3><i class="fas fa-chart-pie me-2"></i>Tournament Overview</h3>
+        <div class="stat-grid">
+            <div class="stat-box">
+                <div class="stat-value">{{ stats.tournament.players }}</div>
+                <div class="stat-label">Total Players</div>
+                <div class="small text-muted mt-2">
+                    <i class="fas fa-users me-1"></i> Competing
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{{ stats.tournament.rounds }}</div>
+                <div class="stat-label">Rounds</div>
+                <div class="small text-muted mt-2">
+                    {{ stats.tournament.completed_rounds }} completed
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{{ stats.tournament.games_played }}</div>
+                <div class="stat-label">Games Played</div>
+                <div class="small text-muted mt-2">
+                    {{ stats.results['1-0'] + stats.results['0-1'] + stats.results['1/2-1/2'] }} decisive
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">
+                    {% if stats.tournament.status == 'upcoming' %}
+                        <span class="badge bg-secondary p-2">Upcoming</span>
+                    {% elif stats.tournament.status == 'in_progress' %}
+                        <span class="badge bg-primary p-2">In Progress</span>
+                    {% else %}
+                        <span class="badge bg-success p-2">Completed</span>
+                    {% endif %}
+                </div>
+                <div class="stat-label">Status</div>
+                <div class="small text-muted mt-2">
+                    <i class="fas fa-calendar-alt me-1"></i> 
+                    {{ stats.tournament.start_date|default('N/A') }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance and Results Row -->
+    <div class="row">
+        <!-- Performance Chart -->
+        <div class="col-lg-8 mb-4">
+            <div class="stat-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Performance Over Time
+                    </h3>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="performance-toggle">
+                            <i class="fas fa-chart-line"></i> Toggle View
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="smoothLineToggle" checked>
+                        <label class="form-check-label" for="smoothLineToggle">Smooth Lines</label>
+                    </div>
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i> Hover over lines for details
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Distribution -->
+        <div class="col-lg-4 mb-4">
+            <div class="stat-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Game Results
+                    </h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="resultsChart"></canvas>
+                </div>
+                <div class="text-center mt-3">
+                    <div id="results-legend" class="d-flex flex-wrap justify-content-center">
+                        <div class="me-3 mb-2">
+                            <span class="badge bg-win me-1">1-0</span>
+                            <span class="small">{{ stats.results['1-0'] }} games</span>
+                        </div>
+                        <div class="me-3 mb-2">
+                            <span class="badge bg-loss me-1">0-1</span>
+                            <span class="small">{{ stats.results['0-1'] }} games</span>
+                        </div>
+                        <div class="me-3 mb-2">
+                            <span class="badge bg-draw me-1">½-½</span>
+                            <span class="small">{{ stats.results['1/2-1/2'] }} games</span>
+                        </div>
+                        {% if stats.results['1-0F'] > 0 or stats.results['0-1F'] > 0 or stats.results['1/2-1/2F'] > 0 %}
+                        <div class="w-100 mt-2">
+                            <hr class="my-2">
+                            <div class="small text-muted mb-1">Forfeits:</div>
+                            {% if stats.results['1-0F'] > 0 %}
+                            <span class="badge bg-win me-2">1-0F ({{ stats.results['1-0F'] }})</span>
+                            {% endif %}
+                            {% if stats.results['0-1F'] > 0 %}
+                            <span class="badge bg-loss me-2">0-1F ({{ stats.results['0-1F'] }})</span>
+                            {% endif %}
+                            {% if stats.results['1/2-1/2F'] > 0 %}
+                            <span class="badge bg-draw">½-½F ({{ stats.results['1/2-1/2F'] }})</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Performance and Recent Games -->
+    <div class="row">
+        <!-- Top Performers -->
+        <div class="col-lg-6 mb-4">
+            <div class="stat-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">
+                        <i class="fas fa-trophy me-2"></i>Top Performers
+                    </h3>
+                    <a href="{{ url_for('tournament.standings', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-list-ol me-1"></i> View All
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Player</th>
+                                <th class="text-end">Points</th>
+                                <th class="text-center">W/D/L</th>
+                                <th class="text-end">Perf.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player in stats.top_performers %}
+                            <tr>
+                                <td class="fw-bold">{{ player.rank }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="player-avatar">
+                                            {{ player.name.split(' ').map(n => n[0]).join('').slice(0, 2) }}
+                                        </div>
+                                        <span class="fw-medium">{{ player.name }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-end fw-bold">{{ "%.1f"|format(player.points) }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success">{{ player.wins }}W</span>
+                                    <span class="badge bg-warning text-dark">{{ player.draws }}D</span>
+                                    <span class="badge bg-danger">{{ player.losses }}L</span>
+                                </td>
+                                <td class="text-end">{{ player.performance|round|int }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Games -->
+        <div class="col-lg-6 mb-4">
+            <div class="stat-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Games
+                    </h3>
+                    <a href="{{ url_for('tournament.rounds', tournament_id=tournament.id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-list-ol me-1"></i> View All Rounds
+                    </a>
+                </div>
+                <div class="recent-games-container" style="max-height: 400px; overflow-y: auto;">
+                    {% for game in stats.recent_games %}
+                    <div class="recent-game">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted">Round {{ game.round }}</span>
+                            <span class="badge bg-light text-dark">{{ game.date|default('', true)|string|truncate(10, True, '') }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-chess-king text-primary me-2"></i>
+                                <span>{{ game.white }}</span>
+                            </div>
+                            {% if game.result == '1-0' or game.result == '1-0F' %}
+                            <span class="badge bg-win">1-0</span>
+                            {% elif game.result == '0-1' or game.result == '0-1F' %}
+                            <span class="badge bg-loss">0-1</span>
+                            {% else %}
+                            <span class="badge bg-draw">½-½</span>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex justify-content-end align-items-center mt-1">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-chess-king text-dark me-2"></i>
+                                <span>{{ game.black }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p class="mb-0">No recent games found</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Score Distribution and Pairing Stats -->
+    <div class="row">
+        <!-- Score Distribution -->
+        <div class="col-lg-6 mb-4">
+            <div class="stat-card h-100">
+                <h3><i class="fas fa-chart-bar me-2"></i>Score Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="scoreDistributionChart"></canvas>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="showCumulative" checked>
+                        <label class="form-check-label" for="showCumulative">Show Cumulative</label>
+                    </div>
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i> Distribution of player scores
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pairing Stats -->
+        <div class="col-lg-6 mb-4">
+            <div class="stat-card h-100">
+                <h3><i class="fas fa-chess-board me-2"></i>Pairing Statistics</h3>
+                <div class="chart-container">
+                    <canvas id="pairingStatsChart"></canvas>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="h4 mb-1">{{ stats.results['1-0'] + stats.results['1-0F'] }}</div>
+                            <div class="text-muted small">White Wins</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="h4 mb-1">{{ stats.results['0-1'] + stats.results['0-1F'] }}</div>
+                            <div class="text-muted small">Black Wins</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Performance Chart
+    const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+    const performanceChart = new Chart(performanceCtx, {
+        type: 'line',
+        data: {
+            labels: Array.from({ length: {{ stats.tournament.rounds }}}, (_, i) => `Round ${i + 1}`),
+            datasets: [
+                {% for player in stats.top_performers %}
+                {
+                    label: '{{ player.name }}',
+                    data: {{ stats.points_progression[player.name]|tojson }},
+                    borderColor: getColor({{ loop.index0 }}),
+                    backgroundColor: 'transparent',
+                    tension: 0.4,
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: getColor({{ loop.index0 }}),
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: getColor({{ loop.index0 }}),
+                    pointBorderWidth: 2,
+                    pointHoverBorderWidth: 2,
+                    fill: false
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 20,
+                        usePointStyle: true,
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y} points`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Points' }
+                },
+                x: {
+                    title: { display: true, text: 'Round' }
+                }
+            }
+        }
+    });
+
+    // Initialize Results Chart
+    const resultsCtx = document.getElementById('resultsChart').getContext('2d');
+    const resultsChart = new Chart(resultsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['White Wins', 'Black Wins', 'Draws'],
+            datasets: [{
+                data: [
+                    {{ stats.results['1-0'] + stats.results['1-0F'] }},
+                    {{ stats.results['0-1'] + stats.results['0-1F'] }},
+                    {{ stats.results['1/2-1/2'] + stats.results['1/2-1/2F'] }}
+                ],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',
+                    'rgba(220, 53, 69, 0.8)',
+                    'rgba(255, 193, 7, 0.8)'
+                ],
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((context.raw / total) * 100);
+                            return `${context.label}: ${context.raw} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Toggle smooth lines
+    document.getElementById('smoothLineToggle').addEventListener('change', function() {
+        const tension = this.checked ? 0.4 : 0;
+        performanceChart.data.datasets.forEach(dataset => {
+            dataset.tension = tension;
+        });
+        performanceChart.update();
+    });
+
+    // Toggle chart type
+    document.getElementById('performance-toggle').addEventListener('click', function() {
+        const isLineChart = performanceChart.config.type === 'line';
+        performanceChart.config.type = isLineChart ? 'bar' : 'line';
+        
+        // Update button icon
+        const icon = this.querySelector('i');
+        if (isLineChart) {
+            icon.classList.remove('fa-chart-line');
+            icon.classList.add('fa-chart-bar');
+        } else {
+            icon.classList.remove('fa-chart-bar');
+            icon.classList.add('fa-chart-line');
+        }
+        
+        performanceChart.update();
+    });
+
+    // Helper function to get colors
+    function getColor(index) {
+        const colors = [
+            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+            '#5a5c69', '#858796', '#3a3b45', '#1a365d', '#2c5282'
+        ];
+        return colors[index % colors.length];
+    }
+});
+</script>
+{% endblock %}

@@ -99,6 +99,16 @@ def tournament_stats(tournament_id, **kwargs):
     if not rounds:
         return render_template('tournament/no_rounds.html', tournament=tournament)
     
+    # Get standings data
+    standings = db.get_standings(tournament_id)
+    completed_rounds = [r for r in rounds if r.get('completed')]
+    
+    # Count total games
+    total_games = 0
+    for r in completed_rounds:
+        pairings = db.get_pairings(r['id'])
+        total_games += len([p for p in pairings if p.get('result')])
+    
     # Generate visualizations
     performance_chart = generate_performance_chart(tournament_id)
     score_distribution = generate_score_distribution(tournament_id)
@@ -106,9 +116,121 @@ def tournament_stats(tournament_id, **kwargs):
     
     return render_template('tournament/stats.html',
                          tournament=tournament,
+                         standings=standings,
+                         completed_rounds=completed_rounds,
+                         total_games=total_games,
                          performance_chart=performance_chart,
                          score_distribution=score_distribution,
                          results_chart=results_chart)
+
+@stats_bp.route('/tournament/<int:tournament_id>/graphical-stats')
+@check_tournament_active
+@check_tournament_permission('can_view_reports')
+def graphical_stats(tournament_id):
+    """Display graphical tournament statistics dashboard."""
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+        
+    db = get_db()
+    tournament = db.get_tournament(tournament_id)
+    
+    if not tournament:
+        return "Tournament not found", 404
+        
+    # Get additional data needed for the graphical view
+    rounds = db.get_rounds(tournament_id)
+    if not rounds:
+        return render_template('tournament/no_rounds.html', tournament=tournament)
+    
+    # Get standings and player data
+    standings = db.get_standings(tournament_id)
+    players = db.get_players(tournament_id)
+    
+    # Get recent games
+    recent_games = []
+    for r in sorted(rounds, key=lambda x: x['round_number'], reverse=True):
+        pairings = db.get_pairings(r['id'])
+        for p in pairings:
+            if p.get('result'):
+                white = next((player for player in players if player['id'] == p['white_player_id']), None)
+                black = next((player for player in players if player['id'] == p['black_player_id']), None)
+                if white and black:
+                    recent_games.append({
+                        'round': r['round_number'],
+                        'white': white['name'],
+                        'black': black['name'],
+                        'result': p['result'],
+                        'date': p.get('updated_at') or r.get('end_date')
+                    })
+        if len(recent_games) >= 10:  # Limit to 10 most recent games
+            break
+    
+    # Calculate game results distribution
+    results = {'1-0': 0, '0-1': 0, '1/2-1/2': 0, '1-0F': 0, '0-1F': 0, '1/2-1/2F': 0}
+    for r in rounds:
+        pairings = db.get_pairings(r['id'])
+        for p in pairings:
+            if p.get('result') in results:
+                results[p['result']] += 1
+    
+    # Prepare data for the graphical view
+    stats = {
+        'tournament': {
+            'id': tournament['id'],
+            'name': tournament['name'],
+            'status': tournament.get('status', 'upcoming'),
+            'start_date': tournament.get('start_date'),
+            'end_date': tournament.get('end_date'),
+            'rounds': len(rounds),
+            'completed_rounds': len([r for r in rounds if r.get('completed')]),
+            'players': len(players),
+            'games_played': sum(1 for r in rounds for p in db.get_pairings(r['id']) if p.get('result'))
+        },
+        'standings': standings[:10],  # Top 10 players
+        'recent_games': recent_games[:10],
+        'results': results,
+        'top_performers': [],
+        'points_progression': {}
+    }
+    
+    # Calculate points progression for top 5 players
+    top_players = [p['name'] for p in standings[:5]]
+    for player in top_players:
+        stats['points_progression'][player] = []
+        for r in sorted(rounds, key=lambda x: x['round_number']):
+            points = 0
+            pairings = db.get_pairings(r['id'])
+            for p in pairings:
+                white = next((pl for pl in players if pl['id'] == p.get('white_player_id')), None)
+                black = next((pl for pl in players if pl['id'] == p.get('black_player_id')), None)
+                
+                if white and white['name'] == player and p.get('result'):
+                    if p['result'] == '1-0' or p['result'] == '1-0F':
+                        points += 1
+                    elif p['result'] == '1/2-1/2' or p['result'] == '1/2-1/2F':
+                        points += 0.5
+                elif black and black['name'] == player and p.get('result'):
+                    if p['result'] == '0-1' or p['result'] == '0-1F':
+                        points += 1
+                    elif p['result'] == '1/2-1/2' or p['result'] == '1/2-1/2F':
+                        points += 0.5
+            stats['points_progression'][player].append(points)
+    
+    # Add top performers with their stats
+    for i, player in enumerate(standings[:5]):
+        stats['top_performers'].append({
+            'rank': i + 1,
+            'name': player['name'],
+            'points': player.get('points', 0),
+            'wins': player.get('wins', 0),
+            'losses': player.get('losses', 0),
+            'draws': player.get('draws', 0),
+            'performance': player.get('performance', 0)
+        })
+    
+    return render_template('tournament/graphical_stats.html', 
+                         tournament=tournament,
+                         stats=stats)
 
 def generate_performance_chart(tournament_id):
     """Generate a line chart showing player performance over rounds."""
