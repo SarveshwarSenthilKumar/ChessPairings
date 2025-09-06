@@ -791,6 +791,7 @@ def view(tournament_id):
         # Get current round and its pairings
         current_round = db.get_current_round(tournament_id)
         pairings = []
+        print(current_round)
         if current_round:
             pairings = db.get_round_pairings(current_round['id'])
             
