@@ -1,10 +1,13 @@
 import os
-from flask import Flask, render_template, request, redirect, session, jsonify, Blueprint, url_for, flash
+from flask import Flask, render_template, request, redirect, session, jsonify, Blueprint, url_for, flash, current_app
 from flask_session import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
-from sql import * #Used for database connection and management
-from SarvAuth import * #Used for user authentication functions
+import secrets
+from itsdangerous import URLSafeTimedSerializer
+from sql import *  # Used for database connection and management
+from SarvAuth import *  # Used for user authentication functions
+from email_utils import send_reset_email, get_reset_token, verify_reset_token
 
 auth_blueprint = Blueprint('auth', __name__)
 
@@ -258,6 +261,106 @@ def change_password():
         print(f"Error changing password: {str(e)}")
         flash('An error occurred while changing your password', 'danger')
         return redirect(url_for('auth.change_password'))
+
+@auth_blueprint.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    """Handle password reset requests"""
+    if request.method == 'GET':
+        return render_template('auth/forgot_password.html')
+    
+    email = request.form.get('email', '').strip().lower()
+    
+    if not email:
+        flash('Email is required', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+    
+    try:
+        db = SQL("sqlite:///users.db")
+        user = db.execute("SELECT * FROM users WHERE emailAddress = :email", email=email)
+        
+        if not user:
+            # For security, don't reveal if the email exists or not
+            flash('If an account with that email exists, a password reset link has been sent.', 'info')
+            return redirect(url_for('auth.login'))
+            
+        user = user[0]
+        
+        # Generate a secure token
+        token = get_reset_token(user['emailAddress'], current_app.secret_key)
+        
+        # Send the password reset email
+        app_name = "Chess Tournament Manager"
+        app_url = request.host_url.rstrip('/')
+        
+        send_reset_email(
+            recipient_email=user['emailAddress'],
+            token=token,
+            app_name=app_name,
+            app_url=app_url
+        )
+        
+        flash('If an account with that email exists, a password reset link has been sent.', 'info')
+        return redirect(url_for('auth.login'))
+        
+    except Exception as e:
+        print(f"Error in forgot_password: {str(e)}")
+        flash('An error occurred. Please try again later.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+@auth_blueprint.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    """Handle password reset with a valid token"""
+    # Verify the token
+    email = verify_reset_token(token, current_app.secret_key)
+    
+    if not email:
+        flash('The password reset link is invalid or has expired.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+    
+    if request.method == 'GET':
+        return render_template('auth/reset_password.html', token=token, valid_token=True)
+    
+    # Handle form submission
+    password = request.form.get('password', '').strip()
+    confirm_password = request.form.get('confirm_password', '').strip()
+    
+    # Validate the form data
+    if not password or not confirm_password:
+        flash('Please fill in all fields', 'danger')
+        return render_template('auth/reset_password.html', token=token, valid_token=True)
+        
+    if password != confirm_password:
+        flash('Passwords do not match', 'danger')
+        return render_template('auth/reset_password.html', token=token, valid_token=True)
+        
+    if len(password) < 8:
+        flash('Password must be at least 8 characters long', 'danger')
+        return render_template('auth/reset_password.html', token=token, valid_token=True)
+    
+    try:
+        db = SQL("sqlite:///users.db")
+        user = db.execute("SELECT * FROM users WHERE emailAddress = :email", email=email)
+        
+        if not user:
+            flash('User not found', 'danger')
+            return redirect(url_for('auth.forgot_password'))
+            
+        # Update the user's password
+        password_hash = hash(password)
+        
+        db.execute(
+            "UPDATE users SET password = :password WHERE emailAddress = :email",
+            password=password_hash,
+            email=email
+        )
+        
+        flash('Your password has been updated successfully! You can now log in with your new password.', 'success')
+        return redirect(url_for('auth.login'))
+        
+    except Exception as e:
+        print(f"Error in reset_password: {str(e)}")
+        flash('An error occurred. Please try again later.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
 
 @auth_blueprint.route("/logout")
 def logout():
