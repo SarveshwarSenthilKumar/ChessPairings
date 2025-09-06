@@ -49,11 +49,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show toast notification
                 showToast(
                     pin ? 'Tournament Pinned' : 'Tournament Unpinned',
-                    `The tournament has been ${pin ? 'pinned' : 'unpinned'} successfully.`,
-                    pin ? 'success' : 'info'
+                    pin ? 'This tournament will now appear at the top of your list.' : 'This tournament has been unpinned.',
+                    'success'
                 );
                 
-                // Sort tournaments to move pinned to top
+                // Update session storage
+                const pinnedKey = `pinned_tournaments_${getUserId()}`;
+                let pinnedTournaments = JSON.parse(sessionStorage.getItem(pinnedKey) || '[]');
+                
+                if (pin) {
+                    // Remove if exists to avoid duplicates and add to the beginning
+                    pinnedTournaments = pinnedTournaments.filter(id => id !== parseInt(tournamentId));
+                    pinnedTournaments.unshift(parseInt(tournamentId));
+                } else {
+                    pinnedTournaments = pinnedTournaments.filter(id => id !== parseInt(tournamentId));
+                }
+                
+                sessionStorage.setItem(pinnedKey, JSON.stringify(pinnedTournaments));
+                
+                // Sort tournaments to ensure pinned ones are at the top
                 sortTournaments();
             } else {
                 showToast('Error', data.message || 'An error occurred', 'danger');
