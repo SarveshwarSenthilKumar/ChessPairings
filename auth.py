@@ -200,6 +200,65 @@ def profile():
         flash('An error occurred while loading your profile', 'danger')
         return redirect(url_for('tournament.index'))
 
+@auth_blueprint.route("/change-password", methods=["GET", "POST"])
+def change_password():
+    if not session.get("name"):
+        return redirect(url_for('auth.login'))
+    
+    if request.method == 'GET':
+        return render_template('auth/change_password.html')
+    
+    try:
+        current_password = request.form.get('current_password', '').strip()
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        # Basic validation
+        if not all([current_password, new_password, confirm_password]):
+            flash('All fields are required', 'danger')
+            return redirect(url_for('auth.change_password'))
+            
+        if new_password != confirm_password:
+            flash('New passwords do not match', 'danger')
+            return redirect(url_for('auth.change_password'))
+            
+        if len(new_password) < 8:
+            flash('New password must be at least 8 characters long', 'danger')
+            return redirect(url_for('auth.change_password'))
+        
+        db = SQL("sqlite:///users.db")
+        
+        # Get current user's password hash
+        user = db.execute("SELECT password FROM users WHERE username = :username", 
+                         username=session['name'])
+        
+        if not user:
+            flash('User not found', 'danger')
+            return redirect(url_for('auth.change_password'))
+            
+        stored_hash = user[0]['password']
+        
+        # Verify current password using SarvAuth
+        if not checkUserPassword(session['name'], current_password):
+            flash('Current password is incorrect', 'danger')
+            return redirect(url_for('auth.change_password'))
+        
+        # Hash and update the new password using SarvAuth's hash function
+        new_hash = hash(new_password)
+        db.execute("""
+            UPDATE users 
+            SET password = :password 
+            WHERE username = :username
+        """, password=new_hash, username=session['name'])
+        
+        flash('Password updated successfully!', 'success')
+        return redirect(url_for('auth.profile'))
+        
+    except Exception as e:
+        print(f"Error changing password: {str(e)}")
+        flash('An error occurred while changing your password', 'danger')
+        return redirect(url_for('auth.change_password'))
+
 @auth_blueprint.route("/logout")
 def logout():
     session.pop("name", None)
