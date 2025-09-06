@@ -77,21 +77,49 @@ def user_stats(user_id):
         total_games = sum(t.get('game_count', 0) for t in tournaments)
         total_rounds = sum(t.get('rounds', 0) for t in tournaments)
         
+        # Format the member since date
+        from datetime import datetime
+        
+        def format_date(date_str):
+            if not date_str:
+                return 'N/A'
+            try:
+                # If it's already a datetime object
+                if isinstance(date_str, datetime):
+                    return date_str.strftime('%B %d, %Y')
+                # If it's a string, try to parse it
+                if isinstance(date_str, str):
+                    # Try different date formats
+                    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+                        try:
+                            dt = datetime.strptime(date_str.split('.')[0], fmt)
+                            return dt.strftime('%B %d, %Y')
+                        except ValueError:
+                            continue
+                return 'N/A'
+            except Exception:
+                return 'N/A'
+        
         # Prepare data for template
+        member_since = format_date(user.get('dateJoined') or user.get('created_at'))
+        
         stats = {
             'total_tournaments': total_tournaments,
             'total_players': total_players,
             'total_games': total_games,
             'total_rounds': total_rounds,
-            'member_since': user.get('created_at', 'N/A'),
-            'last_active': user.get('last_login', 'N/A'),
-            'email': user.get('email', 'Email not available'),
-            'username': user.get('username', 'User')
+            'member_since': member_since
+        }
+        
+        # Ensure user has all required fields
+        user_info = {
+            'username': user.get('username', 'User'),
+            'emailAddress': user.get('emailAddress')
         }
         
         return render_template('stats/user_stats.html', 
                              stats=stats,
-                             user=user,
+                             user=user_info,
                              tournaments=tournaments[:5])  # Show only recent 5 tournaments
     except Exception as e:
         current_app.logger.error(f"Error in user_stats: {str(e)}")

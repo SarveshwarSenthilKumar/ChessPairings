@@ -54,27 +54,16 @@
 <div class="container py-4">
     <!-- Profile Header -->
     <div class="profile-header p-4 mb-4">
-        <div class="row align-items-center">
-            <div class="col-md-2 text-center mb-3 mb-md-0">
-                <img src="{{ url_for('static', filename='img/default-avatar.png') }}" 
-                     alt="{{ user.username }}" 
-                     class="user-avatar rounded-circle mb-2">
-            </div>
-            <div class="col-md-8">
-                <h1 class="h3 mb-1">{{ user.username }}</h1>
-                <p class="mb-2">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="h3 mb-2">{{ user.username }}</h1>
+                <p class="mb-3">
                     <i class="fas fa-envelope me-2"></i>
-                    <a href="mailto:{{ user.email }}" class="text-light">{{ user.email }}</a>
+                    <a href="mailto:{{ user.emailAddress }}" class="text-light">{{ user.emailAddress }}</a>
                 </p>
-                <div class="d-flex flex-wrap gap-3">
-                    <span class="text-light">
-                        <i class="fas fa-calendar-alt me-1"></i>
-                        Member since {{ stats.member_since|datetimeformat('%b %Y') }}
-                    </span>
-                    <span class="text-light">
-                        <i class="fas fa-clock me-1"></i>
-                        Last active {{ stats.last_active|datetimeformat('%b %d, %Y') if stats.last_active != 'N/A' else 'N/A' }}
-                    </span>
+                <div class="text-light">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    Member since {{ stats.member_since }}
                 </div>
             </div>
         </div>
