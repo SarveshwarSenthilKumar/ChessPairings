@@ -801,16 +801,17 @@ def view(tournament_id):
         # Get standings based on view type
         standings = db.get_standings(tournament_id, view_type=view_type)
         
-        # Get creator's username
+        # Get creator's username and email
         creator_username = 'System'
+        creator_email = None
         if tournament.get('creator_id'):
-            print(tournament['creator_id'])
+            from sql import SQL
             db = SQL("sqlite:///users.db")
             user = db.execute("SELECT * FROM users WHERE id = :id", id=tournament['creator_id'])
 
-            print(user)
             if user:
-                creator_username = user[0]["username"]
+                creator_username = user[0].get("username", 'System')
+                creator_email = user[0].get("email")
         
         print(creator_username)
         from datetime import datetime
@@ -822,6 +823,7 @@ def view(tournament_id):
                             standings=standings,
                             view_type=view_type,
                             creator_username=creator_username,
+                            creator_email=creator_email,
                             now=datetime.utcnow())
     except Exception as e:
         print(f"Error viewing tournament {tournament_id}: {e}")

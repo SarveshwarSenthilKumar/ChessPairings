@@ -239,7 +239,20 @@
                                 </div>
                                 <div>
                                     <span class="d-block fw-medium text-dark">Created By</span>
-                                    <span class="text-muted">{{ creator_username }}</span>
+                                    <div>
+                                        <a href="{{ url_for('stats.user_stats', user_id=tournament.creator_id) }}" 
+                                           class="text-decoration-none"
+                                           title="View user's profile">
+                                            <i class="fas fa-user me-1"></i>{{ creator_username }}
+                                        </a>
+                                    </div>
+                                    {% if creator_email %}
+                                    <div class="mt-1">
+                                        <a href="mailto:{{ creator_email }}" class="text-muted small">
+                                            <i class="fas fa-envelope me-1"></i>{{ creator_email }}
+                                        </a>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </li>

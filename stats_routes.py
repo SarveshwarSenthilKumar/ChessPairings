@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, send_file, make_response, current_app, session, redirect, url_for
+from flask import Blueprint, render_template, jsonify, send_file, make_response, current_app, session, redirect, url_for, request
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -52,6 +52,48 @@ def check_tournament_permission(permission):
 
 # Create blueprint
 stats_bp = Blueprint('stats', __name__)
+
+@stats_bp.route('/user/<int:user_id>')
+def user_stats(user_id):
+    """Display user statistics page."""
+    try:
+        from sql import SQL
+        db = SQL("sqlite:///users.db")
+        
+        # Get user info
+        user = db.execute("SELECT * FROM users WHERE id = :id", id=user_id)
+        if not user:
+            return "User not found", 404
+            
+        user = user[0]
+        
+        # Get user's tournaments
+        tournament_db = get_db()
+        tournaments = tournament_db.get_tournaments_by_creator(user_id)
+        
+        # Calculate basic stats
+        total_tournaments = len(tournaments)
+        total_players = sum(t.get('player_count', 0) for t in tournaments)
+        total_games = sum(t.get('game_count', 0) for t in tournaments)
+        
+        # Prepare data for template
+        stats = {
+            'total_tournaments': total_tournaments,
+            'total_players': total_players,
+            'total_games': total_games,
+            'member_since': user.get('created_at', 'N/A'),
+            'last_active': user.get('last_login', 'N/A'),
+            'email': user.get('email', 'Email not available'),
+            'username': user.get('username', 'User')
+        }
+        
+        return render_template('stats/user_stats.html', 
+                             stats=stats,
+                             user=user,
+                             tournaments=tournaments[:5])  # Show only recent 5 tournaments
+    except Exception as e:
+        current_app.logger.error(f"Error in user_stats: {str(e)}")
+        return "An error occurred while loading user statistics.", 500
 
 def get_db():
     """Get a database connection."""
