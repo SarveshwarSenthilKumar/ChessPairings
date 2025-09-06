@@ -1,6 +1,8 @@
 
 add a profile page and add stats
 
+add a created by to tournament page, and admins
+
 add a drag drop interface to manually create pairings
 
 create terms of conditions and privacy policy

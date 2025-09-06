@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, session, jsonify, Blueprint, url_for
+from flask import Flask, render_template, request, redirect, session, jsonify, Blueprint, url_for, flash
 from flask_session import Session
 from datetime import datetime
 import pytz
@@ -151,6 +151,55 @@ def register():
         return render_template("auth/signup.html", 
                              error=f"An error occurred during registration. Please try again later.")
     
+@auth_blueprint.route("/profile", methods=["GET", "POST"])
+def profile():
+    if not session.get("name"):
+        return redirect(url_for('auth.login'))
+    
+    try:
+        db = SQL("sqlite:///users.db")
+        
+        # Get current user data
+        user = db.execute("SELECT name, emailAddress as email FROM users WHERE username = :username", 
+                         username=session['name'])
+        
+        if not user:
+            flash('User not found', 'danger')
+            return redirect(url_for('tournament.index'))
+            
+        user = user[0]  # Get the first (and should be only) user
+        
+        if request.method == 'POST':
+            # Update user information
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip().lower()
+            
+            if not name or not email:
+                flash('Name and email are required', 'danger')
+            else:
+                # Update user in database
+                db.execute("""
+                    UPDATE users 
+                    SET name = :name, emailAddress = :email 
+                    WHERE username = :username
+                """, name=name, email=email, username=session['name'])
+                
+                flash('Profile updated successfully!', 'success')
+                # Update session if needed
+                if 'email' in session:
+                    session['email'] = email
+                
+                # Refresh user data
+                user = db.execute("SELECT name, emailAddress as email FROM users WHERE username = :username", 
+                                username=session['name'])[0]
+        
+        return render_template('auth/profile.html', user=user)
+        
+    except Exception as e:
+        print(f"Error in profile: {str(e)}")
+        flash('An error occurred while loading your profile', 'danger')
+        return redirect(url_for('tournament.index'))
+
 @auth_blueprint.route("/logout")
 def logout():
     session.pop("name", None)
