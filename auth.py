@@ -362,6 +362,59 @@ def reset_password(token):
         flash('An error occurred. Please try again later.', 'danger')
         return redirect(url_for('auth.forgot_password'))
 
+@auth_blueprint.route("/profile/stats")
+def user_stats():
+    """Display user statistics"""
+    if not session.get("name"):
+        return redirect(url_for('auth.login'))
+    
+    try:
+        # Use the users database for user lookup
+        users_db = SQL("sqlite:///users.db")
+        
+        # Get the current user from the users database
+        user = users_db.execute("SELECT * FROM users WHERE username = :username", 
+                              username=session['name'])
+        
+        if not user:
+            flash('User not found', 'danger')
+            return redirect(url_for('auth.profile'))
+            
+        user_id = user[0]['id']
+        
+        # Use the tournament database for tournament data
+        tournament_db = SQL("sqlite:///tournament.db")
+        
+        # Get user's tournaments with player and round counts
+        tournaments = tournament_db.execute("""
+            SELECT t.*, 
+                   (SELECT COUNT(*) FROM tournament_players WHERE tournament_id = t.id) as player_count,
+                   (SELECT COUNT(*) FROM rounds WHERE tournament_id = t.id) as round_count
+            FROM tournaments t
+            WHERE t.creator_id = :user_id
+            ORDER BY t.created_at DESC
+        """, user_id=user_id)
+        
+        # Calculate statistics
+        stats = {
+            'total_tournaments': len(tournaments),
+            'total_players': sum(t.get('player_count', 0) for t in tournaments),
+            'total_rounds': sum(t.get('round_count', 0) for t in tournaments)
+        }
+        
+        # Get current time for status calculation
+        current_time = datetime.utcnow().isoformat()
+        
+        return render_template('auth/user_stats.html', 
+                             stats=stats, 
+                             tournaments=tournaments,
+                             current_time=current_time)
+        
+    except Exception as e:
+        print(f"Error in user_stats: {str(e)}")
+        flash('An error occurred while loading your statistics.', 'danger')
+        return redirect(url_for('auth.profile'))
+
 @auth_blueprint.route("/logout")
 def logout():
     session.pop("name", None)
