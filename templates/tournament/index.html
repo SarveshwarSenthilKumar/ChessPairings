@@ -297,11 +297,19 @@
                         </a>
                         {% endif %}
                     </div>
-                    <button class="btn btn-sm btn-outline-secondary ms-2 hide-tournament" 
-                            data-tournament-id="{{ tournament.id }}"
-                            title="Hide this tournament">
-                        <i class="fas fa-eye-slash"></i>
-                    </button>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-warning pin-tournament" 
+                                data-tournament-id="{{ tournament.id }}"
+                                data-pinned="false"
+                                title="Pin this tournament">
+                            <i class="fas fa-thumbtack"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary hide-tournament" 
+                                data-tournament-id="{{ tournament.id }}"
+                                title="Hide this tournament">
+                            <i class="fas fa-eye-slash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -343,6 +351,7 @@
 <script src="{{ url_for('static', filename='js/tournament.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hide-tournament.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tournament-filters.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pin-tournament.js') }}"></script>
 
 <script>
 // Initialize tooltips, modals, and toasts

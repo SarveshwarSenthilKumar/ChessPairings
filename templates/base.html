@@ -367,9 +367,19 @@
         </div>
     </div>
 
+    <!-- Toast container for notifications -->
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+        <!-- Toasts will be inserted here by JavaScript -->
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Bootstrap 5 JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Add user ID to body for JavaScript access -->
+    <script>
+        document.body.dataset.userId = '{{ session.get("user_id", "") }}';
+    </script>
     <!-- Marked.js for markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     

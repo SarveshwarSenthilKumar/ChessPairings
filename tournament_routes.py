@@ -188,16 +188,59 @@ def unhide_tournament(tournament_id):
         # Remove from hidden tournaments for this user
         hidden_key = f'hidden_tournaments_{user_id}'
         hidden_tournaments = set(session.get(hidden_key, []))
-        
         if tournament_id in hidden_tournaments:
             hidden_tournaments.remove(tournament_id)
             session[hidden_key] = list(hidden_tournaments)
             session.modified = True
-            
-        return jsonify({'success': True})
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'message': 'Tournament was not hidden'}), 400
+        
     except Exception as e:
         print(f"Error unhiding tournament: {e}")
         return jsonify({'success': False, 'message': 'An error occurred while unhiding the tournament'}), 500
+
+@tournament_bp.route('/<int:tournament_id>/pin', methods=['POST'])
+@login_required
+def pin_tournament(tournament_id):
+    """Pin a tournament for the current user."""
+    try:
+        db = get_db()
+        user_id = session.get('user_id')
+        
+        # Add to pinned tournaments for this user
+        pinned_key = f'pinned_tournaments_{user_id}'
+        pinned_tournaments = set(session.get(pinned_key, []))
+        pinned_tournaments.add(tournament_id)
+        session[pinned_key] = list(pinned_tournaments)
+        session.modified = True
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        print(f"Error pinning tournament: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while pinning the tournament'}), 500
+
+@tournament_bp.route('/<int:tournament_id>/unpin', methods=['POST'])
+@login_required
+def unpin_tournament(tournament_id):
+    """Unpin a tournament for the current user."""
+    try:
+        db = get_db()
+        user_id = session.get('user_id')
+        
+        # Remove from pinned tournaments for this user
+        pinned_key = f'pinned_tournaments_{user_id}'
+        pinned_tournaments = set(session.get(pinned_key, []))
+        if tournament_id in pinned_tournaments:
+            pinned_tournaments.remove(tournament_id)
+            session[pinned_key] = list(pinned_tournaments)
+            session.modified = True
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'message': 'Tournament was not pinned'}), 400
+        
+    except Exception as e:
+        print(f"Error unpinning tournament: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while unpinning the tournament'}), 500
 
 @tournament_bp.route('/<int:tournament_id>/hide', methods=['POST'])
 @login_required

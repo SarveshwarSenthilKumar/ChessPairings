@@ -1,6 +1,4 @@
 
-add categories for tournaments 
-
 allow users to highlight different tournaments, similar and opposite of hide
 
 add a profile page and add stats
