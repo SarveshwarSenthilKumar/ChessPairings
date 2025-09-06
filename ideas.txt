@@ -1,6 +1,12 @@
 
 add a drag drop interface to manually create pairings
 
+update and fix logic for status updates for rounds in public view
+
+update to not have duplicates in create player
+
+add a days calculator to the stats page
+
 Update to use proper email auth for signup and reset password
 
 create terms of conditions and privacy policy
