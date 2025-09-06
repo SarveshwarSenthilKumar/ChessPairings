@@ -1,6 +1,4 @@
 
-allow users to highlight different tournaments, similar and opposite of hide
-
 add a profile page and add stats
 
 add a drag drop interface to manually create pairings
