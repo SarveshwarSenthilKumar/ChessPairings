@@ -2,6 +2,28 @@
  * Handles pin/unpin functionality for tournaments
  */
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize pinned filter state
+    let showPinnedOnly = false;
+    const filterPinnedBtn = document.getElementById('filterPinned');
+    
+    // Initial sort when page loads
+    setTimeout(sortTournaments, 100); // Small delay to ensure DOM is fully loaded
+    
+    // Toggle pinned filter
+    console.log('Initializing pinned filter button...');
+    if (filterPinnedBtn) {
+        console.log('Filter button found, adding click handler');
+        filterPinnedBtn.addEventListener('click', function(e) {
+            console.log('Filter button clicked');
+            showPinnedOnly = !showPinnedOnly;
+            console.log('showPinnedOnly set to:', showPinnedOnly);
+            updatePinnedFilterButton();
+            filterTournaments();
+        });
+    } else {
+        console.error('Could not find filterPinnedBtn element');
+    }
+    
     // Initialize tooltips for pin buttons
     const pinButtons = document.querySelectorAll('.pin-tournament');
     pinButtons.forEach(button => {
@@ -67,8 +89,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 sessionStorage.setItem(pinnedKey, JSON.stringify(pinnedTournaments));
                 
-                // Sort tournaments to ensure pinned ones are at the top
-                sortTournaments();
+                // Sort tournaments to ensure pinned ones are at the top and apply filter
+                setTimeout(() => {
+                    sortTournaments();
+                    if (showPinnedOnly) {
+                        filterTournaments();
+                    }
+                }, 0); // Small delay to ensure DOM updates are processed
             } else {
                 showToast('Error', data.message || 'An error occurred', 'danger');
             }
@@ -95,21 +122,86 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to sort tournaments with pinned ones first
-    function sortTournaments() {
+    // Function to update pinned filter button state
+    function updatePinnedFilterButton() {
+        if (!filterPinnedBtn) return;
+        
+        if (showPinnedOnly) {
+            filterPinnedBtn.classList.remove('btn-outline-warning');
+            filterPinnedBtn.classList.add('btn-warning');
+            filterPinnedBtn.title = 'Showing pinned tournaments only. Click to show all.';
+        } else {
+            filterPinnedBtn.classList.remove('btn-warning');
+            filterPinnedBtn.classList.add('btn-outline-warning');
+            filterPinnedBtn.title = 'Show only pinned tournaments';
+        }
+    }
+    
+    // Function to filter tournaments based on pinned status
+    function filterTournaments() {
+        console.log('filterTournaments called, showPinnedOnly:', showPinnedOnly);
         const container = document.getElementById('tournamentsContainer');
-        if (!container) return;
+        if (!container) {
+            console.error('Could not find tournamentsContainer');
+            return;
+        }
         
         const pinnedKey = `pinned_tournaments_${getUserId()}`;
         const pinnedTournaments = JSON.parse(sessionStorage.getItem(pinnedKey) || '[]');
         
-        // Convert NodeList to array for sorting
-        const cards = Array.from(container.querySelectorAll('.tournament-card'));
+        // Get all tournament card containers (the col-* divs)
+        const tournamentContainers = container.querySelectorAll('.col-12.col-md-6.col-lg-4.mb-4');
+        console.log('Found', tournamentContainers.length, 'tournament containers');
         
-        // Sort cards - pinned first, then by date (newest first)
-        cards.sort((a, b) => {
-            const aId = parseInt(a.dataset.tournamentId);
-            const bId = parseInt(b.dataset.tournamentId);
+        tournamentContainers.forEach(container => {
+            const card = container.querySelector('.tournament-card');
+            if (!card) {
+                console.log('No card found in container');
+                return;
+            }
+            
+            const tournamentId = parseInt(card.dataset.tournamentId);
+            if (isNaN(tournamentId)) {
+                console.log('Invalid tournament ID for card:', card);
+                return;
+            }
+            
+            const isPinned = pinnedTournaments.includes(tournamentId);
+            console.log(`Tournament ${tournamentId} isPinned:`, isPinned);
+            
+            if (showPinnedOnly && !isPinned) {
+                console.log(`Hiding tournament ${tournamentId}`);
+                container.style.display = 'none';
+            } else {
+                console.log(`Showing tournament ${tournamentId}`);
+                container.style.display = '';
+            }
+        });
+    }
+    
+    // Function to sort tournaments with pinned ones first
+    function sortTournaments() {
+        const container = document.getElementById('tournamentsContainer');
+        if (!container) {
+            console.error('Tournaments container not found');
+            return;
+        }
+        
+        const pinnedKey = `pinned_tournaments_${getUserId()}`;
+        const pinnedTournaments = JSON.parse(sessionStorage.getItem(pinnedKey) || '[]');
+        
+        // Get all tournament container elements
+        const tournamentContainers = Array.from(container.querySelectorAll('.col-12.col-md-6.col-lg-4.mb-4'));
+        
+        // Sort containers based on pinned status and date
+        tournamentContainers.sort((a, b) => {
+            const cardA = a.querySelector('.tournament-card');
+            const cardB = b.querySelector('.tournament-card');
+            
+            if (!cardA || !cardB) return 0;
+            
+            const aId = parseInt(cardA.dataset.tournamentId);
+            const bId = parseInt(cardB.dataset.tournamentId);
             const aIsPinned = pinnedTournaments.includes(aId);
             const bIsPinned = pinnedTournaments.includes(bId);
             
@@ -118,14 +210,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!aIsPinned && bIsPinned) return 1;
             
             // Then sort by date (newest first)
-            const aDate = new Date(a.dataset.startDate || a.dataset.createdAt);
-            const bDate = new Date(b.dataset.startDate || b.dataset.createdAt);
+            const aDate = new Date(cardA.dataset.startDate || cardA.dataset.createdAt || 0);
+            const bDate = new Date(cardB.dataset.startDate || cardB.dataset.createdAt || 0);
             return bDate - aDate;
         });
         
-        // Re-append cards in new order
-        cards.forEach(card => {
-            container.appendChild(card.parentElement);
+        // Re-append containers in new order
+        tournamentContainers.forEach(container => {
+            container.parentNode.appendChild(container);
         });
     }
     
