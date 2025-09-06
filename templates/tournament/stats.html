@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tournament.name }} - Statistics{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ tournament.name }} - Statistics</h1>
+        <div>
+            <a href="{{ url_for('tournament.view', tournament_id=tournament.id) }}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Back to Tournament
+            </a>
+            <a href="{{ url_for('stats.export_stats', tournament_id=tournament.id) }}" class="btn btn-primary">
+                <i class="fas fa-file-pdf"></i> Export PDF Report
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Tournament Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <h2>{{ standings|length }}</h2>
+                            <p class="text-muted mb-0">Players</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h2>{{ tournament.rounds }}</h2>
+                            <p class="text-muted mb-0">Rounds</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h2>{{ completed_rounds|length }}/{{ tournament.rounds }}</h2>
+                            <p class="text-muted mb-0">Rounds Completed</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h2>{{ total_games }}</h2>
+                            <p class="text-muted mb-0">Games Played</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Player Performance</h5>
+                </div>
+                <div class="card-body">
+                    {% if performance_chart %}
+                        {{ performance_chart|safe }}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
+                            <p class="text-muted">Not enough data to display performance chart</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Game Results</h5>
+                </div>
+                <div class="card-body">
+                    {% if results_chart %}
+                        {{ results_chart|safe }}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-pie fa-4x text-muted mb-3"></i>
+                            <p class="text-muted">No game results available yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Score Distribution</h5>
+                </div>
+                <div class="card-body">
+                    {% if score_distribution %}
+                        {{ score_distribution|safe }}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-bar fa-4x text-muted mb-3"></i>
+                            <p class="text-muted">Not enough data to display score distribution</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Add any additional JavaScript for interactivity
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add tooltips to charts
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}
