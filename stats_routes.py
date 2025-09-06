@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, jsonify, send_file, make_response, current_app, session, redirect, url_for, request
+from datetime import datetime as dt
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -67,15 +68,68 @@ def user_stats(user_id):
             
         user = user[0]
         
-        # Get user's tournaments
-        tournament_db = get_db()
-        tournaments = tournament_db.get_tournaments_by_creator(user_id)
+        # Get user's tournaments with player and round counts
+        from sql import SQL
+        tournament_db = SQL("sqlite:///tournament.db")
+        
+        tournaments = tournament_db.execute("""
+            SELECT t.*, 
+                   (SELECT COUNT(*) FROM tournament_players WHERE tournament_id = t.id) as player_count,
+                   (SELECT COUNT(*) FROM rounds WHERE tournament_id = t.id) as round_count
+            FROM tournaments t
+            WHERE t.creator_id = :user_id
+            ORDER BY t.created_at DESC
+        """, user_id=user_id)
         
         # Calculate basic stats
         total_tournaments = len(tournaments)
         total_players = sum(t.get('player_count', 0) for t in tournaments)
-        total_games = sum(t.get('game_count', 0) for t in tournaments)
-        total_rounds = sum(t.get('rounds', 0) for t in tournaments)
+        
+        # Calculate rounds info
+        total_rounds = 0
+        completed_rounds = 0
+        
+        for t in tournaments:
+            tournament_rounds = t.get('rounds', 0)
+            tournament_completed = t.get('round_count', 0)
+            
+            total_rounds += tournament_rounds
+            completed_rounds += min(tournament_completed, tournament_rounds)  # Cap at total rounds
+        
+        # Calculate creator-specific stats
+        current_time = dt.utcnow()
+        completed_tournaments = 0
+        in_progress_tournaments = 0
+        upcoming_tournaments = 0
+        
+        for t in tournaments:
+            status = str(t.get('status', '')).lower()
+            end_date_str = t.get('end_date')
+            start_date_str = t.get('start_date')
+            
+            try:
+                end_date = dt.fromisoformat(end_date_str) if end_date_str else None
+                start_date = dt.fromisoformat(start_date_str) if start_date_str else None
+                
+                if status == 'completed' or (end_date and end_date < current_time):
+                    completed_tournaments += 1
+                elif status == 'in_progress' or (start_date and start_date <= current_time):
+                    in_progress_tournaments += 1
+                else:
+                    upcoming_tournaments += 1
+            except Exception as e:
+                current_app.logger.error(f"Error processing tournament dates: {e}")
+                # Default to upcoming if there's an error with date parsing
+                upcoming_tournaments += 1
+        
+        # Calculate completion percentage (avoid division by zero)
+        completion_rate = (completed_tournaments / total_tournaments * 100) if total_tournaments > 0 else 0
+        
+        # Get recent tournaments (last 3)
+        recent_tournaments = sorted(tournaments, key=lambda x: x.get('created_at', ''), reverse=True)[:3]
+        
+        # Calculate average participants
+        avg_participants = round(total_players / total_tournaments, 1) if total_tournaments > 0 else 0
         
         # Format the member since date
         from datetime import datetime
@@ -102,13 +156,27 @@ def user_stats(user_id):
         
         # Prepare data for template
         member_since = format_date(user.get('dateJoined') or user.get('created_at'))
-        
         stats = {
+            # Basic stats
             'total_tournaments': total_tournaments,
             'total_players': total_players,
-            'total_games': total_games,
             'total_rounds': total_rounds,
-            'member_since': member_since
+            'completed_rounds': completed_rounds,
+            'member_since': member_since,
+            
+            # Creator-specific stats
+            'completed_tournaments': completed_tournaments,
+            'in_progress_tournaments': in_progress_tournaments,
+            'upcoming_tournaments': upcoming_tournaments,
+            'completion_rate': round(completion_rate, 1),
+            'avg_participants': avg_participants,
+            'recent_tournaments': [{
+                'id': t.get('id'),
+                'name': t.get('name', 'Unnamed Tournament'),
+                'status': t.get('status', 'unknown').replace('_', ' ').title(),
+                'player_count': t.get('player_count', 0),
+                'created_at': format_date(t.get('created_at'))
+            } for t in recent_tournaments]
         }
         
         # Ensure user has all required fields
