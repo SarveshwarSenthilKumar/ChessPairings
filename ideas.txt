@@ -1,6 +1,4 @@
 
-add a drag drop interface to manually create pairings
-
 update and fix logic for status updates for rounds in public view
 
 update to not have duplicates in create player

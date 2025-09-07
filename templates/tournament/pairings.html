@@ -506,24 +506,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const toastEl = document.getElementById('swapToast');
     const toast = toastEl ? new bootstrap.Toast(toastEl, { autohide: true, delay: 3000 }) : null;
     
-    // Debug: Log all swap buttons
-    const swapButtons = document.querySelectorAll('.swap-player-btn');
-    console.log(`Found ${swapButtons.length} swap buttons on the page`);
-    swapButtons.forEach(btn => {
-        console.log('Swap button:', {
-            id: btn.id,
-            dataset: btn.dataset,
-            classList: Array.from(btn.classList)
-        });
-    });
+    // Global state for swap functionality
+    window.swapState = {
+        selectedPlayer: null,
+        isSwapping: false
+    };
+    
+    // Add CSS for swap states
+    const style = document.createElement('style');
+    style.textContent = `
+        .swap-player-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .swap-player-btn.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.5);
+        }
+        .swap-player-btn.swapping {
+            opacity: 0.7;
+            cursor: wait;
+        }
+    `;
+    document.head.appendChild(style);
     
     // Handle swap player button clicks
     document.addEventListener('click', function(e) {
-        console.log('Click event:', e);
+        if (window.swapState.isSwapping) {
+            console.log('Swap in progress, please wait...');
+            return;
+        }
+
         const swapBtn = e.target.closest('.swap-player-btn');
-        console.log('Found swap button:', swapBtn);
         if (!swapBtn) {
-            console.log('No swap button found in click target');
+            // Clicked outside any swap button, reset selection if exists
+            if (window.swapState.selectedPlayer) {
+                resetSwapSelection();
+            }
             return;
         }
         
@@ -531,100 +549,135 @@ document.addEventListener('DOMContentLoaded', function() {
         const playerId = parseInt(swapBtn.dataset.playerId);
         const color = swapBtn.dataset.color;
         
-        if (isNaN(pairingId) || isNaN(playerId)) return;
+        if (isNaN(pairingId) || isNaN(playerId)) {
+            console.error('Invalid pairing or player ID');
+            return;
+        }
         
-        // Store the first selected player
-        if (!window.selectedPlayerForSwap) {
+        // If we already have a selected player, this is the second click
+        if (window.swapState.selectedPlayer) {
+            // Don't allow swapping with self
+            if (window.swapState.selectedPlayer.playerId === playerId) {
+                showToast('warning', 'Cannot Swap', 'Cannot swap a player with themselves');
+                resetSwapSelection();
+                return;
+            }
+            
+            // Proceed with swap
+            performSwap(swapBtn, {
+                pairingId: window.swapState.selectedPlayer.pairingId,
+                playerId: window.swapState.selectedPlayer.playerId,
+                color: window.swapState.selectedPlayer.color
+            }, {
+                pairingId: pairingId,
+                playerId: playerId,
+                color: color
+            });
+        } else {
             // First selection
-            window.selectedPlayerForSwap = {
+            window.swapState.selectedPlayer = {
                 pairingId: pairingId,
                 playerId: playerId,
                 color: color,
                 element: swapBtn
             };
             
-            // Highlight the selected button
+            // Visual feedback for selection
+            swapBtn.classList.add('selected', 'btn-warning');
             swapBtn.classList.remove('btn-outline-secondary');
-            swapBtn.classList.add('btn-warning');
             swapBtn.innerHTML = '<i class="fas fa-check"></i>';
             
             // Show toast with instructions
             showToast('info', 'Select Target', 'Now select the player to swap with');
-            return;
         }
         
-        // Don't allow swapping with self
-        if (window.selectedPlayerForSwap.playerId === playerId) {
-            resetSwapSelection();
-            return;
-        }
+    // Function to perform the actual swap
+    function performSwap(secondBtn, firstPlayer, secondPlayer) {
+        // Set swapping state
+        window.swapState.isSwapping = true;
         
-        // Show loading state
-        const originalText = swapBtn.innerHTML;
-        swapBtn.disabled = true;
-        swapBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+        // Add loading state to both buttons
+        const firstBtn = window.swapState.selectedPlayer.element;
+        const firstOriginalHtml = firstBtn.innerHTML;
+        const secondOriginalHtml = secondBtn.innerHTML;
+        
+        firstBtn.classList.add('swapping');
+        secondBtn.classList.add('swapping');
+        firstBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+        secondBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
         
         // Send swap request
         fetch(`/tournament/{{ tournament.id }}/swap_players`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
+                'X-CSRFToken': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
-                pairing1_id: window.selectedPlayerForSwap.pairingId,
-                player1_id: window.selectedPlayerForSwap.playerId,
-                player1_color: window.selectedPlayerForSwap.color,
-                pairing2_id: pairingId,
-                player2_id: playerId,
-                player2_color: color
+                pairing1_id: firstPlayer.pairingId,
+                player1_id: firstPlayer.playerId,
+                player1_color: firstPlayer.color,
+                pairing2_id: secondPlayer.pairingId,
+                player2_id: secondPlayer.playerId,
+                player2_color: secondPlayer.color
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                // Reload the page to show updated pairings
-                location.reload();
+                // Show success message
+                showToast('success', 'Success', 'Players swapped successfully');
+                // Small delay before reload to show the success message
+                setTimeout(() => location.reload(), 800);
             } else {
-                showToast('error', 'Error', data.message || 'Failed to swap players');
-                resetSwapSelection();
+                throw new Error(data.message || 'Failed to swap players');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showToast('error', 'Error', 'An error occurred while swapping players');
-            resetSwapSelection();
+            console.error('Swap error:', error);
+            showToast('error', 'Error', error.message || 'An error occurred while swapping players');
+            // Reset buttons to original state
+            resetButtons(firstBtn, secondBtn, firstOriginalHtml, secondOriginalHtml);
         })
         .finally(() => {
-            swapBtn.disabled = false;
-            swapBtn.innerHTML = originalText;
+            window.swapState.isSwapping = false;
+            window.swapState.selectedPlayer = null;
         });
-    });
+    }
     
-    // Reset swap selection when clicking outside
-    document.addEventListener('click', function(e) {
-        console.log('Document click event');
-        if (!e.target.closest('.swap-player-btn') && window.selectedPlayerForSwap) {
-            console.log('Click outside swap button, resetting selection');
-            resetSwapSelection();
+    // Helper function to reset buttons after swap attempt
+    function resetButtons(firstBtn, secondBtn, firstHtml, secondHtml) {
+        if (firstBtn) {
+            firstBtn.classList.remove('selected', 'btn-warning', 'swapping');
+            firstBtn.classList.add('btn-outline-secondary');
+            firstBtn.innerHTML = firstHtml;
         }
+        if (secondBtn) {
+            secondBtn.classList.remove('selected', 'btn-warning', 'swapping');
+            secondBtn.classList.add('btn-outline-secondary');
+            secondBtn.innerHTML = secondHtml;
+        }
+    }
     });
     
     // Function to reset swap selection
     function resetSwapSelection() {
-        console.log('Resetting swap selection');
-        if (window.selectedPlayerForSwap) {
-            const btn = window.selectedPlayerForSwap.element;
-            console.log('Resetting button:', btn);
+        if (window.swapState.selectedPlayer && window.swapState.selectedPlayer.element) {
+            const btn = window.swapState.selectedPlayer.element;
             if (btn && btn.nodeType === Node.ELEMENT_NODE) {
-                console.log('Button found, resetting styles');
-                btn.classList.remove('btn-warning');
+                btn.classList.remove('selected', 'btn-warning', 'swapping');
                 btn.classList.add('btn-outline-secondary');
                 btn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
                 btn.disabled = false;
             }
-            window.selectedPlayerForSwap = null;
         }
+        window.swapState.selectedPlayer = null;
     }
     
     // Function to show toast messages
