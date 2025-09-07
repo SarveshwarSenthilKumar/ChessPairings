@@ -195,6 +195,94 @@
     .text-info { color: var(--info) !important; }
     .text-warning { color: var(--warning) !important; }
     
+    /* Futuristic Creator Badge Styles */
+    .creator-badge {
+        background: linear-gradient(145deg, #0f0f1a, #1a1a2e) !important;
+        border: 1px solid rgba(0, 255, 255, 0.2) !important;
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.1), 
+                    0 0 15px rgba(0, 255, 255, 0.05) inset !important;
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    .creator-badge:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(0, 255, 255, 0.2), 
+                    0 0 20px rgba(0, 255, 255, 0.1) inset !important;
+    }
+    
+    .admin-badge {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        margin-left: 12px;
+        background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+        color: #0a0a1a;
+        font-weight: 700;
+        font-size: 0.65rem;
+        padding: 0.2rem 0.8rem;
+        border-radius: 50px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
+        z-index: 10;
+        animation: pulse 2s infinite;
+    }
+    
+    .admin-badge::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+        opacity: 0;
+        border-radius: 50px;
+        transition: opacity 0.3s ease;
+    }
+    
+    .admin-badge:hover::before {
+        opacity: 1;
+    }
+    
+    .admin-badge span {
+        position: relative;
+        z-index: 2;
+    }
+    
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(0, 242, 254, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(0, 242, 254, 0); }
+    }
+    
+    .creator-badge::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(
+            to bottom right,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0) 40%,
+            rgba(255, 255, 255, 0.7) 50%,
+            rgba(255, 255, 255, 0) 60%,
+            rgba(255, 255, 255, 0) 100%
+        );
+        transform: rotate(30deg);
+        animation: shine 3s infinite;
+    }
+    
+    @keyframes shine {
+        0% { transform: translateX(-100%) rotate(30deg); }
+        100% { transform: translateX(100%) rotate(30deg); }
+    }
+    
     .section-title {
         position: relative;
         padding-bottom: 0.75rem;
@@ -238,7 +326,12 @@
         <div class="user-profile-bg py-4 px-4 text-white">
             <div class="d-flex align-items-center">
                 <div class="ms-4">
-                    <h1 class="h4 mb-1">{{ user.username }}</h1>
+                    <div class="d-flex align-items-center flex-wrap">
+                        <h1 class="h4 mb-1 me-2">{{ user.username }}</h1>
+                        {% if user.username == 'sarveshwarsenthilkumar' %}
+                        <span class="admin-badge"><i class="fas fa-star me-1"></i><span>Creator & Admin</span></span>
+                        {% endif %}
+                    </div>
                     {% if user.emailAddress %}
                     <p class="mb-2">
                         <i class="fas fa-envelope me-2"></i>
@@ -433,6 +526,72 @@
             </div>
         </div>
     </div>
+    
+    <!-- Futuristic Creator Section -->
+    {% if user.username == 'sarveshwarsenthilkumar' %}
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="creator-badge">
+                <div class="card-body p-4 position-relative">
+                    <!-- Animated Background Elements -->
+                    <div class="position-absolute top-0 end-0 w-100 h-100 overflow-hidden" style="opacity: 0.1; pointer-events: none;">
+                        <div class="position-absolute" style="top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, #00f2fe 0%, transparent 50%); animation: rotate 30s linear infinite;"></div>
+                    </div>
+                    
+                    <div class="row align-items-center position-relative">
+                        <div class="col-lg-8">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-crown me-2" style="font-size: 1.5rem; color: #00f2fe;"></i>
+                                <h3 class="h4 mb-0 text-gradient" style="background: linear-gradient(90deg, #00f2fe, #4facfe); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">PLATFORM CREATOR</h3>
+                            </div>
+                            <p class="mb-0 text-light" style="font-size: 1.1rem; max-width: 90%;">
+                                Visionary leader and mastermind behind this platform. Your innovation drives our community forward.
+                            </p>
+                            <div class="mt-3 d-flex flex-wrap gap-2">
+                                <span class="badge bg-dark bg-opacity-50 text-uppercase fw-normal d-flex align-items-center">
+                                    <i class="fas fa-rocket me-1"></i> Innovation Leader
+                                </span>
+                                <span class="badge bg-dark bg-opacity-50 text-uppercase fw-normal d-flex align-items-center">
+                                    <i class="fas fa-code me-1"></i> Code Architect
+                                </span>
+                                <span class="badge bg-dark bg-opacity-50 text-uppercase fw-normal d-flex align-items-center">
+                                    <i class="fas fa-users me-1"></i> Community Builder
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 mt-4 mt-lg-0">
+                            <div class="p-4 text-center" style="background: rgba(15, 15, 26, 0.7); border-radius: 12px; border: 1px solid rgba(0, 242, 254, 0.2);">
+                                <div class="position-relative d-inline-block">
+                                    <i class="fas fa-medal" style="font-size: 3rem; background: linear-gradient(135deg, #00f2fe, #4facfe); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                                    <div class="position-absolute top-0 start-100 translate-middle">
+                                        <span class="badge rounded-pill bg-danger">PRO</span>
+                                    </div>
+                                </div>
+                                <h4 class="mt-3 mb-1" style="color: #00f2fe;">Founder Status</h4>
+                                <p class="small text-muted mb-0">Pioneering Excellence</p>
+                                <div class="progress mt-3" style="height: 6px; background: rgba(0, 242, 254, 0.1); border-radius: 3px;">
+                                    <div class="progress-bar" role="progressbar" style="width: 100%; background: linear-gradient(90deg, #00f2fe, #4facfe);" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .text-gradient {
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+    {% endif %}
 </div>
 {% endblock %}
 
