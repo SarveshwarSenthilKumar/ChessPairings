@@ -469,12 +469,20 @@ class TournamentDB:
         
         Returns:
             A list of dictionaries containing player data with team information.
+            Players are deduplicated by name and rating, keeping the most recent entry.
         """
         try:
             self.cursor.execute("""
-                SELECT id, name, rating, team, created_at
-                FROM players
-                ORDER BY name
+                SELECT p.id, p.name, p.rating, p.team, p.created_at
+                FROM players p
+                INNER JOIN (
+                    SELECT name, rating, MAX(created_at) as latest_created
+                    FROM players
+                    GROUP BY name, rating
+                ) latest ON p.name = latest.name 
+                        AND p.rating = latest.rating 
+                        AND p.created_at = latest.latest_created
+                ORDER BY p.name, p.rating
             """)
             return [dict(row) for row in self.cursor.fetchall()]
         except sqlite3.Error as e:
