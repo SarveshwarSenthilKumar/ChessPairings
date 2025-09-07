@@ -2417,6 +2417,34 @@ class TournamentDB:
         
         return standings
 
+    def get_pairing(self, pairing_id: int) -> Optional[Dict[str, Any]]:
+        """Get a single pairing by ID.
+        
+        Args:
+            pairing_id: The ID of the pairing to retrieve.
+            
+        Returns:
+            A dictionary containing the pairing data, or None if not found.
+        """
+        try:
+            query = """
+            SELECT p.*, 
+                   wp.name AS white_name, wp.rating AS white_rating,
+                   bp.name AS black_name, bp.rating AS black_rating,
+                   r.round_number, r.tournament_id
+            FROM pairings p
+            LEFT JOIN players wp ON p.white_player_id = wp.id
+            LEFT JOIN players bp ON p.black_player_id = bp.id
+            LEFT JOIN rounds r ON p.round_id = r.id
+            WHERE p.id = ?
+            """
+            self.cursor.execute(query, (pairing_id,))
+            result = self.cursor.fetchone()
+            return dict(result) if result else None
+        except Exception as e:
+            print(f"Error getting pairing {pairing_id}: {e}")
+            return None
+            
     def get_pairings(self, round_id: int) -> List[Dict[str, Any]]:
         """Get all pairings for a round, including byes."""
         query = """

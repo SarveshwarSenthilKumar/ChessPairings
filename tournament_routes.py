@@ -1410,8 +1410,124 @@ def manage_pairings(tournament_id):
         now=datetime.utcnow()
     )
 
-@tournament_bp.route('/<int:tournament_id>/pairing/<int:pairing_id>/result', methods=['POST'])
+@tournament_bp.route('/<int:tournament_id>/swap_players', methods=['POST'])
 @login_required
+def swap_players(tournament_id):
+    """Swap two players in the current round's pairings."""
+    data = request.get_json()
+    required_fields = ['pairing1_id', 'player1_id', 'player1_color', 'pairing2_id', 'player2_id', 'player2_color']
+    
+    if not data or any(field not in data for field in required_fields):
+        return jsonify({'success': False, 'message': 'Missing required parameters'}), 400
+
+    db = get_db()
+    
+    # Get current round
+    current_round = db.get_current_round(tournament_id)
+    if not current_round:
+        return jsonify({'success': False, 'message': 'No active round found'}), 400
+        
+    if current_round['status'] == 'completed':
+        return jsonify({'success': False, 'message': 'Cannot modify completed round'}), 400
+
+    try:
+        # Get the pairings
+        pairing1 = db.get_pairing(data['pairing1_id'])
+        pairing2 = db.get_pairing(data['pairing2_id'])
+        
+        if not pairing1 or not pairing2:
+            return jsonify({'success': False, 'message': 'One or both pairings not found'}), 404
+            
+        if pairing1['round_id'] != current_round['id'] or pairing2['round_id'] != current_round['id']:
+            return jsonify({'success': False, 'message': 'Pairings must be from the current round'}), 400
+            
+        # Get the player IDs and colors
+        player1_id = int(data['player1_id'])
+        player2_id = int(data['player2_id'])
+        player1_color = data['player1_color']
+        player2_color = data['player2_color']
+        
+        # Verify players are in the correct pairings and colors
+        if (player1_id not in [pairing1['white_player_id'], pairing1['black_player_id']] or
+            player2_id not in [pairing2['white_player_id'], pairing2['black_player_id']] or
+            (player1_color == 'white' and pairing1['white_player_id'] != player1_id) or
+            (player1_color == 'black' and pairing1['black_player_id'] != player1_id) or
+            (player2_color == 'white' and pairing2['white_player_id'] != player2_id) or
+            (player2_color == 'black' and pairing2['black_player_id'] != player2_id)):
+            return jsonify({'success': False, 'message': 'Invalid player selection'}), 400
+        
+        # Swap the players
+        with db.conn:  # Start a transaction
+            # Update first pairing
+            if player1_color == 'white':
+                db.cursor.execute(
+                    "UPDATE pairings SET white_player_id = ? WHERE id = ?",
+                    (player2_id, pairing1['id'])
+                )
+            else:
+                db.cursor.execute(
+                    "UPDATE pairings SET black_player_id = ? WHERE id = ?",
+                    (player2_id, pairing1['id'])
+                )
+            
+            # Update second pairing
+            if player2_color == 'white':
+                db.cursor.execute(
+                    "UPDATE pairings SET white_player_id = ? WHERE id = ?",
+                    (player1_id, pairing2['id'])
+                )
+            else:
+                db.cursor.execute(
+                    "UPDATE pairings SET black_player_id = ? WHERE id = ?",
+                    (player1_id, pairing2['id'])
+                )
+            
+            # Clear any existing results for these pairings
+            db.cursor.execute(
+                "UPDATE pairings SET result = NULL WHERE id IN (?, ?)",
+                (pairing1['id'], pairing2['id'])
+            )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Players swapped successfully',
+            'pairing1_white': pairing1['white_player_id'] if player1_color != 'white' else player2_id,
+            'pairing1_black': pairing1['black_player_id'] if player1_color != 'black' else player2_id,
+            'pairing2_white': pairing2['white_player_id'] if player2_color != 'white' else player1_id,
+            'pairing2_black': pairing2['black_player_id'] if player2_color != 'black' else player1_id
+        })
+        
+        if black1 and black2:
+            db.cursor.execute(
+                "UPDATE pairings SET black_player_id = ? WHERE id = ?",
+                (black2, pairing1['id'])
+            )
+            db.cursor.execute(
+                "UPDATE pairings SET black_player_id = ? WHERE id = ?",
+                (black1, pairing2['id'])
+            )
+        
+        db.conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Players swapped successfully',
+            'pairing1': {
+                'id': pairing1['id'],
+                'white_player_id': white2 if white1 and white2 else pairing1['white_player_id'],
+                'black_player_id': black2 if black1 and black2 else pairing1['black_player_id']
+            },
+            'pairing2': {
+                'id': pairing2['id'],
+                'white_player_id': white1 if white1 and white2 else pairing2['white_player_id'],
+                'black_player_id': black1 if black1 and black2 else pairing2['black_player_id']
+            }
+        })
+        
+    except Exception as e:
+        db.conn.rollback()
+        return jsonify({'success': False, 'message': f'Error swapping players: {str(e)}'}), 500
+
 def submit_result(tournament_id, pairing_id):
     """Submit a game result."""
     print(f"Received request to submit result for tournament {tournament_id}, pairing {pairing_id}")

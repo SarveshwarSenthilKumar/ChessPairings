@@ -104,6 +104,19 @@
 {% endblock %}
 
 {% block content %}
+<!-- Success Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="swapToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Success</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            Players have been swapped successfully.
+        </div>
+    </div>
+</div>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <nav aria-label="breadcrumb">
@@ -240,12 +253,24 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if pairing.black_player_id is none %}
-                                    <span class="badge bg-warning text-dark">BYE</span> {{ pairing.white_name }} 
-                                {% else %}
-                                    {{ pairing.white_name }}
-                                {% endif %}
-                                <small class="text-muted">({{ pairing.white_rating }})</small>
+                                <div class="d-flex align-items-center">
+                                    {% if pairing.black_player_id is none %}
+                                        <span class="badge bg-warning text-dark me-2">BYE</span>
+                                    {% endif %}
+                                    <div class="flex-grow-1">
+                                        {{ pairing.white_name }}
+                                        <small class="text-muted">({{ pairing.white_rating }})</small>
+                                    </div>
+                                    {% if pairing.black_player_id is not none %}
+                                    <button class="btn btn-sm btn-outline-secondary swap-player-btn ms-2" 
+                                            data-pairing-id="{{ pairing.id }}"
+                                            data-player-id="{{ pairing.white_player_id }}"
+                                            data-color="white"
+                                            title="Swap this player">
+                                        <i class="fas fa-exchange-alt"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
                             </td>
                             <td class="text-muted fw-bold">
                                 {% if pairing.black_player_id is none %}
@@ -256,7 +281,19 @@
                             </td>
                             <td>
                                 {% if pairing.black_player_id is not none %}
-                                    {{ pairing.black_name }} <small class="text-muted">({{ pairing.black_rating }})</small>
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        {{ pairing.black_name }}
+                                        <small class="text-muted">({{ pairing.black_rating }})</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary swap-player-btn ms-2" 
+                                            data-pairing-id="{{ pairing.id }}"
+                                            data-player-id="{{ pairing.black_player_id }}"
+                                            data-color="black"
+                                            title="Swap this player">
+                                        <i class="fas fa-exchange-alt"></i>
+                                    </button>
+                                </div>
                                 {% else %}
                                     <span class="text-muted">BYE</span>
                                 {% endif %}
@@ -463,6 +500,160 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM fully loaded, initializing swap functionality');
+    
+    // Initialize toast
+    const toastEl = document.getElementById('swapToast');
+    const toast = toastEl ? new bootstrap.Toast(toastEl, { autohide: true, delay: 3000 }) : null;
+    
+    // Debug: Log all swap buttons
+    const swapButtons = document.querySelectorAll('.swap-player-btn');
+    console.log(`Found ${swapButtons.length} swap buttons on the page`);
+    swapButtons.forEach(btn => {
+        console.log('Swap button:', {
+            id: btn.id,
+            dataset: btn.dataset,
+            classList: Array.from(btn.classList)
+        });
+    });
+    
+    // Handle swap player button clicks
+    document.addEventListener('click', function(e) {
+        console.log('Click event:', e);
+        const swapBtn = e.target.closest('.swap-player-btn');
+        console.log('Found swap button:', swapBtn);
+        if (!swapBtn) {
+            console.log('No swap button found in click target');
+            return;
+        }
+        
+        const pairingId = parseInt(swapBtn.dataset.pairingId);
+        const playerId = parseInt(swapBtn.dataset.playerId);
+        const color = swapBtn.dataset.color;
+        
+        if (isNaN(pairingId) || isNaN(playerId)) return;
+        
+        // Store the first selected player
+        if (!window.selectedPlayerForSwap) {
+            // First selection
+            window.selectedPlayerForSwap = {
+                pairingId: pairingId,
+                playerId: playerId,
+                color: color,
+                element: swapBtn
+            };
+            
+            // Highlight the selected button
+            swapBtn.classList.remove('btn-outline-secondary');
+            swapBtn.classList.add('btn-warning');
+            swapBtn.innerHTML = '<i class="fas fa-check"></i>';
+            
+            // Show toast with instructions
+            showToast('info', 'Select Target', 'Now select the player to swap with');
+            return;
+        }
+        
+        // Don't allow swapping with self
+        if (window.selectedPlayerForSwap.playerId === playerId) {
+            resetSwapSelection();
+            return;
+        }
+        
+        // Show loading state
+        const originalText = swapBtn.innerHTML;
+        swapBtn.disabled = true;
+        swapBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+        
+        // Send swap request
+        fetch(`/tournament/{{ tournament.id }}/swap_players`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                pairing1_id: window.selectedPlayerForSwap.pairingId,
+                player1_id: window.selectedPlayerForSwap.playerId,
+                player1_color: window.selectedPlayerForSwap.color,
+                pairing2_id: pairingId,
+                player2_id: playerId,
+                player2_color: color
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload the page to show updated pairings
+                location.reload();
+            } else {
+                showToast('error', 'Error', data.message || 'Failed to swap players');
+                resetSwapSelection();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('error', 'Error', 'An error occurred while swapping players');
+            resetSwapSelection();
+        })
+        .finally(() => {
+            swapBtn.disabled = false;
+            swapBtn.innerHTML = originalText;
+        });
+    });
+    
+    // Reset swap selection when clicking outside
+    document.addEventListener('click', function(e) {
+        console.log('Document click event');
+        if (!e.target.closest('.swap-player-btn') && window.selectedPlayerForSwap) {
+            console.log('Click outside swap button, resetting selection');
+            resetSwapSelection();
+        }
+    });
+    
+    // Function to reset swap selection
+    function resetSwapSelection() {
+        console.log('Resetting swap selection');
+        if (window.selectedPlayerForSwap) {
+            const btn = window.selectedPlayerForSwap.element;
+            console.log('Resetting button:', btn);
+            if (btn && btn.nodeType === Node.ELEMENT_NODE) {
+                console.log('Button found, resetting styles');
+                btn.classList.remove('btn-warning');
+                btn.classList.add('btn-outline-secondary');
+                btn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
+                btn.disabled = false;
+            }
+            window.selectedPlayerForSwap = null;
+        }
+    }
+    
+    // Function to show toast messages
+    function showToast(type, title, message) {
+        const toastEl = document.getElementById('swapToast');
+        if (!toastEl) return;
+        
+        const toastHeader = toastEl.querySelector('.toast-header');
+        const toastBody = toastEl.querySelector('.toast-body');
+        
+        // Update toast content
+        const titleEl = toastHeader.querySelector('strong');
+        if (titleEl) titleEl.textContent = title;
+        if (toastBody) toastBody.textContent = message;
+        
+        // Update toast style based on type
+        toastEl.className = 'toast';
+        if (type === 'error') {
+            toastEl.classList.add('bg-danger', 'text-white');
+            toastHeader.classList.add('text-white');
+        } else {
+            toastHeader.classList.remove('text-white');
+        }
+        
+        // Show the toast
+        const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
+        toast.show();
+    }
+    
     // Handle record result modal
     const recordResultModal = document.getElementById('recordResultModal');
     if (recordResultModal) {
