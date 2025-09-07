@@ -131,32 +131,39 @@ def user_stats(user_id):
         # Calculate average participants
         avg_participants = round(total_players / total_tournaments, 1) if total_tournaments > 0 else 0
         
-        # Format the member since date
+        # Format the member since date and calculate days since joining
         from datetime import datetime
         
-        def format_date(date_str):
+        def format_date(date_str, return_datetime=False):
             if not date_str:
-                return 'N/A'
+                return None if return_datetime else 'N/A'
             try:
                 # If it's already a datetime object
                 if isinstance(date_str, datetime):
-                    return date_str.strftime('%B %d, %Y')
+                    return date_str if return_datetime else date_str.strftime('%B %d, %Y')
                 # If it's a string, try to parse it
                 if isinstance(date_str, str):
                     # Try different date formats
                     for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
                         try:
                             dt = datetime.strptime(date_str.split('.')[0], fmt)
-                            return dt.strftime('%B %d, %Y')
+                            return dt if return_datetime else dt.strftime('%B %d, %Y')
                         except ValueError:
                             continue
-                return 'N/A'
+                return None if return_datetime else 'N/A'
             except Exception:
-                return 'N/A'
+                return None if return_datetime else 'N/A'
+        
+        # Calculate days since joining
+        join_date = format_date(user.get('dateJoined') or user.get('created_at'), return_datetime=True)
+        days_since_joining = (datetime.utcnow() - join_date).days if join_date else 0
+        
+        # Format member since date for display
+        member_since = format_date(user.get('dateJoined') or user.get('created_at'))
         
         # Prepare data for template
-        member_since = format_date(user.get('dateJoined') or user.get('created_at'))
         stats = {
+            'days_since_joining': days_since_joining,
             # Basic stats
             'total_tournaments': total_tournaments,
             'total_players': total_players,

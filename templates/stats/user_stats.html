@@ -115,6 +115,17 @@
                             </div>
                         </div>
                         
+                        <!-- Days Since Joining -->
+                        <div class="col-6">
+                            <div class="stat-card p-3 text-center">
+                                <div class="text-primary">
+                                    <i class="fas fa-calendar-day stat-icon"></i>
+                                </div>
+                                <h3 class="h4 mb-1">{{ stats.days_since_joining|default(0) }}</h3>
+                                <p class="text-muted small mb-0">Days as Member</p>
+                            </div>
+                        </div>
+                        
                         <!-- Completion Rate -->
                         <div class="col-6">
                             <div class="stat-card p-3 text-center">
