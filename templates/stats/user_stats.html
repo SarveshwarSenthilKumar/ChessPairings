@@ -5,54 +5,236 @@
 {% block extra_css %}
 {{ super() }}
 <style>
+    :root {
+        --primary: #6366f1;
+        --primary-light: #818cf8;
+        --success: #10b981;
+        --info: #3b82f6;
+        --warning: #f59e0b;
+        --text-primary: #1f2937;
+        --text-secondary: #6b7280;
+        --bg-primary: #ffffff;
+        --bg-secondary: #f9fafb;
+        --card-bg: rgba(255, 255, 255, 0.7);
+        --card-border: rgba(255, 255, 255, 0.2);
+        --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    }
+    
+    [data-bs-theme="dark"] {
+        --text-primary: #f3f4f6;
+        --text-secondary: #9ca3af;
+        --bg-primary: #111827;
+        --bg-secondary: #1f2937;
+        --card-bg: rgba(31, 41, 55, 0.7);
+        --card-border: rgba(255, 255, 255, 0.05);
+        --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+    }
+    
+    body {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    
     .stat-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 8px;
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--card-shadow);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), var(--primary-light));
+        opacity: 0;
+        transition: opacity 0.3s ease;
     }
     
     .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-card:hover::before {
+        opacity: 1;
     }
     
     .user-profile-bg {
-        background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
-        border-radius: 0.5rem 0.5rem 0 0;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        border-radius: 0;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .user-profile-bg::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+        transform: rotate(30deg);
     }
     
     .progress-container {
-        height: 10px;
-        background-color: #e9ecef;
-        border-radius: 4px;
+        height: 8px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
         overflow: hidden;
+        margin-top: 0.75rem;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
     .progress-bar {
         height: 100%;
-        transition: width 0.6s ease;
+        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        background: linear-gradient(90deg, var(--primary), var(--primary-light));
     }
     
-    .bg-success { background-color: #28a745 !important; }
-    .bg-warning { background-color: #ffc107 !important; }
-    .bg-info { background-color: #17a2b8 !important; }
+    .bg-success { 
+        background: linear-gradient(90deg, #10b981, #34d399) !important; 
+    }
     
-    .tournament-status {
-        min-width: 100px;
+    .bg-warning { 
+        background: linear-gradient(90deg, #f59e0b, #fbbf24) !important; 
+    }
+    
+    .bg-info { 
+        background: linear-gradient(90deg, #3b82f6, #60a5fa) !important; 
     }
     
     .stat-icon {
         font-size: 2rem;
-        opacity: 0.8;
         margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: inline-block;
+        transition: transform 0.3s ease;
+    }
+    
+    /* Adjust card heights for the new layout */
+    .card {
+        height: 100%;
+    }
+    
+    .card-body {
+        padding: 1.25rem;
+    }
+    
+    .card-header {
+        padding: 0.75rem 1.25rem;
+    }
+    
+    .section-title {
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+    }
+    
+    .stat-card:hover .stat-icon {
+        transform: scale(1.1);
+    }
+    
+    .card {
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .card-header {
+        background: transparent !important;
+        border-bottom: 1px solid var(--card-border);
+        padding: 1.25rem 1.5rem;
+    }
+    
+    .card-header h5 {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        font-size: 1.1rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .stat-card h3 {
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0.5rem 0;
+        font-size: 1.75rem;
+        letter-spacing: -0.5px;
+    }
+    
+    .stat-card p {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin: 0;
+        letter-spacing: 0.3px;
+    }
+    
+    .text-primary { color: var(--primary) !important; }
+    .text-success { color: var(--success) !important; }
+    .text-info { color: var(--info) !important; }
+    .text-warning { color: var(--warning) !important; }
+    
+    .section-title {
+        position: relative;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .section-title::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 50px;
+        height: 3px;
+        background: linear-gradient(90deg, var(--primary), var(--primary-light));
+        border-radius: 3px;
+    }
+    
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .card, .stat-card {
+        animation: fadeIn 0.6s ease-out forwards;
+    }
+    
+    /* Smooth theme transition */
+    *, *::before, *::after {
+        transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container py-5">
     <!-- User Profile Header -->
-    <div class="card shadow-sm mb-4">
+    <div class="card mb-4 border-0">
         <div class="user-profile-bg py-4 px-4 text-white">
             <div class="d-flex align-items-center">
                 <div class="ms-4">
@@ -73,17 +255,17 @@
     
     <!-- Stats Cards -->
     <div class="row g-4 mb-4">
-        <!-- Tournaments Overview -->
+        <!-- Left Column - Tournaments Overview -->
         <div class="col-md-6">
-            <div class="card h-100">
+            <div class="card h-100 border-0">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0">Tournament Overview</h5>
+                    <h5 class="section-title">Tournament Overview</h5>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
                         <!-- Total Tournaments -->
                         <div class="col-6">
-                            <div class="stat-card p-3 text-center">
+                            <div class="stat-card text-center d-flex flex-column justify-content-center">
                                 <div class="text-primary">
                                     <i class="fas fa-trophy stat-icon"></i>
                                 </div>
@@ -94,7 +276,7 @@
                         
                         <!-- Total Players -->
                         <div class="col-6">
-                            <div class="stat-card p-3 text-center">
+                            <div class="stat-card text-center d-flex flex-column justify-content-center">
                                 <div class="text-success">
                                     <i class="fas fa-users stat-icon"></i>
                                 </div>
@@ -104,9 +286,8 @@
                         </div>
                         
                         <!-- Total Rounds -->
-                        <!-- Total Rounds -->
                         <div class="col-6">
-                            <div class="stat-card p-3 text-center">
+                            <div class="stat-card text-center d-flex flex-column justify-content-center">
                                 <div class="text-info">
                                     <i class="fas fa-list-ol stat-icon"></i>
                                 </div>
@@ -117,7 +298,7 @@
                         
                         <!-- Days Since Joining -->
                         <div class="col-6">
-                            <div class="stat-card p-3 text-center">
+                            <div class="stat-card text-center d-flex flex-column justify-content-center">
                                 <div class="text-primary">
                                     <i class="fas fa-calendar-day stat-icon"></i>
                                 </div>
@@ -128,7 +309,7 @@
                         
                         <!-- Completion Rate -->
                         <div class="col-6">
-                            <div class="stat-card p-3 text-center">
+                            <div class="stat-card text-center d-flex flex-column justify-content-center">
                                 <div class="text-warning">
                                     <i class="fas fa-percentage stat-icon"></i>
                                 </div>
@@ -141,107 +322,110 @@
             </div>
         </div>
         
-        <!-- Tournament Status -->
+        <!-- Right Column - Split into two sections -->
         <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">Tournament Status</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Completed Tournaments -->
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Completed</span>
-                            <strong>{{ stats.completed_tournaments|default(0) }}</strong>
+            <div class="row g-4 h-100">
+                <!-- Tournament Status -->
+                <div class="col-12">
+                    <div class="card h-100 border-0">
+                        <div class="card-header bg-white">
+                            <h5 class="section-title">Tournament Status</h5>
                         </div>
-                        <div class="progress-container">
-                            {% set completed_pct = (stats.completed_tournaments / stats.total_tournaments * 100)|round(1) if stats.total_tournaments > 0 else 0 %}
-                            <div class="progress-bar bg-success" 
-                                 style="width: {{ completed_pct }}%" 
-                                 role="progressbar" 
-                                 aria-valuenow="{{ completed_pct }}" 
-                                 aria-valuemin="0" 
-                                 aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                    
-                    <!-- In Progress Tournaments -->
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>In Progress</span>
-                            <strong>{{ stats.in_progress_tournaments|default(0) }}</strong>
-                        </div>
-                        <div class="progress-container">
-                            {% set in_progress_pct = (stats.in_progress_tournaments / stats.total_tournaments * 100)|round(1) if stats.total_tournaments > 0 else 0 %}
-                            <div class="progress-bar bg-warning" 
-                                 style="width: {{ in_progress_pct }}%" 
-                                 role="progressbar" 
-                                 aria-valuenow="{{ in_progress_pct }}" 
-                                 aria-valuemin="0" 
-                                 aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Upcoming Tournaments -->
-                    <div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Upcoming</span>
-                            <strong>{{ stats.upcoming_tournaments|default(0) }}</strong>
-                        </div>
-                        <div class="progress-container">
-                            {% set upcoming_pct = (stats.upcoming_tournaments / stats.total_tournaments * 100)|round(1) if stats.total_tournaments > 0 else 0 %}
-                            <div class="progress-bar bg-info" 
-                                 style="width: {{ upcoming_pct }}%" 
-                                 role="progressbar" 
-                                 aria-valuenow="{{ upcoming_pct }}" 
-                                 aria-valuemin="0" 
-                                 aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Daily Averages -->
-    <div class="row g-4 mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">Daily Averages</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <!-- Avg Tournaments per Day -->
-                        <div class="col-md-4">
-                            <div class="stat-card p-3 text-center h-100">
-                                <div class="text-primary">
-                                    <i class="fas fa-trophy stat-icon"></i>
+                        <div class="card-body">
+                            <!-- Completed Tournaments -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Completed</span>
+                                    <strong>{{ stats.completed_tournaments|default(0) }}</strong>
                                 </div>
-                                <h3 class="h4 mb-1">{{ "%0.2f"|format(stats.avg_tournaments_per_day|default(0)) }}</h3>
-                                <p class="text-muted small mb-0">Tournaments per Day</p>
+                                <div class="progress-container">
+                                    {% set completed_pct = (stats.completed_tournaments / stats.total_tournaments * 100)|round(1) if stats.total_tournaments > 0 else 0 %}
+                                    <div class="progress-bar bg-success" 
+                                         style="width: {{ completed_pct }}%" 
+                                         role="progressbar" 
+                                         aria-valuenow="{{ completed_pct }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- In Progress Tournaments -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>In Progress</span>
+                                    <strong>{{ stats.in_progress_tournaments|default(0) }}</strong>
+                                </div>
+                                <div class="progress-container">
+                                    {% set in_progress_pct = (stats.in_progress_tournaments / stats.total_tournaments * 100)|round(1) if stats.total_tournaments > 0 else 0 %}
+                                    <div class="progress-bar bg-warning" 
+                                         style="width: {{ in_progress_pct }}%" 
+                                         role="progressbar" 
+                                         aria-valuenow="{{ in_progress_pct }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Upcoming Tournaments -->
+                            <div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Upcoming</span>
+                                    <strong>{{ stats.upcoming_tournaments|default(0) }}</strong>
+                                </div>
+                                <div class="progress-container">
+                                    {% set upcoming_pct = (stats.upcoming_tournaments / stats.total_tournaments * 100)|round(1) if stats.total_tournaments > 0 else 0 %}
+                                    <div class="progress-bar bg-info" 
+                                         style="width: {{ upcoming_pct }}%" 
+                                         role="progressbar" 
+                                         aria-valuenow="{{ upcoming_pct }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"></div>
+                                </div>
                             </div>
                         </div>
-                        
-                        <!-- Avg Players per Day -->
-                        <div class="col-md-4">
-                            <div class="stat-card p-3 text-center h-100">
-                                <div class="text-success">
-                                    <i class="fas fa-users stat-icon"></i>
-                                </div>
-                                <h3 class="h4 mb-1">{{ "%0.2f"|format(stats.avg_players_per_day|default(0)) }}</h3>
-                                <p class="text-muted small mb-0">Players per Day</p>
-                            </div>
+                    </div>
+                </div>
+                
+                <!-- Daily Averages -->
+                <div class="col-12">
+                    <div class="card h-100 border-0">
+                        <div class="card-header bg-white">
+                            <h5 class="section-title">Daily Averages</h5>
                         </div>
-                        
-                        <!-- Avg Rounds per Day -->
-                        <div class="col-md-4">
-                            <div class="stat-card p-3 text-center h-100">
-                                <div class="text-info">
-                                    <i class="fas fa-chess-board stat-icon"></i>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <!-- Avg Tournaments per Day -->
+                                <div class="col-4">
+                                    <div class="stat-card text-center d-flex flex-column justify-content-center h-100">
+                                        <div class="text-primary">
+                                            <i class="fas fa-trophy stat-icon" style="font-size: 1.5rem;"></i>
+                                        </div>
+                                        <h3 class="h5 mb-1">{{ "%0.2f"|format(stats.avg_tournaments_per_day|default(0)) }}</h3>
+                                        <p class="text-muted small mb-0">Tournaments/Day</p>
+                                    </div>
                                 </div>
-                                <h3 class="h4 mb-1">{{ "%0.2f"|format(stats.avg_rounds_per_day|default(0)) }}</h3>
-                                <p class="text-muted small mb-0">Rounds per Day</p>
+                                
+                                <!-- Avg Players per Day -->
+                                <div class="col-4">
+                                    <div class="stat-card text-center d-flex flex-column justify-content-center h-100">
+                                        <div class="text-success">
+                                            <i class="fas fa-users stat-icon" style="font-size: 1.5rem;"></i>
+                                        </div>
+                                        <h3 class="h5 mb-1">{{ "%0.1f"|format(stats.avg_players_per_day|default(0)) }}</h3>
+                                        <p class="text-muted small mb-0">Players/Day</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Avg Rounds per Day -->
+                                <div class="col-4">
+                                    <div class="stat-card text-center d-flex flex-column justify-content-center h-100">
+                                        <div class="text-info">
+                                            <i class="fas fa-chess-board stat-icon" style="font-size: 1.5rem;"></i>
+                                        </div>
+                                        <h3 class="h5 mb-1">{{ "%0.1f"|format(stats.avg_rounds_per_day|default(0)) }}</h3>
+                                        <p class="text-muted small mb-0">Rounds/Day</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
