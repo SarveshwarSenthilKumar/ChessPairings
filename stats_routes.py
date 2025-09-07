@@ -156,14 +156,22 @@ def user_stats(user_id):
         
         # Calculate days since joining
         join_date = format_date(user.get('dateJoined') or user.get('created_at'), return_datetime=True)
-        days_since_joining = (datetime.utcnow() - join_date).days if join_date else 0
+        days_since_joining = max(1, (datetime.utcnow() - join_date).days) if join_date else 1
         
         # Format member since date for display
         member_since = format_date(user.get('dateJoined') or user.get('created_at'))
         
+        # Calculate daily averages (avoid division by zero)
+        avg_tournaments_per_day = round(total_tournaments / days_since_joining, 2) if days_since_joining > 0 else 0
+        avg_players_per_day = round(total_players / days_since_joining, 2) if days_since_joining > 0 else 0
+        avg_rounds_per_day = round(total_rounds / days_since_joining, 2) if days_since_joining > 0 else 0
+        
         # Prepare data for template
         stats = {
             'days_since_joining': days_since_joining,
+            'avg_tournaments_per_day': avg_tournaments_per_day,
+            'avg_players_per_day': avg_players_per_day,
+            'avg_rounds_per_day': avg_rounds_per_day,
             # Basic stats
             'total_tournaments': total_tournaments,
             'total_players': total_players,

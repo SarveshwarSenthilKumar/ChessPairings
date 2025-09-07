@@ -203,6 +203,52 @@
         </div>
     </div>
     
+    <!-- Daily Averages -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Daily Averages</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Avg Tournaments per Day -->
+                        <div class="col-md-4">
+                            <div class="stat-card p-3 text-center h-100">
+                                <div class="text-primary">
+                                    <i class="fas fa-trophy stat-icon"></i>
+                                </div>
+                                <h3 class="h4 mb-1">{{ "%0.2f"|format(stats.avg_tournaments_per_day|default(0)) }}</h3>
+                                <p class="text-muted small mb-0">Tournaments per Day</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Avg Players per Day -->
+                        <div class="col-md-4">
+                            <div class="stat-card p-3 text-center h-100">
+                                <div class="text-success">
+                                    <i class="fas fa-users stat-icon"></i>
+                                </div>
+                                <h3 class="h4 mb-1">{{ "%0.2f"|format(stats.avg_players_per_day|default(0)) }}</h3>
+                                <p class="text-muted small mb-0">Players per Day</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Avg Rounds per Day -->
+                        <div class="col-md-4">
+                            <div class="stat-card p-3 text-center h-100">
+                                <div class="text-info">
+                                    <i class="fas fa-chess-board stat-icon"></i>
+                                </div>
+                                <h3 class="h4 mb-1">{{ "%0.2f"|format(stats.avg_rounds_per_day|default(0)) }}</h3>
+                                <p class="text-muted small mb-0">Rounds per Day</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
