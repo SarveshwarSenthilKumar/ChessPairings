@@ -10,3 +10,5 @@ go through everything and update database scheme, delete unnecessary files
 Update README and add details of how to initialize everything
 
 Go through everything and clean up debug statements
+
+Add badges for different number of tournaments, players, and everything
