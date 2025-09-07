@@ -943,9 +943,13 @@
                                     {{ round.start_time|datetimeformat('%b %d, %Y') }}
                                 </span>
                             </span>
-                            <span class="badge bg-{{ 'success' if round.status == 'completed' else 'warning' }} ms-2">
-                                {{ round.status|title }}
-                            </span>
+                            {% if round.status in ['ongoing', 'in_progress', 'In Progress', 'pending'] %}
+                                <span class="badge bg-warning ms-2">In Progress</span>
+                            {% else %}
+                                <span class="badge bg-{{ 'success' if round.status == 'completed' else 'info' }}">
+                                    {{ round.status|title }}
+                                </span>
+                            {% endif %}
                         </div>
                     </button>
                 </h2>

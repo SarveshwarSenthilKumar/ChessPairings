@@ -1,6 +1,4 @@
 
-update and fix logic for status updates for rounds in public view
-
 update to not have duplicates in create player
 
 add a days calculator to the stats page
