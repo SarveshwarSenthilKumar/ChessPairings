@@ -3,240 +3,79 @@
 {% block title %}Login - Zugzwang Pairings System{% endblock %}
 
 {% block extra_css %}
-<style>
-    body {
-        background-color: #f8f9fa;
-        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e9ecef' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .login-container {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem 0;
-    }
-    
-    .login-card {
-        width: 100%;
-        max-width: 400px;
-        margin: 0 auto;
-        background-color: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: 1rem;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        overflow: hidden;
-    }
-    
-    .theme-toggle-container {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        z-index: 1000;
-    }
-    
-    .theme-toggle-btn {
-        background: var(--bs-gray-200);
-        border: none;
-        color: var(--bs-body-color);
-        padding: 0.5rem 1rem;
-        border-radius: 50px;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.3s ease;
-    }
-    
-    [data-bs-theme="dark"] .theme-toggle-btn {
-        background: var(--bs-gray-800);
-        color: var(--bs-light);
-    }
-    
-    .theme-toggle-btn:hover {
-        background: var(--bs-gray-300);
-    }
-    
-    [data-bs-theme="dark"] .theme-toggle-btn:hover {
-        background: var(--bs-gray-700);
-    }
-    
-    [data-bs-theme="dark"] body {
-        background-color: #1a1a1a;
-        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23333' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-    
-    .card-header {
-        border-radius: 0;
-        background: linear-gradient(135deg, #0d6efd, #0b5ed7);
-        border: none;
-        padding: 1.5rem;
-    }
-    
-    .btn {
-        font-weight: 500;
-        letter-spacing: 0.5px;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #0d6efd, #0b5ed7);
-        border: none;
-        padding: 0.75rem;
-    }
-    
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #0b5ed7, #0a58ca);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
-    }
-    
-    .btn-outline-primary:hover {
-        background-color: rgba(13, 110, 253, 0.1);
-    }
-    
-    .btn-outline-dark:hover {
-        background-color: rgba(33, 37, 41, 0.1);
-    }
-    
-    .form-floating>label {
-        padding: 1rem 0.75rem;
-    }
-    
-    .form-control:focus, .form-select:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-    }
-    
-    .form-text {
-        font-size: 0.875rem;
-    }
-    
-    .text-muted {
-        color: #6c757d !important;
-    }
-    
-    [data-bs-theme="dark"] .text-muted {
-        color: #adb5bd !important;
-    }
-    
-    .divider {
-        position: relative;
-        text-align: center;
-        margin: 2rem 0;
-    }
-    
-    .divider:before {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background-color: #e9ecef;
-        z-index: -1;
-    }
-    
-    .divider span {
-        position: relative;
-        display: inline-block;
-        font-size: 0.875rem;
-        background: var(--bs-body-bg);
-        padding: 0 1rem;
-    }
-    
-    [data-bs-theme="dark"] .form-control, 
-    [data-bs-theme="dark"] .form-select {
-        background-color: #2d2d2d;
-        border-color: #404040;
-        color: #e0e0e0;
-    }
-    
-    [data-bs-theme="dark"] .form-control:focus, 
-    [data-bs-theme="dark"] .form-select:focus {
-        background-color: #2d2d2d;
-        color: #e0e0e0;
-    }
-    
-    [data-bs-theme="dark"] .card {
-        background-color: #2d2d2d;
-        border-color: #404040;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="theme-toggle-container">
-    <button class="theme-toggle-btn" id="theme-toggle">
-        <i id="theme-icon" class="bi bi-moon-fill"></i>
-        <span id="theme-text">Dark Mode</span>
-    </button>
-</div>
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1><i class="fas fa-chess-knight me-2"></i>Welcome Back</h1>
+            <p>Sign in to your account</p>
+        </div>
+        
+        <div class="auth-body">
+            <!-- Error Message -->
+            {% if error %}
+            <div class="alert-auth">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>{{ error }}</div>
+            </div>
+            {% endif %}
 
-<div class="container">
-    <div class="row justify-content-center login-container">
-        <div class="col-md-8 col-lg-6">
-            <div class="card shadow-lg border-0 rounded-lg mt-5">
-                <div class="card-header bg-primary text-white text-center py-4">
-                    <h3 class="my-0">
-                        <i class="fas fa-chess-knight me-2"></i>Welcome Back
-                    </h3>
-                    <p class="mb-0 mt-2">Sign in to manage your tournaments</p>
+            <!-- Login Form -->
+            <form action="{{ url_for('auth.login') }}" method="post" class="auth-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-floating">
+                    <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required>
+                    <label for="email">Email address</label>
                 </div>
-                <div class="card-body p-5">
-                    <!-- Error Message -->
-                    {% if error %}
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                    {% endif %}
-
-                    <!-- Login Form -->
-                    <form action="{{ url_for('auth.login') }}" method="post" class="mt-4">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
-                            <label for="username"><i class="fas fa-user me-2"></i>Username</label>
-                        </div>
-                        <div class="form-floating mb-4">
-                            <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
-                            <label for="password"><i class="fas fa-lock me-2"></i>Password</label>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="rememberMe" name="remember_me">
-                                <label class="form-check-label" for="rememberMe">
-                                    Remember me
-                                </label>
-                            </div>
-                            <a href="{{ url_for('auth.forgot_password') }}" class="text-decoration-none">
-                                <i class="fas fa-question-circle me-1"></i>Forgot password?
-                            </a>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-lg w-100 py-3 mb-3">
-                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
-                        </button>
-                    </form>
-
-                    <div class="text-center mt-4">
-                        <p class="mb-0">Don't have an account? 
-                            <a href="/signup" class="text-primary text-decoration-none fw-bold">
-                                Create one now
-                            </a>
-                        </p>
-                    </div>
+                
+                <div class="form-floating">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                    <label for="password">Password</label>
                 </div>
-                <div class="card-footer text-center py-3 bg-light">
-                    <a href="/tournament/" class="text-decoration-none">
-                        <i class="fas fa-arrow-left me-1"></i> Back to Home
+
+                <div class="auth-options">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                        <label class="form-check-label" for="remember">Remember me</label>
+                    </div>
+                    <a href="{{ url_for('auth.forgot_password') }}" class="forgot-password">
+                        Forgot password?
                     </a>
                 </div>
+
+                <button type="submit" class="btn btn-primary btn-auth">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+
+                <div class="divider">
+                    <span>OR CONTINUE WITH</span>
+                </div>
+
+                <div class="social-login">
+                    <a href="#" class="btn btn-social">
+                        <i class="fab fa-google"></i> Continue with Google
+                    </a>
+                    <a href="#" class="btn btn-social">
+                        <i class="fab fa-microsoft"></i> Continue with Microsoft
+                    </a>
+                </div>
+            </form>
+            
+            <div class="auth-footer">
+                Don't have an account? <a href="{{ url_for('auth.signup') }}">Sign up</a>
             </div>
         </div>
+        <div class="card-footer text-center py-3 bg-light">
+            <a href="/tournament/" class="text-decoration-none">
+                <i class="fas fa-arrow-left me-1"></i> Back to Home
+            </a>
+        </div>
     </div>
+</div>
 </div>
 
 {% block extra_js %}

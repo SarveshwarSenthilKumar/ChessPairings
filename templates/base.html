@@ -1,229 +1,208 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" class="scroll-smooth" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}Zugzwang Pairings System{% endblock %}</title>
+    <meta name="description" content="Professional chess tournament management system with Swiss pairing, real-time results, and advanced analytics.">
+    <meta name="keywords" content="chess tournament, tournament management, swiss pairing, chess software, chess organizer, pairings, standings, chess club">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♟️</text></svg>">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        :root {
-            --bs-body-bg: #f8f9fa;
-            --bs-body-color: #212529;
-            --card-bg: #ffffff;
-            --card-border: rgba(0, 0, 0, 0.125);
-            --dropdown-bg: #ffffff;
-            --dropdown-link-hover-bg: #f8f9fa;
-            --table-bg: #ffffff;
-            --table-hover-bg: rgba(0, 0, 0, 0.075);
-            --input-bg: #ffffff;
-            --input-border: #ced4da;
-            --input-color: #212529;
+        /* Theme variables are now in modern.css */
+        
+        /* Base styles are now in modern.css */
+        
+        /* Card styles are now in modern.css */
+        
+        /* Table styles are now in modern.css */
+        
+        /* Form styles are now in modern.css */
+        
+        /* Dropdown styles are now in modern.css */
+        
+        /* Navigation styles are now in modern.css */
+        
+        /* Theme Toggle Button */
+        .theme-toggle {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: var(--transition);
         }
         
-        [data-bs-theme="dark"] {
-            --bs-body-bg: #1a1a1a;
-            --bs-body-color: #e0e0e0;
-            --card-bg: #2d2d2d;
-            --card-border: #404040;
-            --dropdown-bg: #2d2d2d;
-            --dropdown-link-hover-bg: #3d3d3d;
-            --table-bg: #2d2d2d;
-            --table-hover-bg: #3d3d3d;
-            --input-bg: #2d2d2d;
-            --input-border: #4d4d4d;
-            --input-color: #e0e0e0;
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         
-        body {
-            background-color: var(--bs-body-bg);
-            color: var(--bs-body-color);
-            transition: background-color 0.3s ease, color 0.3s ease;
+        /* Avatar placeholder for user dropdown */
+        .avatar-placeholder {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8rem;
         }
         
-        .card, .dropdown-menu, .modal-content, .list-group-item, .form-control, .form-select {
-            background-color: var(--card-bg);
-            border-color: var(--card-border);
-            color: var(--bs-body-color);
-        }
-        
-        .table {
-            --bs-table-bg: var(--table-bg);
-            --bs-table-color: var(--bs-body-color);
-            --bs-table-hover-bg: var(--table-hover-bg);
-            --bs-table-hover-color: var(--bs-body-color);
-        }
-        
-        .form-control, .form-select {
-            background-color: var(--input-bg);
-            border-color: var(--input-border);
-            color: var(--input-color);
-        }
-        
-        .form-control:focus, .form-select:focus {
-            background-color: var(--input-bg);
-            color: var(--input-color);
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-        
-        .dropdown-menu {
-            background-color: var(--dropdown-bg);
-            border-color: var(--card-border);
-        }
-        
-        .dropdown-item {
-            color: var(--bs-body-color);
-        }
-        
-        .dropdown-item:hover {
-            background-color: var(--dropdown-link-hover-bg);
-            color: var(--bs-body-color);
-        }
-        
-        .navbar {
-            background-color: var(--card-bg) !important;
-            border-bottom: 1px solid var(--card-border);
-        }
-        
-        .navbar-brand, .nav-link {
-            color: var(--bs-body-color) !important;
-        }
-        
-        .nav-link:hover {
-            color: var(--bs-primary) !important;
-        }
-        
-        .bg-light {
-            background-color: var(--card-bg) !important;
-        }
-        
-        .border {
-            border-color: var(--card-border) !important;
-        }
-        
-        .border-bottom {
-            border-bottom-color: var(--card-border) !important;
-        }
-        
-        .border-top {
-            border-top-color: var(--card-border) !important;
-        }
-        
-        .text-muted {
-            color: #9ca3af !important;
-        }
-        
-        [data-bs-theme="dark"] .text-muted {
-            color: #9ca3af !important;
+        /* Hover text effect */
+        .hover-text-white:hover {
+            color: white !important;
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <!-- Theme Toggle Button -->
-    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-        <button class="btn btn-outline-secondary" id="themeToggle" title="Toggle theme">
+    <div class="position-fixed bottom-4 end-4 z-50">
+        <button class="btn btn-icon theme-toggle" id="themeToggle" title="Toggle theme">
             <i class="bi bi-sun-fill d-none" id="lightIcon"></i>
             <i class="bi bi-moon-fill" id="darkIcon"></i>
         </button>
     </div>
 
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="/tournament/">
-                <i class="bi bi-chess-board me-2"></i>
-                <i class="fas fa-chess-knight me-2"></i>Zugzwang Pairings
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/tournament/">
-                            <i class="fas fa-trophy me-1"></i> Tournaments
-                        </a>
-                    </li>
-                    {% if session.get('name') %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="/tournament/create">
-                            <i class="fas fa-plus-circle me-1"></i> New Tournament
-                        </a>
-                    </li>
-                    {% if session.get('name') == 'sarveshwarsenthilkumar' %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
-                            <i class="fas fa-shield-alt me-1"></i> Admin
-                        </a>
-                    </li>
-                    {% endif %}
-                    {% endif %}
-                </ul>
-                <ul class="navbar-nav">
-                    {% if session.get('name') or g.get('share_link_permissions') %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            {% if session.get('name') %}
-                                <i class="fas fa-user-circle me-1"></i> {{ session.name }}
-                            {% else %}
-                                <i class="fas fa-link me-1"></i> Share Link Access
-                            {% endif %}
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            {% if session.get('name') %}
-                                <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}"><i class="fas fa-user-circle me-2"></i>My Profile</a></li>
+    <header class="sticky-top">
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand" href="{{ url_for('tournament.index') }}">
+                    <i class="fas fa-chess-knight"></i>
+                    <span>Zugzwang</span>
+                </a>
+                
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('tournament.index') }}">
+                                <i class="fas fa-trophy me-1"></i> Tournaments
+                            </a>
+                        </li>
+                        {% if session.get('name') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('tournament.create') }}">
+                                <i class="fas fa-plus-circle me-1"></i> New Tournament
+                            </a>
+                        </li>
+                        {% if session.get('is_admin') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                                <i class="fas fa-shield-alt me-1"></i> Admin
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% endif %}
+                    </ul>
+                    
+                    <ul class="navbar-nav">
+                        {% if session.get('name') or g.get('share_link_permissions') %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
+                               role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                {% if session.get('profile_pic') %}
+                                <img src="{{ url_for('static', filename='profile_pics/' + session.profile_pic) }}" 
+                                     class="rounded-circle me-2" width="28" height="28" alt="Profile">
+                                {% else %}
+                                <div class="avatar-placeholder me-2" style="width: 28px; height: 28px; border-radius: 50%; 
+                                    background: var(--accent-gradient); color: white; display: flex; align-items: center; 
+                                    justify-content: center; font-weight: 600; font-size: 0.8rem;">
+                                    {{ session.name[0]|upper if session.name else 'U' }}
+                                </div>
+                                {% endif %}
+                                <span class="d-none d-lg-inline">
+                                    {{ session.name if session.get('name') else 'Share Link Access' }}
+                                </span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
+                                {% if session.get('name') %}
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('auth.profile') }}">
+                                        <i class="fas fa-user-circle me-2"></i> My Profile
+                                    </a>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
-                            {% endif %}
-                            <li>
-                                <a class="dropdown-item" href="#" id="theme-toggle">
-                                    <i id="theme-icon" class="bi bi-moon-fill me-2"></i>
-                                    <span id="theme-text">Dark Mode</span>
-                                </a>
-                            </li>
-                            {% if g.get('share_link_permissions') %}
+                                {% endif %}
+                                <li>
+                                    <a class="dropdown-item" href="#" id="theme-toggle">
+                                        <i id="theme-icon" class="bi bi-moon-fill me-2"></i>
+                                        <span id="theme-text">Dark Mode</span>
+                                    </a>
+                                </li>
+                                {% if g.get('share_link_permissions') %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <form action="{{ url_for('auth.logout_share_link', tournament_id=request.view_args.get('tournament_id')) }}" method="POST" class="d-inline">
+                                    <form action="{{ url_for('auth.logout_share_link', tournament_id=request.view_args.get('tournament_id')) }}" 
+                                          method="POST" class="d-inline w-100">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="dropdown-item">
+                                        <button type="submit" class="dropdown-item w-100 text-start">
                                             <i class="fas fa-unlink me-2"></i>Exit Share Link Access
                                         </button>
                                     </form>
                                 </li>
-                            {% endif %}
-                            {% if session.get('name') %}
+                                {% else %}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
-                            {% endif %}
-                        </ul>
-                    </li>
-                    {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="/login">
-                            <i class="fas fa-sign-in-alt me-1"></i> Login
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/signup">
-                            <i class="fas fa-user-plus me-1"></i> Register
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                        {% else %}
+                        <li class="nav-item">
+                            <a class="btn btn-outline-primary me-2" href="{{ url_for('auth.login') }}">
+                                <i class="fas fa-sign-in-alt me-1"></i> Login
+                            </a>
+                        </li>
+                        <li class="nav-item d-none d-lg-block">
+                            <a class="btn btn-primary" href="{{ url_for('auth.signup') }}">
+                                <i class="fas fa-user-plus me-1"></i> Sign Up
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
             </div>
-        </div>
-    </nav>
+        </nav>
+    </header>
 
     <!-- Flash Messages -->
     {% if request.endpoint != 'auth.login' %}
@@ -243,18 +222,76 @@
     <!-- End Flash Messages -->
 
     <!-- Main Content -->
-    <main class="container my-4">
-        {% block content %}{% endblock %}
+    <main class="flex-grow-1 py-4">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white py-4 mt-5">
-        <div class="container text-center">
-            <p class="mb-0">&copy; <span id="current-year"></span> Chess Tournament Manager. All rights reserved.</p>
-    <script>
-        // Set the current year in the footer
-        document.getElementById('current-year').textContent = new Date().getFullYear();
-    </script>
+    <footer class="bg-secondary text-white py-5 mt-auto">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-chess-knight fa-2x me-2" style="background: var(--accent-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                        <h3 class="h5 mb-0">Zugzwang</h3>
+                    </div>
+                    <p class="text-muted">Professional chess tournament management system with Swiss pairing, real-time results, and advanced analytics.</p>
+                    <div class="social-links d-flex gap-3 mt-3">
+                        <a href="#" class="text-white opacity-75 hover-opacity-100"><i class="fab fa-github fa-lg"></i></a>
+                        <a href="#" class="text-white opacity-75 hover-opacity-100"><i class="fab fa-twitter fa-lg"></i></a>
+                        <a href="#" class="text-white opacity-75 hover-opacity-100"><i class="fab fa-discord fa-lg"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <h5 class="h6 mb-3">Navigation</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="{{ url_for('tournament.index') }}" class="text-muted text-decoration-none hover-text-white">Tournaments</a></li>
+                        {% if session.get('name') %}
+                        <li class="mb-2"><a href="{{ url_for('tournament.create') }}" class="text-muted text-decoration-none hover-text-white">Create Tournament</a></li>
+                        <li class="mb-2"><a href="{{ url_for('auth.profile') }}" class="text-muted text-decoration-none hover-text-white">My Profile</a></li>
+                        {% else %}
+                        <li class="mb-2"><a href="{{ url_for('auth.login') }}" class="text-muted text-decoration-none hover-text-white">Login</a></li>
+                        <li class="mb-2"><a href="{{ url_for('auth.signup') }}" class="text-muted text-decoration-none hover-text-white">Sign Up</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <h5 class="h6 mb-3">Resources</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="text-muted text-decoration-none hover-text-white">Documentation</a></li>
+                        <li class="mb-2"><a href="#" class="text-muted text-decoration-none hover-text-white">API Reference</a></li>
+                        <li class="mb-2"><a href="#" class="text-muted text-decoration-none hover-text-white">Tutorials</a></li>
+                        <li class="mb-2"><a href="#" class="text-muted text-decoration-none hover-text-white">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <h5 class="h6 mb-3">Legal</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="{{ url_for('legal.terms') }}" class="text-muted text-decoration-none hover-text-white">Terms of Service</a></li>
+                        <li class="mb-2"><a href="{{ url_for('legal.privacy') }}" class="text-muted text-decoration-none hover-text-white">Privacy Policy</a></li>
+                        <li class="mb-2"><a href="#" class="text-muted text-decoration-none hover-text-white">Cookie Policy</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2">
+                    <h5 class="h6 mb-3">Support</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="text-muted text-decoration-none hover-text-white">Help Center</a></li>
+                        <li class="mb-2"><a href="#" class="text-muted text-decoration-none hover-text-white">Contact Us</a></li>
+                        <li class="mb-2"><a href="#" class="text-muted text-decoration-none hover-text-white">Status</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4 border-secondary">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+                <p class="mb-0 text-muted small">&copy; 2025 Zugzwang. All rights reserved.</p>
+                <div class="d-flex gap-3 mt-3 mt-md-0">
+                    <a href="#" class="text-muted text-decoration-none small hover-text-white">Privacy</a>
+                    <a href="#" class="text-muted text-decoration-none small hover-text-white">Terms</a>
+                    <a href="#" class="text-muted text-decoration-none small hover-text-white">Sitemap</a>
+                </div>
+            </div>
         </div>
     </footer>
 
