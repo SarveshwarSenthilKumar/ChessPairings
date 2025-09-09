@@ -1,7 +1,7 @@
 
-Go back at the end and refresh the UI and make sure it looks good
+Remove all the fluff of the landing page and generalize to all spots instead of just chess
 
-go through everything and update database scheme, delete unnecessary files
+go through everything and update database scheme and make it look better, delete unnecessary files
 
 Update README and add details of how to initialize everything
 
