@@ -20,6 +20,12 @@ client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Create blueprint
 public_bp = Blueprint('public', __name__, template_folder='templates')
 
+@public_bp.route('/')
+def index():
+    # If you have a specific public/index.html, you can render it here
+    # For now, we'll redirect to the main site root
+    return redirect('/')
+
 def get_db():
     """Get a database connection."""
     if 'db' not in g:

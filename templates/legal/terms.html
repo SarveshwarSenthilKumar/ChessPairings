@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Terms of Service - Chess Tournament Manager{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h1 class="h4 mb-0">Terms of Service</h1>
+                    <p class="mb-0">Last updated: September 8, 2024</p>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h2 class="h5">1. Acceptance of Terms</h2>
+                        <p>By accessing or using the Chess Tournament Manager ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use the Service.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">2. Description of Service</h2>
+                        <p>The Service provides tools for managing chess tournaments, including player registration, pairing generation, and results tracking. The Service is provided "as is" and we make no warranties regarding its accuracy or reliability.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">3. User Accounts</h2>
+                        <p>To access certain features of the Service, you must create an account. You are responsible for maintaining the confidentiality of your account information and for all activities that occur under your account.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">4. User Conduct</h2>
+                        <p>You agree not to use the Service to:</p>
+                        <ul>
+                            <li>Violate any laws or regulations</li>
+                            <li>Infringe on the rights of others</li>
+                            <li>Interfere with or disrupt the Service</li>
+                            <li>Upload or transmit viruses or malicious code</li>
+                            <li>Attempt to gain unauthorized access to the Service</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">5. Intellectual Property</h2>
+                        <p>The Service and its original content, features, and functionality are owned by us and are protected by international copyright, trademark, and other intellectual property laws.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">6. Termination</h2>
+                        <p>We may terminate or suspend your account and bar access to the Service immediately, without prior notice or liability, for any reason, including without limitation if you breach these Terms.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">7. Limitation of Liability</h2>
+                        <p>In no event shall we be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of the Service.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">8. Changes to Terms</h2>
+                        <p>We reserve the right to modify these Terms at any time. We will provide notice of any changes by updating the "Last updated" date at the top of these Terms.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">9. Contact Us</h2>
+                        <p>If you have any questions about these Terms, please contact us at support@chesstournamentmanager.com</p>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{{ url_for('public.index') }}" class="btn btn-outline-secondary">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

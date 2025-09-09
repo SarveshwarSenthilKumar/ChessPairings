@@ -8,6 +8,7 @@ from admin_share_routes import bp as admin_share_bp
 from admin_routes import admin_bp as admin_blueprint
 from dev_routes import init_dev_routes
 from stats_routes import stats_bp
+from legal_routes import legal_bp
 from SarvAuth import *
 from sql import *
 from datetime import datetime, date
@@ -101,8 +102,8 @@ app.register_blueprint(auth_blueprint)
 app.register_blueprint(admin_blueprint, url_prefix='/admin')
 app.register_blueprint(tournament_bp, url_prefix='/tournament')
 app.register_blueprint(public_bp, url_prefix='/public')
-
 app.register_blueprint(stats_bp, url_prefix='/stats')
+app.register_blueprint(legal_bp, url_prefix='/legal')
 
 # Ensure debug mode is enabled for development routes
 app.debug = True

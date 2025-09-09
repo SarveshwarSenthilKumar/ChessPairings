@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy - Chess Tournament Manager{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h1 class="h4 mb-0">Privacy Policy</h1>
+                    <p class="mb-0">Last updated: September 8, 2024</p>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h2 class="h5">1. Information We Collect</h2>
+                        <p>We collect information that you provide directly to us, including:</p>
+                        <ul>
+                            <li>Account information (name, email, username, password)</li>
+                            <li>Tournament data (player information, match results, pairings)</li>
+                            <li>Communication data (emails, support requests)</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">2. How We Use Your Information</h2>
+                        <p>We use the information we collect to:</p>
+                        <ul>
+                            <li>Provide, maintain, and improve our Service</li>
+                            <li>Process transactions and send related information</li>
+                            <li>Send you technical notices and support messages</li>
+                            <li>Respond to your comments, questions, and requests</li>
+                            <li>Monitor and analyze usage and trends</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">3. Information Sharing</h2>
+                        <p>We do not share your personal information with third parties except:</p>
+                        <ul>
+                            <li>With your consent</li>
+                            <li>To comply with legal obligations</li>
+                            <li>To protect and defend our rights and property</li>
+                            <li>With service providers who assist in operating our Service</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">4. Data Security</h2>
+                        <p>We implement appropriate technical and organizational measures to protect your personal information. However, no method of transmission over the Internet is 100% secure.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">5. Your Data Protection Rights</h2>
+                        <p>You have the right to:</p>
+                        <ul>
+                            <li>Access your personal data</li>
+                            <li>Request correction of your personal data</li>
+                            <li>Request erasure of your personal data</li>
+                            <li>Object to processing of your personal data</li>
+                            <li>Request restriction of processing</li>
+                            <li>Request data portability</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">6. Cookies and Tracking Technologies</h2>
+                        <p>We use cookies and similar tracking technologies to track activity on our Service and hold certain information to improve your experience.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">7. Children's Privacy</h2>
+                        <p>Our Service is not intended for children under 13. We do not knowingly collect personal information from children under 13.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">8. Changes to This Privacy Policy</h2>
+                        <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h5">9. Contact Us</h2>
+                        <p>If you have any questions about this Privacy Policy, please contact us at privacy@chesstournamentmanager.com</p>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{{ url_for('public.index') }}" class="btn btn-outline-secondary">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
