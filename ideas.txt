@@ -1,6 +1,4 @@
 
-Update to use proper email auth for signup and reset password
-
 create terms of conditions and privacy policy
 
 Go back at the end and refresh the UI and make sure it looks good
