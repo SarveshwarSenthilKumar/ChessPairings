@@ -1,11 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChessTournament Pro - Swiss System Manager</title>
+    <title>ChessTournament Pro | Modern Tournament Management System</title>
+    <meta name="description" content="Professional chess tournament management system with Swiss pairing, real-time results, and advanced analytics.">
+    <meta name="keywords" content="chess tournament, tournament management, swiss pairing, chess software, chess organizer, pairings, standings, chess club">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♟️</text></svg>">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="ChessTournament Pro | Modern Tournament Management">
+    <meta property="og:description" content="Professional chess tournament management system with Swiss pairing, real-time results, and advanced analytics.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://chesstournamentpro.com">
+    <meta property="og:image" content="https://chesstournamentpro.com/images/og-image.jpg">
     <style>
         :root {
             --primary: #0f172a;
@@ -289,6 +307,28 @@
             line-height: 1.6;
         }
         
+        .feature-list {
+            list-style: none;
+            text-align: left;
+            margin-top: 1rem;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: flex-start;
+            line-height: 1.5;
+        }
+        
+        .feature-list i {
+            color: var(--accent);
+            margin-right: 0.75rem;
+            margin-top: 0.2rem;
+            font-size: 0.8rem;
+        }
+        
         /* How It Works Section */
         .how-it-works {
             padding: 6rem 0;
@@ -558,6 +598,108 @@
             </nav>
         </div>
     </header>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-title">
+                <h2>Comprehensive Tournament Management</h2>
+                <p>Everything you need to run professional chess tournaments with ease</p>
+            </div>
+            
+            <div class="features-grid">
+                <!-- Tournament Management -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3>Tournament Management</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Create and manage multiple tournaments</li>
+                        <li><i class="fas fa-check"></i> Customizable tournament settings</li>
+                        <li><i class="fas fa-check"></i> Real-time status tracking</li>
+                        <li><i class="fas fa-check"></i> Automatic status updates</li>
+                        <li><i class="fas fa-check"></i> Detailed tournament analytics</li>
+                    </ul>
+                </div>
+
+                <!-- Player & Team Management -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Player & Team Management</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Add, edit, and remove players</li>
+                        <li><i class="fas fa-check"></i> Create and manage teams</li>
+                        <li><i class="fas fa-check"></i> Random team generation</li>
+                        <li><i class="fas fa-check"></i> Player history and statistics</li>
+                        <li><i class="fas fa-check"></i> Bulk import/export</li>
+                    </ul>
+                </div>
+
+                <!-- Advanced Pairing System -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chess-board"></i>
+                    </div>
+                    <h3>Advanced Pairing System</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Swiss system pairings</li>
+                        <li><i class="fas fa-check"></i> Smart tiebreak calculations</li>
+                        <li><i class="fas fa-check"></i> Color balancing</li>
+                        <li><i class="fas fa-check"></i> Manual player swapping</li>
+                        <li><i class="fas fa-check"></i> Bye management</li>
+                    </ul>
+                </div>
+
+                <!-- Real-time Analytics -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Real-time Analytics</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Live standings</li>
+                        <li><i class="fas fa-check"></i> Player performance metrics</li>
+                        <li><i class="fas fa-check"></i> Tournament statistics</li>
+                        <li><i class="fas fa-check"></i> Custom reports</li>
+                        <li><i class="fas fa-check"></i> Export to PDF/CSV</li>
+                    </ul>
+                </div>
+
+                <!-- User & Permissions -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <h3>User & Permissions</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Secure authentication</li>
+                        <li><i class="fas fa-check"></i> Granular permissions</li>
+                        <li><i class="fas fa-check"></i> Share links with custom access</li>
+                        <li><i class="fas fa-check"></i> Admin controls</li>
+                        <li><i class="fas fa-check"></i> Tournament pinning</li>
+                    </ul>
+                </div>
+
+                <!-- Attendance Tracking -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <h3>Attendance Tracking</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Mark present/absent</li>
+                        <li><i class="fas fa-check"></i> Daily attendance reset</li>
+                        <li><i class="fas fa-check"></i> Attendance reports</li>
+                        <li><i class="fas fa-check"></i> Player check-in/out</li>
+                        <li><i class="fas fa-check"></i> Export attendance data</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- Hero Section -->
     <section class="hero">
