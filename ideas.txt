@@ -1,10 +1,8 @@
 
-Remove all the fluff of the landing page and generalize to all spots instead of just chess
-
 go through everything and update database scheme and make it look better, delete unnecessary files
+
+Add a part about my story of why and how i created this
 
 Update README and add details of how to initialize everything
 
 Go through everything and clean up debug statements
-
-Add badges for different number of tournaments, players, and everything
