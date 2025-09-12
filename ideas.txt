@@ -1,8 +1,4 @@
 
-update special character counter
-
-make sure login and signup work and add see password button
-
 update and get rid of footer
 
 remove continue with google and microsoft on auth pages
