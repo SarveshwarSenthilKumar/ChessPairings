@@ -283,6 +283,9 @@ def index():
     db = get_db()
     user_id = session.get('user_id')
     
+    if not session.get("name"):
+        return redirect("/")
+
     try:
         # Get tournaments where user is the creator
         tournaments = db.get_tournaments_by_creator(user_id)
