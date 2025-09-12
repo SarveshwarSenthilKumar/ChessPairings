@@ -3,205 +3,289 @@
 {% block title %}Create Account - Zugzwang Pairings System{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
 <style>
-    /* Password strength indicator */
-    .password-strength {
-        margin-top: 0.5rem;
+    body {
+        background-color: #f8f9fa;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e9ecef' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
     }
     
+    .signup-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 0;
+    }
+    
+    .signup-card {
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .theme-toggle-container {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1000;
+    }
+    
+    .theme-toggle-btn {
+        background: var(--bs-gray-200);
+        border: none;
+        color: var(--bs-body-color);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    [data-bs-theme="dark"] .theme-toggle-btn {
+        background: var(--bs-gray-800);
+        color: var(--bs-light);
+    }
+    
+    .theme-toggle-btn:hover {
+        background: var(--bs-gray-300);
+    }
+    
+    [data-bs-theme="dark"] .theme-toggle-btn:hover {
+        background: var(--bs-gray-700);
+    }
+    
+    [data-bs-theme="dark"] body {
+        background-color: #1a1a1a;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23333' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    
+    .card {
+        border: none;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .card-header {
+        border-radius: 0 !important;
+        background: linear-gradient(135deg, #198754, #157347);
+        border: none;
+        padding: 1.5rem;
+    }
+    
+    .form-floating>label {
+        padding: 1rem 0.75rem;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+    
+    .btn {
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #198754, #157347);
+        border: none;
+        padding: 0.75rem;
+    }
+    
+    .btn-success:hover {
+        background: linear-gradient(135deg, #157347, #146c43);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(25, 135, 84, 0.3);
+    }
+    
+    .divider {
+        position: relative;
+        text-align: center;
+        margin: 2rem 0;
+    }
+    
+    .divider:before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: #e9ecef;
+        z-index: -1;
+    }
+    
+    .divider span {
+        position: relative;
+        display: inline-block;
+        font-size: 0.875rem;
+        background: var(--bs-body-bg);
+        padding: 0 1rem;
+    }
+    
+    [data-bs-theme="dark"] .form-control, 
+    [data-bs-theme="dark"] .form-select {
+        background-color: #2d2d2d;
+        border-color: #404040;
+        color: #e0e0e0;
+    }
+    
+    [data-bs-theme="dark"] .form-control:focus, 
+    [data-bs-theme="dark"] .form-select:focus {
+        background-color: #2d2d2d;
+        color: #e0e0e0;
+    }
+    
+    [data-bs-theme="dark"] .card {
+        background-color: #2d2d2d;
+        border-color: #404040;
+    }
+    
+    /* Password strength indicator */
     #passwordStrength {
         height: 4px;
         border-radius: 2px;
         margin-top: 0.25rem;
-        transition: var(--transition);
-        background-color: var(--bs-gray-200);
+        transition: all 0.3s ease;
     }
     
-    [data-bs-theme="dark"] #passwordStrength {
-        background-color: var(--bs-gray-700);
-    }
-    
-    .strength-0 { background: linear-gradient(90deg, #dc3545 0%, #dc3545 20%, var(--bs-gray-200) 20%, var(--bs-gray-200) 100%); }
-    .strength-1 { background: linear-gradient(90deg, #fd7e14 0%, #fd7e14 40%, var(--bs-gray-200) 40%, var(--bs-gray-200) 100%); }
-    .strength-2 { background: linear-gradient(90deg, #ffc107 0%, #ffc107 60%, var(--bs-gray-200) 60%, var(--bs-gray-200) 100%); }
-    .strength-3 { background: linear-gradient(90deg, #0dcaf0 0%, #0dcaf0 80%, var(--bs-gray-200) 80%, var(--bs-gray-200) 100%); }
-    .strength-4 { background: linear-gradient(90deg, #198754 0%, #198754 100%); }
-    
-    [data-bs-theme="dark"] .strength-0 { background: linear-gradient(90deg, #dc3545 0%, #dc3545 20%, var(--bs-gray-700) 20%, var(--bs-gray-700) 100%); }
-    [data-bs-theme="dark"] .strength-1 { background: linear-gradient(90deg, #fd7e14 0%, #fd7e14 40%, var(--bs-gray-700) 40%, var(--bs-gray-700) 100%); }
-    [data-bs-theme="dark"] .strength-2 { background: linear-gradient(90deg, #ffc107 0%, #ffc107 60%, var(--bs-gray-700) 60%, var(--bs-gray-700) 100%); }
-    [data-bs-theme="dark"] .strength-3 { background: linear-gradient(90deg, #0dcaf0 0%, #0dcaf0 80%, var(--bs-gray-700) 80%, var(--bs-gray-700) 100%); }
-    [data-bs-theme="dark"] .strength-4 { background: linear-gradient(90deg, #198754 0%, #198754 100%); }
+    .strength-0 { width: 20%; background-color: #dc3545; }
+    .strength-1 { width: 40%; background-color: #fd7e14; }
+    .strength-2 { width: 60%; background-color: #ffc107; }
+    .strength-3 { width: 80%; background-color: #0dcaf0; }
+    .strength-4 { width: 100%; background-color: #198754; }
     
     .password-requirements {
-        margin-top: 1rem;
-        padding: 0.75rem;
-        background-color: var(--bs-gray-100);
-        border-radius: var(--radius);
-    }
-    
-    [data-bs-theme="dark"] .password-requirements {
-        background-color: var(--bs-gray-800);
-    }
-    
-    .password-requirements p {
         font-size: 0.8rem;
-        margin-bottom: 0.5rem;
-        color: var(--text-secondary);
+        margin-top: 0.5rem;
     }
     
-    .password-requirement {
+    .requirement {
         display: flex;
         align-items: center;
-        margin-bottom: 0.4rem;
-        font-size: 0.8rem;
-        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
     }
     
-    .password-requirement i {
+    .requirement i {
         margin-right: 0.5rem;
         font-size: 0.7rem;
-        width: 1rem;
-        text-align: center;
     }
     
-    .password-requirement.valid {
-        color: var(--success);
+    .requirement.valid {
+        color: #198754;
     }
     
-    .password-requirement.invalid {
-        color: var(--danger);
+    .requirement.invalid {
+        color: #dc3545;
     }
     
-    /* Form validation */
-    .form-control.is-invalid {
-        border-color: var(--danger);
+    [data-bs-theme="dark"] .requirement.valid {
+        color: #20c997;
     }
     
-    .form-control.is-valid {
-        border-color: var(--success);
-    }
-    
-    .invalid-feedback {
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
+    [data-bs-theme="dark"] .requirement.invalid {
+        color: #ff6b6b;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="auth-page">
-    <div class="auth-card">
-        <div class="auth-header">
-            <h1><i class="fas fa-user-plus me-2"></i>Create Account</h1>
-            <p>Join Zugzwang Pairings today</p>
-        </div>
-        
-        <div class="auth-body">
-            {% if error %}
-            <div class="alert-auth">
-                <i class="fas fa-exclamation-circle"></i>
-                <div>{{ error }}</div>
-            </div>
-            {% endif %}
+<div class="theme-toggle-container">
+    <button class="theme-toggle-btn" id="theme-toggle">
+        <i id="theme-icon" class="bi bi-moon-fill"></i>
+        <span id="theme-text">Dark Mode</span>
+    </button>
+</div>
 
-            <form action="{{ url_for('auth.register') }}" method="post" class="auth-form" novalidate>
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="first_name" name="first_name" 
-                                   placeholder="First Name" required autofocus>
-                            <label for="first_name">First Name</label>
-                            <div class="invalid-feedback">Please enter your first name</div>
-                        </div>
+<div class="container">
+    <div class="row justify-content-center signup-container">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0 rounded-lg mt-5">
+                <div class="card-header bg-success text-white text-center py-4">
+                    <h3 class="my-0">
+                        <i class="fas fa-user-plus me-2"></i>Create Your Account
+                    </h3>
+                    <p class="mb-0 mt-2">Join our chess community today</p>
+                </div>
+                <div class="card-body p-5">
+                    <!-- Error Message -->
+                    {% if error %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="last_name" name="last_name" 
-                                   placeholder="Last Name" required>
-                            <label for="last_name">Last Name</label>
-                            <div class="invalid-feedback">Please enter your last name</div>
+                    {% endif %}
+
+                    <!-- Signup Form -->
+                    <form id="signupForm" action="{{ url_for('auth.register') }}" method="post" class="mt-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="name" name="name" placeholder="Full Name" required>
+                                    <label for="name"><i class="fas fa-user me-2"></i>Full Name</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="email" class="form-control" id="email" name="email" placeholder="Email Address" required>
+                                    <label for="emailaddress"><i class="fas fa-envelope me-2"></i>Email</label>
+                                </div>
+                            </div>
                         </div>
+                        
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                            <label for="username"><i class="fas fa-at me-2"></i>Username</label>
+                            <div class="form-text text-muted small">This will be your public profile name</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                                    <label for="password"><i class="fas fa-lock me-2"></i>Password</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-4">
+                                    <input type="password" class="form-control" id="confirmPassword" name="confirmpassword" placeholder="Confirm Password" required>
+                                    <label for="confirmPassword"><i class="fas fa-lock me-2"></i>Confirm Password</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
+                            <label class="form-check-label small" for="terms">
+                                I agree to the <a href="{{ url_for('legal.terms') }}" class="text-decoration-none" target="_blank">Terms of Service</a> and <a href="{{ url_for('legal.privacy') }}" class="text-decoration-none" target="_blank">Privacy Policy</a>
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success btn-lg w-100 py-3 mb-3">
+                            <i class="fas fa-user-plus me-2"></i>Create Account
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <p class="mb-0">Already have an account? 
+                            <a href="/login" class="text-success text-decoration-none fw-bold">
+                                Sign in here
+                            </a>
+                        </p>
                     </div>
                 </div>
-
-                <div class="form-floating">
-                    <input type="email" class="form-control" id="email" name="email" 
-                           placeholder="name@example.com" required>
-                    <label for="email">Email address</label>
-                    <div class="invalid-feedback">Please enter a valid email address</div>
-                </div>
-
-                <div class="form-floating">
-                    <input type="password" class="form-control" id="password" name="password" 
-                           placeholder="Password" required minlength="8">
-                    <label for="password">Password</label>
-                    
-                    <div class="password-strength">
-                        <div id="passwordStrength"></div>
-                    </div>
-                    
-                    <div class="password-requirements">
-                        <p>Password must contain:</p>
-                        <div class="password-requirement invalid" id="length-req">
-                            <i class="fas fa-times-circle"></i>
-                            <span>At least 8 characters</span>
-                        </div>
-                        <div class="password-requirement invalid" id="uppercase-req">
-                            <i class="fas fa-times-circle"></i>
-                            <span>At least one uppercase letter</span>
-                        </div>
-                        <div class="password-requirement invalid" id="lowercase-req">
-                            <i class="fas fa-times-circle"></i>
-                            <span>At least one lowercase letter</span>
-                        </div>
-                        <div class="password-requirement invalid" id="number-req">
-                            <i class="fas fa-times-circle"></i>
-                            <span>At least one number</span>
-                        </div>
-                        <div class="password-requirement invalid" id="special-req">
-                            <i class="fas fa-times-circle"></i>
-                            <span>At least one special character</span>
-                        </div>
-                    </div>
-                    
-                    <div class="invalid-feedback">
-                        Please choose a stronger password
-                    </div>
-                </div>
-
-                <div class="form-floating">
-                    <input type="password" class="form-control" id="confirm_password" 
-                           name="confirm_password" placeholder="Confirm Password" required>
-                    <label for="confirm_password">Confirm Password</label>
-                    <div class="invalid-feedback" id="password-match-feedback">
-                        Passwords do not match
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-auth">
-                    <i class="fas fa-user-plus"></i> Create Account
-                </button>
-
-                <div class="divider">
-                    <span>OR</span>
-                </div>
-                
-                <div class="social-login">
-                    <a href="#" class="btn btn-social">
-                        <i class="fab fa-google"></i> Continue with Google
-                    </a>
-                    <a href="#" class="btn btn-social">
-                        <i class="fab fa-microsoft"></i> Continue with Microsoft
+                <div class="card-footer text-center py-3 bg-light">
+                    <a href="/tournament/" class="text-decoration-none">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Home
                     </a>
                 </div>
-            </form>
-            
-            <div class="auth-footer">
-                Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a>
             </div>
         </div>
     </div>
@@ -209,12 +293,12 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Password strength indicator
     const passwordInput = document.getElementById('password');
-    const confirmPasswordInput = document.getElementById('confirm_password');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
     const passwordStrength = document.createElement('div');
     passwordStrength.id = 'passwordStrength';
     passwordStrength.className = 'strength-0 rounded-pill';
@@ -222,39 +306,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Password requirements
     const requirements = {
-        length: document.getElementById('length-req'),
-        uppercase: document.getElementById('uppercase-req'),
-        lowercase: document.getElementById('lowercase-req'),
-        number: document.getElementById('number-req'),
-        special: document.getElementById('special-req')
+        length: document.getElementById('req-length'),
+        lowercase: document.getElementById('req-lowercase'),
+        uppercase: document.getElementById('req-uppercase'),
+        number: document.getElementById('req-number'),
+        special: document.getElementById('req-special')
     };
 
     // Check if password meets requirements
     function checkPasswordRequirements(password) {
         const hasMinLength = password.length >= 8;
-        const hasUppercase = /[A-Z]/.test(password);
         const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
         const hasNumber = /[0-9]/.test(password);
         const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
         return {
             hasMinLength,
-            hasUppercase,
             hasLowercase,
+            hasUppercase,
             hasNumber,
             hasSpecial,
-            isValid: hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial
+            isValid: hasMinLength && hasLowercase && hasUppercase && hasNumber && hasSpecial
         };
     }
 
     // Update password strength indicator
     function updatePasswordStrength(password) {
-        const { hasMinLength, hasUppercase, hasLowercase, hasNumber, hasSpecial } = checkPasswordRequirements(password);
+        const { hasMinLength, hasLowercase, hasUppercase, hasNumber, hasSpecial } = checkPasswordRequirements(password);
         let strength = 0;
 
         if (hasMinLength) strength++;
-        if (hasUppercase) strength++;
         if (hasLowercase) strength++;
+        if (hasUppercase) strength++;
         if (hasNumber) strength++;
         if (hasSpecial) strength++;
 
@@ -262,11 +346,11 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordStrength.className = `strength-${strength - 1} rounded-pill`;
         
         // Update requirement indicators
-        requirements.length.className = `password-requirement ${hasMinLength ? 'valid' : 'invalid'}`;
-        requirements.uppercase.className = `password-requirement ${hasUppercase ? 'valid' : 'invalid'}`;
-        requirements.lowercase.className = `password-requirement ${hasLowercase ? 'valid' : 'invalid'}`;
-        requirements.number.className = `password-requirement ${hasNumber ? 'valid' : 'invalid'}`;
-        requirements.special.className = `password-requirement ${hasSpecial ? 'valid' : 'invalid'}`;
+        requirements.length.className = `requirement ${hasMinLength ? 'valid' : 'invalid'}`;
+        requirements.lowercase.className = `requirement ${hasLowercase ? 'valid' : 'invalid'}`;
+        requirements.uppercase.className = `requirement ${hasUppercase ? 'valid' : 'invalid'}`;
+        requirements.number.className = `requirement ${hasNumber ? 'valid' : 'invalid'}`;
+        requirements.special.className = `requirement ${hasSpecial ? 'valid' : 'invalid'}`;
 
         return strength >= 3; // At least 3 requirements met
     }
@@ -292,11 +376,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Length check
         if (password.length >= 8) strength++;
         
-        // Contains uppercase
-        if (/[A-Z]/.test(password)) strength++;
-        
         // Contains lowercase
         if (/[a-z]/.test(password)) strength++;
+        
+        // Contains uppercase
+        if (/[A-Z]/.test(password)) strength++;
         
         // Contains number
         if (/[0-9]/.test(password)) strength++;
