@@ -1,10 +1,4 @@
 
-update and get rid of footer
-
-remove continue with google and microsoft on auth pages
-
-update landing page to be accurate and true
-
 go through everything and update database scheme and make it look better, delete unnecessary files
 
 Add a part about my story of why and how i created this
