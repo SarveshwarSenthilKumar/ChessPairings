@@ -92,6 +92,13 @@ def nl2br(value):
         return ''
     return Markup(value.replace('\n', '<br>'))
 
+# Context processor to make available routes accessible in all templates
+@app.context_processor
+def inject_routes():
+    def has_route(route_name):
+        return route_name in [str(rule.endpoint) for rule in app.url_map.iter_rules()]
+    return dict(has_route=has_route)
+
 # Register the filters with Jinja2
 app.jinja_env.filters['datetimeformat'] = format_datetime
 app.jinja_env.filters['ordinal'] = ordinal
