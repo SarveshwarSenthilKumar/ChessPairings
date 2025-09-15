@@ -1,0 +1,196 @@
+Database Schema Dump - Generated on 2025-09-15 10:20:40
+
+================================================================================
+
+DATABASE: MAIN
+================================================================================
+
+TABLE: users
+--------------------------------------------------------------------------------
+
+COLUMNS:
+Name       | Type    | Not Null | Default | Primary Key
+-------------------------------------------------------
+id         | INTEGER |          |         | ✓          
+username   | TEXT    | ✓        |         |            
+password   | TEXT    | ✓        |         |            
+created_at | TEXT    | ✓        |         |            
+
+INDEXES:
+  UNIQUE INDEX sqlite_autoindex_users_1 on (username)
+
+================================================================================
+
+
+TABLE: tournaments
+--------------------------------------------------------------------------------
+
+COLUMNS:
+Name          | Type    | Not Null | Default    | Primary Key
+-------------------------------------------------------------
+id            | INTEGER |          |            | ✓          
+name          | TEXT    | ✓        |            |            
+location      | TEXT    |          |            |            
+start_date    | TEXT    | ✓        |            |            
+end_date      | TEXT    | ✓        |            |            
+rounds        | INTEGER |          | 5          |            
+time_control  | TEXT    |          |            |            
+status        | TEXT    |          | 'upcoming' |            
+created_at    | TEXT    | ✓        |            |            
+creator_id    | INTEGER | ✓        |            |            
+description   | TEXT    |          |            |            
+prize_winners | INTEGER |          | 0          |            
+share_token   | TEXT    |          |            |            
+win_points    | REAL    |          | 1.0        |            
+draw_points   | REAL    |          | 0.5        |            
+loss_points   | REAL    |          | 0.0        |            
+bye_points    | REAL    |          | 1.0        |            
+comments      | TEXT    |          | ''         |            
+
+INDEXES:
+  UNIQUE INDEX idx_tournaments_share_token on (share_token)
+
+================================================================================
+
+
+TABLE: players
+--------------------------------------------------------------------------------
+
+COLUMNS:
+Name       | Type    | Not Null | Default | Primary Key
+-------------------------------------------------------
+id         | INTEGER |          |         | ✓          
+name       | TEXT    | ✓        |         |            
+rating     | INTEGER |          | 1200    |            
+created_at | TEXT    | ✓        |         |            
+team       | TEXT    |          |         |            
+
+================================================================================
+
+
+TABLE: tournament_players
+--------------------------------------------------------------------------------
+
+COLUMNS:
+Name                | Type    | Not Null | Default | Primary Key
+----------------------------------------------------------------
+tournament_id       | INTEGER |          |         | ✓          
+player_id           | INTEGER |          |         | ✓          
+initial_rating      | INTEGER |          |         |            
+score               | FLOAT   |          | 0.0     |            
+tiebreak1           | FLOAT   |          | 0.0     |            
+tiebreak2           | FLOAT   |          | 0.0     |            
+tiebreak3           | FLOAT   |          | 0.0     |            
+requested_bye_round | INTEGER |          | NULL    |            
+
+FOREIGN KEYS:
+  player_id -> players.id
+  tournament_id -> tournaments.id
+
+INDEXES:
+  INDEX idx_tournament_players_player on (player_id)
+  INDEX idx_tournament_players_tournament on (tournament_id)
+  UNIQUE INDEX sqlite_autoindex_tournament_players_1 on (tournament_id, player_id)
+
+================================================================================
+
+
+TABLE: rounds
+--------------------------------------------------------------------------------
+
+COLUMNS:
+Name          | Type    | Not Null | Default   | Primary Key
+------------------------------------------------------------
+id            | INTEGER |          |           | ✓          
+tournament_id | INTEGER |          |           |            
+round_number  | INTEGER | ✓        |           |            
+start_time    | TEXT    |          |           |            
+end_time      | TEXT    |          |           |            
+status        | TEXT    |          | 'pending' |            
+
+FOREIGN KEYS:
+  tournament_id -> tournaments.id
+
+INDEXES:
+  INDEX idx_rounds_tournament on (tournament_id)
+  UNIQUE INDEX sqlite_autoindex_rounds_1 on (tournament_id, round_number)
+
+================================================================================
+
+
+TABLE: pairings
+--------------------------------------------------------------------------------
+
+COLUMNS:
+Name            | Type    | Not Null | Default   | Primary Key
+--------------------------------------------------------------
+id              | INTEGER |          |           | ✓          
+round_id        | INTEGER |          |           |            
+white_player_id | INTEGER |          |           |            
+black_player_id | INTEGER |          |           |            
+board_number    | INTEGER |          |           |            
+result          | TEXT    |          |           |            
+status          | TEXT    |          | 'pending' |            
+
+FOREIGN KEYS:
+  black_player_id -> players.id
+  white_player_id -> players.id
+  round_id -> rounds.id
+
+INDEXES:
+  INDEX idx_pairings_round on (round_id)
+
+================================================================================
+
+
+TABLE: manual_byes
+--------------------------------------------------------------------------------
+
+COLUMNS:
+Name          | Type    | Not Null | Default           | Primary Key
+--------------------------------------------------------------------
+id            | INTEGER |          |                   | ✓          
+tournament_id | INTEGER | ✓        |                   |            
+player_id     | INTEGER | ✓        |                   |            
+round_number  | INTEGER | ✓        |                   |            
+created_at    | TEXT    | ✓        | CURRENT_TIMESTAMP |            
+created_by    | INTEGER |          |                   |            
+
+FOREIGN KEYS:
+  player_id -> players.id
+  tournament_id -> tournaments.id
+
+INDEXES:
+  INDEX idx_manual_byes_player on (player_id)
+  INDEX idx_manual_byes_tournament on (tournament_id)
+  UNIQUE INDEX sqlite_autoindex_manual_byes_1 on (tournament_id, player_id, round_number)
+
+================================================================================
+
+
+TABLE: admin_share_links
+--------------------------------------------------------------------------------
+
+COLUMNS:
+Name          | Type      | Not Null | Default           | Primary Key
+----------------------------------------------------------------------
+id            | INTEGER   |          |                   | ✓          
+tournament_id | INTEGER   | ✓        |                   |            
+token         | TEXT      | ✓        |                   |            
+permissions   | TEXT      | ✓        |                   |            
+created_by    | INTEGER   | ✓        |                   |            
+created_at    | TIMESTAMP |          | CURRENT_TIMESTAMP |            
+expires_at    | TIMESTAMP |          |                   |            
+max_uses      | INTEGER   |          |                   |            
+use_count     | INTEGER   |          | 0                 |            
+is_active     | BOOLEAN   |          | 1                 |            
+
+FOREIGN KEYS:
+  created_by -> users.id
+  tournament_id -> tournaments.id
+
+INDEXES:
+  INDEX idx_admin_share_links_token on (token)
+  UNIQUE INDEX sqlite_autoindex_admin_share_links_1 on (token)
+
+================================================================================

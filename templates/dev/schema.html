@@ -3,14 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <title>Database Schemas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-        .database { margin-bottom: 40px; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 20px; 
+            line-height: 1.6;
+            background-color: #f8f9fa;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin: 0;
+        }
+        .database { 
+            margin-bottom: 40px; 
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
         .database h2 { 
             color: #2c3e50; 
             border-bottom: 2px solid #3498db; 
-            padding-bottom: 5px; 
-            margin-top: 30px;
+            padding-bottom: 10px; 
+            margin-top: 20px;
+            font-size: 1.8rem;
         }
         .table { 
             margin-bottom: 30px; 
@@ -74,7 +99,17 @@
     </style>
 </head>
 <body>
-    <h1>Database Schemas</h1>
+    <div class="container-fluid">
+        <div class="header">
+            <h1>Database Schemas</h1>
+            {% if text_file_available %}
+            <div class="actions">
+                <a href="{{ url_for('dev.export_schema') }}" class="btn btn-primary">
+                    <i class="bi bi-download"></i> Download Schema as Text
+                </a>
+            </div>
+            {% endif %}
+        </div>
     
     {% for db_name, tables in schemas.items() %}
     <div class="database">
@@ -156,5 +191,7 @@
         {% endif %}
     </div>
     {% endfor %}
+    </div> <!-- Close container -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

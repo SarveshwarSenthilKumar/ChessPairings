@@ -1,6 +1,7 @@
-from flask import Blueprint, render_template, g
+from flask import Blueprint, render_template, g, send_from_directory, abort
 import sqlite3
 import os
+from datetime import datetime
 
 def get_db_schema(db_path):
     """Get the schema for a SQLite database."""
@@ -98,12 +99,107 @@ def init_dev_routes(app):
     # Create a blueprint for development routes
     dev_bp = Blueprint('dev', __name__, url_prefix='/dev')
     
+    def format_schema_text(schemas):
+        """Format schema data as text."""
+        import textwrap
+        from datetime import datetime
+        
+        output = []
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        output.append(f"Database Schema Dump - Generated on {timestamp}\n")
+        output.append("=" * 80 + "\n")
+        
+        for db_name, tables in schemas.items():
+            output.append(f"DATABASE: {db_name.upper()}")
+            output.append("=" * 80)
+            
+            if not isinstance(tables, dict):
+                output.append(f"Error: {tables.get('error', 'Unknown error')}\n")
+                continue
+                
+            for table_name, table_info in tables.items():
+                output.append(f"\nTABLE: {table_name}")
+                output.append("-" * 80)
+                
+                # Add columns
+                output.append("\nCOLUMNS:")
+                headers = ["Name", "Type", "Not Null", "Default", "Primary Key"]
+                rows = []
+                for col in table_info.get('columns', []):
+                    rows.append([
+                        col[1],  # name
+                        col[2],  # type
+                        '✓' if col[3] else '',  # not null
+                        str(col[4]) if col[4] is not None else '',  # default
+                        '✓' if col[5] else ''  # primary key
+                    ])
+                
+                # Format table
+                col_widths = [max(len(str(row[i])) for row in [headers] + rows) for i in range(len(headers))]
+                
+                # Add header
+                header = " | ".join(h.ljust(col_widths[i]) for i, h in enumerate(headers))
+                output.append(header)
+                output.append("-" * len(header))
+                
+                # Add rows
+                for row in rows:
+                    output.append(" | ".join(str(x).ljust(col_widths[i]) for i, x in enumerate(row)))
+                
+                # Add foreign keys
+                if table_info.get('foreign_keys'):
+                    output.append("\nFOREIGN KEYS:")
+                    for fk in table_info['foreign_keys']:
+                        output.append(f"  {fk[3]} -> {fk[2]}.{fk[4]}")
+                
+                # Add indexes
+                if table_info.get('indexes'):
+                    output.append("\nINDEXES:")
+                    for idx in table_info['indexes']:
+                        unique = "UNIQUE " if idx['unique'] else ""
+                        output.append(f"  {unique}INDEX {idx['name']} on ({', '.join(idx['columns'])})")
+                
+                output.append("\n" + "=" * 80 + "\n")
+        
+        return '\n'.join(output)
+
+    @dev_bp.route('/schema/export')
+    def export_schema():
+        """Download the database schema as a text file."""
+        export_dir = os.path.join(app.instance_path, 'exports')
+        text_file = os.path.join(export_dir, 'database_schema.txt')
+        
+        if not os.path.exists(text_file):
+            abort(404, "Schema file not found. Please generate it from the schema page first.")
+            
+        return send_from_directory(
+            export_dir,
+            'database_schema.txt',
+            as_attachment=True,
+            download_name=f'database_schema_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt'
+        )
+
     @dev_bp.route('/schema')
     def show_schema():
-        """Display database schemas for all databases."""
-            
+        """Display database schemas for all databases with option to download as text."""
+        import os
+        
         schemas = get_all_database_schemas(app)
-        return render_template('dev/schema.html', schemas=schemas)
+        
+        # Generate text version
+        text_content = format_schema_text(schemas)
+        
+        # Save to a temporary file
+        export_dir = os.path.join(app.instance_path, 'exports')
+        os.makedirs(export_dir, exist_ok=True)
+        text_file = os.path.join(export_dir, 'database_schema.txt')
+        
+        with open(text_file, 'w', encoding='utf-8') as f:
+            f.write(text_content)
+        
+        return render_template('dev/schema.html', 
+                            schemas=schemas, 
+                            text_file_available=True)
     
     # Register the blueprint with the app
     app.register_blueprint(dev_bp)
