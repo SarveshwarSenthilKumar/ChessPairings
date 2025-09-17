@@ -3,65 +3,90 @@ import psycopg2
 from psycopg2 import sql
 from dotenv import load_dotenv
 
-def get_db_connection():
-    """Create and return a connection to the PostgreSQL database."""
+def get_db_connection(dbname=None):
+    """
+    Create and return a connection to the PostgreSQL database.
+    
+    Args:
+        dbname: Optional database name to connect to. Defaults to None (uses DB_NAME from env).
+    """
     load_dotenv()  # Load environment variables from .env file
     
+    conn_params = {
+        'dbname': dbname or os.getenv('DB_NAME', 'chess_tournament'),
+        'user': os.getenv('DB_USER', 'postgres'),
+        'password': os.getenv('DB_PASSWORD', 'postgres'),
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'port': os.getenv('DB_PORT', '5432')
+    }
+    
     try:
-        conn = psycopg2.connect(
-            dbname=os.getenv('DB_NAME', 'chess_tournament'),
-            user=os.getenv('DB_USER', 'postgres'),
-            password=os.getenv('DB_PASSWORD', 'postgres'),
-            host=os.getenv('DB_HOST', 'localhost'),
-            port=os.getenv('DB_PORT', '5432')
-        )
+        conn = psycopg2.connect(**conn_params)
         conn.autocommit = True
         return conn
     except psycopg2.Error as e:
         print(f"Error connecting to PostgreSQL: {e}")
+        print(f"Connection parameters used: { {k: '*****' if k == 'password' else v for k, v in conn_params.items()} }")
         raise
 
 def create_database():
     """Create the database if it doesn't exist."""
+    conn = None
+    cursor = None
     try:
         # Connect to the default 'postgres' database to create a new database
-        conn = psycopg2.connect(
-            dbname='postgres',
-            user=os.getenv('DB_USER', 'postgres'),
-            password=os.getenv('DB_PASSWORD', 'postgres'),
-            host=os.getenv('DB_HOST', 'localhost'),
-            port=os.getenv('DB_PORT', '5432')
-        )
-        conn.autocommit = True
+        conn = get_db_connection('postgres')
         cursor = conn.cursor()
         
         # Create database if it doesn't exist
         db_name = os.getenv('DB_NAME', 'chess_tournament')
-        cursor.execute(sql.SQL("SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s"), [db_name])
+        print(f"Attempting to create database: {db_name}")
+        
+        # Check if database exists
+        cursor.execute("""
+            SELECT 1 
+            FROM pg_catalog.pg_database 
+            WHERE datname = %s
+        """, [db_name])
+        
         exists = cursor.fetchone()
         
         if not exists:
-            cursor.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(db_name)))
-            print(f"Database '{db_name}' created successfully.")
+            # Use a safe SQL composition to create the database
+            cursor.execute(
+                sql.SQL("CREATE DATABASE {}").format(
+                    sql.Identifier(db_name)
+                )
+            )
+            print(f"✅ Database '{db_name}' created successfully.")
         else:
-            print(f"Database '{db_name}' already exists.")
+            print(f"ℹ️  Database '{db_name}' already exists.")
             
-        cursor.close()
-        conn.close()
-        
     except psycopg2.Error as e:
-        print(f"Error creating database: {e}")
+        print(f"❌ Error creating database: {e}")
+        if conn:
+            conn.rollback()
         raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def create_tables():
     """Create all necessary tables in the PostgreSQL database."""
     conn = None
+    cursor = None
     try:
+        print("🔍 Connecting to database...")
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Start a transaction
+        conn.autocommit = False
+        
         # Enable UUID extension
-        cursor.execute("CREATE EXTENSION IF NOT EXISTS "uuid-ossp";")
+        cursor.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
         
         # Users table
         cursor.execute('''
@@ -248,30 +273,57 @@ def create_tables():
             FOR EACH ROW EXECUTE FUNCTION update_modified_column();
             ''')
         
+        # If we got here, commit the transaction
         conn.commit()
-        print("Database tables created successfully.")
+        print("✅ Database tables and indexes created successfully.")
         
     except Exception as e:
-        print(f"Error creating tables: {e}")
+        print(f"❌ Error creating tables: {e}")
         if conn:
-            conn.rollback()
+            try:
+                conn.rollback()
+                print("⚠️  Transaction rolled back due to error")
+            except Exception as rollback_error:
+                print(f"⚠️  Error during rollback: {rollback_error}")
         raise
     finally:
-        if conn:
+        if cursor:
             cursor.close()
-            conn.close()
+        if conn:
+            try:
+                conn.close()
+            except Exception as close_error:
+                print(f"⚠️  Error closing connection: {close_error}")
 
 def main():
-    """Main function to set up the database and tables."""
+    """
+    Main function to set up the database and tables.
+    Returns:
+        int: 0 on success, 1 on failure
+    """
+    print("🚀 Starting PostgreSQL database setup...")
+    
     try:
-        print("Setting up PostgreSQL database...")
+        # Step 1: Create the database if it doesn't exist
         create_database()
+        
+        # Step 2: Create all tables and indexes
         create_tables()
-        print("Database setup completed successfully!")
-    except Exception as e:
-        print(f"Failed to set up database: {e}")
+        
+        print("✨ Database setup completed successfully!")
+        return 0
+        
+    except psycopg2.Error as e:
+        print(f"\n❌ Database error: {e.pgerror if hasattr(e, 'pgerror') else e}")
+        if hasattr(e, 'diag') and e.diag:
+            print(f"Detail: {e.diag.message_detail}")
+            print(f"Hint: {e.diag.message_hint}")
         return 1
-    return 0
+    except Exception as e:
+        print(f"\n❌ Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
 if __name__ == "__main__":
     import sys
