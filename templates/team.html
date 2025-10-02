@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Members | Zugzwang Chess Club</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00b4a3;
+            --primary-dark: #008e80;
+            --secondary: #222222;
+            --accent: #ffd700;
+            --text: #f8f9fa;
+            --text-secondary: #adb5bd;
+            --bg-dark: #121212;
+            --bg-darker: #0a0a0a;
+            --card-bg: #1e1e1e;
+            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        section {
+            padding: 6rem 0;
+            position: relative;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+            position: relative;
+        }
+
+        .section-header h2 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        .section-header::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            margin: 1rem auto;
+            border-radius: 2px;
+        }
+
+        /* Navigation Bar */
+        .topnav {
+            background-color: rgba(34, 34, 34, 0.95);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0;
+            z-index: 9999;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 15px 2rem;
+            transition: all 0.5s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .topnav.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .topnav.hidden {
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+
+        .logo img {
+            height: 50px;
+            width: auto;
+            transition: var(--transition);
+        }
+
+        .logo:hover img {
+            transform: scale(1.05);
+        }
+
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-left: auto;
+            gap: 10px;
+        }
+
+        .nav-links a {
+            color: var(--text);
+            text-align: center;
+            padding: 10px 15px;
+            font-family: 'Poppins', sans-serif;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 500;
+            position: relative;
+            transition: var(--transition);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover::after {
+            width: 60%;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-links a.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-links a.active::after {
+            width: 60%;
+        }
+
+        .social-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-left: 30px;
+        }
+
+        .social-links a {
+            color: var(--text);
+            font-size: 1.1rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .social-links a:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 180, 163, 0.3);
+        }
+
+        /* Team Section */
+        .team-section {
+            margin-top: 80px;
+            padding: 4rem 0;
+        }
+
+        .team-category {
+            margin-bottom: 5rem;
+        }
+
+        .team-category h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2.5rem;
+            margin-top: 2rem;
+        }
+
+        /* 3D Card Effect */
+        .member-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            transition: var(--transition);
+            transform-style: preserve-3d;
+            transform: perspective(1000px) rotateY(0deg) rotateX(0deg) translateZ(0);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .member-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0, 180, 163, 0.1), rgba(0, 180, 163, 0));
+            z-index: -1;
+        }
+
+        .member-card:hover {
+            transform: perspective(1000px) rotateY(5deg) rotateX(5deg) translateY(-15px) translateZ(20px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .member-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 0 auto 1.5rem;
+            overflow: hidden;
+            border: 3px solid var(--primary);
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .member-card:hover .member-image {
+            transform: scale(1.05);
+            border-color: var(--accent);
+        }
+
+        .member-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .member-card:hover .member-image img {
+            transform: scale(1.1);
+        }
+
+        .member-info {
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .member-name {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .member-title {
+            color: var(--accent);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .member-description {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+            flex-grow: 1;
+        }
+
+        .member-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .detail-item {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .detail-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.3rem;
+        }
+
+        .detail-value {
+            font-size: 1rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .favorite-piece {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .piece-icon {
+            font-size: 1.2rem;
+            color: var(--accent);
+        }
+
+        .member-link {
+            display: inline-block;
+            padding: 0.7rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border-radius: 50px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(0, 180, 163, 0.3);
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .member-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 180, 163, 0.4);
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+        }
+
+        /* Glow Effect */
+        .glow {
+            position: relative;
+        }
+
+        .glow::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(0, 180, 163, 0.1), transparent 70%);
+            z-index: -1;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .glow:hover::after {
+            opacity: 1;
+        }
+
+        /* Floating Animation */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--secondary);
+            padding: 4rem 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .footer-logo {
+            margin-bottom: 2rem;
+        }
+
+        .footer-logo img {
+            height: 60px;
+            filter: brightness(0) invert(1);
+            opacity: 0.8;
+            transition: var(--transition);
+        }
+
+        .footer-logo:hover img {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        .footer-social {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-social a {
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            transition: var(--transition);
+        }
+
+        .footer-social a:hover {
+            color: var(--primary);
+            transform: translateY(-5px);
+        }
+
+        .copyright {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 2rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .team-grid {
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            }
+        }
+
+        @media (max-width: 992px) {
+            .nav-links {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                margin-top: 1rem;
+                margin-left: 0;
+            }
+
+            .social-links {
+                margin-left: auto;
+                margin-right: auto;
+                order: 2;
+                margin-top: 1rem;
+            }
+            
+            .team-section {
+                margin-top: 100px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .section-header h2 {
+                font-size: 2.5rem;
+            }
+
+            .team-category h2 {
+                font-size: 2rem;
+            }
+
+            .team-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .member-details {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .detail-item {
+                min-width: 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .container {
+                padding: 0 1.5rem;
+            }
+
+            .section-header h2 {
+                font-size: 2rem;
+            }
+
+            .team-category h2 {
+                font-size: 1.8rem;
+            }
+
+            .member-card {
+                padding: 1.5rem;
+            }
+
+            .member-image {
+                width: 120px;
+                height: 120px;
+            }
+
+            .member-name {
+                font-size: 1.3rem;
+            }
+        }
+
+        /* Animation Classes */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .delay-1 {
+            transition-delay: 0.2s;
+        }
+
+        .delay-2 {
+            transition-delay: 0.4s;
+        }
+
+        .delay-3 {
+            transition-delay: 0.6s;
+        }
+
+        .delay-4 {
+            transition-delay: 0.8s;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <div id="topnav" class="topnav visible">
+        <div class="logo">
+            <a href="/"><img src="ZugzwangLogo.png" alt="Zugzwang Logo"></a>
+        </div>
+        
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="team.html" class="active">Team Members</a>
+            <a href="tournaments.html">Tournaments</a>
+            <a href="memories.html">Memories</a>
+        </div>
+        
+        <div class="social-links">
+            <a target="_blank" href="https://github.com/ZugzwangChessClub"><i class="fa-brands fa-github"></i></a>
+            <a target="_blank" href="https://discord.com/invite/UyghD9ZCQJ"><i class="fa-brands fa-discord"></i></a>
+            <a target="_blank" href="https://www.instagram.com/zugzwangchessclub/"><i class="fa-brands fa-instagram"></i></a>
+        </div>
+    </div>
+
+    <!-- Team Section -->
+    <section class="team-section" id="team">
+        <div class="container">
+            <div class="section-header">
+                <h2>Meet Our Chess Teams</h2>
+                <p>Talented players dedicated to excellence in chess</p>
+            </div>
+            
+            <!-- Open Team -->
+            <div class="team-category">
+                <h2>Open Chess Team</h2>
+                <div class="team-grid">
+                    <!-- Team Member 1 -->
+                    <div class="member-card glow fade-in">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Benny Watts</h3>
+                            <p class="member-title">Team Captain</p>
+                            <p class="member-description">Strategic mastermind with a knack for endgames. Known for his patience and precise calculations that often lead to victory in complex positions.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-knight piece-icon"></i> Knight
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Can solve chess puzzles blindfolded</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 2 -->
+                    <div class="member-card glow fade-in delay-1">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Harry Beltik</h3>
+                            <p class="member-title">Tactical Specialist</p>
+                            <p class="member-description">Aggressive player who excels in sharp, tactical positions. His unpredictable style keeps opponents on their toes throughout the game.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-queen piece-icon"></i> Queen
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Started playing chess at age 5</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 3 -->
+                    <div class="member-card glow fade-in delay-2">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Vassily Borgov</h3>
+                            <p class="member-title">Opening Expert</p>
+                            <p class="member-description">Deep knowledge of opening theory gives him an early advantage. Known for his extensive preparation and innovative approaches.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-bishop piece-icon"></i> Bishop
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Has memorized over 100 opening variations</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 4 -->
+                    <div class="member-card glow fade-in delay-3">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">David Lee Townes</h3>
+                            <p class="member-title">Positional Player</p>
+                            <p class="member-description">Excels in slow, strategic games where subtle maneuvering determines the outcome. His patience often frustrates aggressive opponents.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-pawn piece-icon"></i> Pawn
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Once played a 6-hour tournament game</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 5 -->
+                    <div class="member-card glow fade-in delay-4">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Allston Wheatley</h3>
+                            <p class="member-title">Blitz Specialist</p>
+                            <p class="member-description">Thrives under time pressure with incredible speed and accuracy. His quick thinking makes him formidable in fast-paced games.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-rook piece-icon"></i> Rook
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Can play 10 simultaneous games</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 6 -->
+                    <div class="member-card glow fade-in">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Arthur Levertov</h3>
+                            <p class="member-title">Endgame Technician</p>
+                            <p class="member-description">Master of simplified positions where precise technique is paramount. Known for converting slight advantages into victories.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-king piece-icon"></i> King
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Studies chess 3 hours daily</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Women's Team -->
+            <div class="team-category">
+                <h2>Women's Chess Team</h2>
+                <div class="team-grid">
+                    <!-- Team Member 1 -->
+                    <div class="member-card glow fade-in">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Elizabeth Harmon</h3>
+                            <p class="member-title">Team Captain</p>
+                            <p class="member-description">Creative player with an intuitive understanding of complex positions. Her imaginative play often leads to beautiful combinations.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-queen piece-icon"></i> Queen
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Won national championship at 16</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 2 -->
+                    <div class="member-card glow fade-in delay-1">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Annette Packer</h3>
+                            <p class="member-title">Tactician</p>
+                            <p class="member-description">Fearless attacker who specializes in launching devastating offensives. Her aggressive style puts constant pressure on opponents.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-knight piece-icon"></i> Knight
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Teaches chess to underprivileged children</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 3 -->
+                    <div class="member-card glow fade-in delay-2">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Qiyu "Nemo" Zhou</h3>
+                            <p class="member-title">Strategic Planner</p>
+                            <p class="member-description">Methodical player who excels in long-term planning. Her deep strategic understanding allows her to outmaneuver opponents gradually.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-bishop piece-icon"></i> Bishop
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Has never lost a tournament on time</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 4 -->
+                    <div class="member-card glow fade-in delay-3">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Alexandra Botez</h3>
+                            <p class="member-title">Defensive Expert</p>
+                            <p class="member-description">Master of defensive techniques who specializes in neutralizing attacks. Her resilience makes her extremely difficult to defeat.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-pawn piece-icon"></i> Pawn
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Can identify chess positions from movies</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 5 -->
+                    <div class="member-card glow fade-in delay-4">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Anna Cramling</h3>
+                            <p class="member-title">Rapid Specialist</p>
+                            <p class="member-description">Excels in faster time controls where quick decision-making is crucial. Her ability to maintain quality under pressure is remarkable.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-rook piece-icon"></i> Rook
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Played in international tournaments</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Member 6 -->
+                    <div class="member-card glow fade-in">
+                        <div class="member-image">
+                            <img src="https://via.placeholder.com/300" alt="Player Name">
+                        </div>
+                        <div class="member-info">
+                            <h3 class="member-name">Divya Deshmukh</h3>
+                            <p class="member-title">Endgame Specialist</p>
+                            <p class="member-description">Technical player with deep understanding of pawn structures and piece coordination. Her endgame technique is virtually flawless.</p>
+                            <div class="member-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Favorite Piece</div>
+                                    <div class="detail-value favorite-piece">
+                                        <i class="fas fa-chess-king piece-icon"></i> King
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Fun Fact</div>
+                                    <div class="detail-value">Writes a chess blog with 10k followers</div>
+                                </div>
+                            </div>
+                            <a href="#" class="member-link">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-logo">
+                <a href="/"><img src="ZugzwangLogo.png" alt="Zugzwang Logo"></a>
+            </div>
+            
+            <div class="footer-links">
+                <a href="index.html">Home</a>
+                <a href="team.html">Team Members</a>
+                <a href="tournaments.html">Tournaments</a>
+                <a href="memories.html">Memories</a>
+            </div>
+            
+            <div class="footer-social">
+                <a target="_blank" href="https://github.com/ZugzwangChessClub"><i class="fa-brands fa-github"></i></a>
+                <a target="_blank" href="https://discord.com/invite/UyghD9ZCQJ"><i class="fa-brands fa-discord"></i></a>
+                <a target="_blank" href="https://www.instagram.com/zugzwangchessclub/"><i class="fa-brands fa-instagram"></i></a>
+                <a target="_blank" href="https://www.twitch.tv/zugzwangchessclub"><i class="fa-brands fa-twitch"></i></a>
+            </div>
+            
+            <div class="copyright">
+                &copy; 2024 Zugzwang Chess Club. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Navbar scroll effect
+        let prevScrollpos = window.pageYOffset;
+        const navbar = document.querySelector('.topnav');
+        
+        window.onscroll = function() {
+            let currentScrollPos = window.pageYOffset;
+            
+            if (prevScrollpos > currentScrollPos) {
+                // Scrolling up - show the navbar
+                navbar.classList.remove('hidden');
+                navbar.classList.add('visible');
+            } else {
+                // Scrolling down - hide the navbar
+                if (currentScrollPos > 100) { // Only hide if scrolled down a bit
+                    navbar.classList.remove('visible');
+                    navbar.classList.add('hidden');
+                }
+            }
+            prevScrollpos = currentScrollPos;
+            
+            // Add shadow when scrolled
+            if (window.pageYOffset > 10) {
+                navbar.style.boxShadow = '0 5px 30px rgba(0, 0, 0, 0.2)';
+            } else {
+                navbar.style.boxShadow = 'none';
+            }
+            
+            // Scroll reveal animations
+            animateOnScroll();
+        };
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // Scroll reveal animation
+        function animateOnScroll() {
+            const elements = document.querySelectorAll('.fade-in');
+            
+            elements.forEach(element => {
+                const elementPosition = element.getBoundingClientRect().top;
+                const windowHeight = window.innerHeight;
+                
+                if (elementPosition < windowHeight - 100) {
+                    element.classList.add('visible');
+                }
+            });
+        }
+        
+        // Initialize page
+        function initializePage() {
+            // Show all elements that are already in the viewport
+            animateOnScroll();
+            
+            // Force a reflow to ensure animations trigger
+            document.body.offsetHeight;
+            
+            // Add a class to the body when everything is loaded
+            document.body.classList.add('page-loaded');
+        }
+
+        // Initialize animations when DOM is fully loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePage);
+        } else {
+            initializePage();
+        }
+        
+        // Also run on window load to catch any late-loading elements
+        window.addEventListener('load', initializePage);
+        
+        // Make all fade-in elements visible on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add a small delay to ensure all elements are loaded
+            setTimeout(function() {
+                document.body.classList.add('page-loaded');
+                const elements = document.querySelectorAll('.fade-in');
+                elements.forEach(el => el.classList.add('visible'));
+            }, 100);
+        });
+    </script>
+</body>
+</html>

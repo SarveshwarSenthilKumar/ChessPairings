@@ -127,5 +127,9 @@ def index():
         return render_template("index.html", authentication=True)
     return redirect("/tournament/")
 
+@app.route("/team")
+def team():
+    return render_template("team.html")
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
