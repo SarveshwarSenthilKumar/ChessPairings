@@ -1,4 +1,9 @@
 Swiss System for Chess — Summary
+
+Created for Port Credit Chess Club Use:
+can be used by anyone for ang pairings purpose 
+need to update resdmr
+
 🧠 Purpose
 A Swiss-system tournament pairs players with similar scores each round, allowing many players to compete fairly and efficiently over a few rounds — without elimination.
 
