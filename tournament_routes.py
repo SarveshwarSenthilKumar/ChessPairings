@@ -817,17 +817,17 @@ def view(tournament_id):
                 creator_email = user[0].get("email")
         
         print(creator_username)
-        from datetime import datetime
+        from datetime import datetime, timezone
         
         return render_template('tournament/view.html', 
                             tournament=tournament,
                             current_round=current_round,
                             pairings=pairings,
-                            standings=standings,
+                            Standings=standings,
                             view_type=view_type,
                             creator_username=creator_username,
                             creator_email=creator_email,
-                            now=datetime.utcnow())
+                            now=datetime.now(timezone.utc))
     except Exception as e:
         print(f"Error viewing tournament {tournament_id}: {e}")
         flash('An error occurred while loading the tournament.', 'error')
@@ -1526,18 +1526,20 @@ def swap_players(tournament_id):
                 'black_player_id': black1 if black1 and black2 else pairing2['black_player_id']
             }
         })
-        
     except Exception as e:
         db.conn.rollback()
         return jsonify({'success': False, 'message': f'Error swapping players: {str(e)}'}), 500
 
+@tournament_bp.route('/<int:tournament_id>/pairing/<int:pairing_id>/result', methods=['POST'])
+@login_required
+@get_db
 def submit_result(tournament_id, pairing_id):
     """Submit a game result."""
     print(f"Received request to submit result for tournament {tournament_id}, pairing {pairing_id}")
     print(f"Form data: {request.form}")
     
     try:
-        db = get_db()
+        db = g.db
         
         # Get form data
         result = request.form.get('result')

@@ -1744,7 +1744,7 @@ class TournamentDB:
                     """, (current_result['white_player_id'], current_result['black_player_id']))
             
             # Update the pairing with the new result
-            if result is None:
+            if result is None or result == '*':
                 # Clear the result
                 self.cursor.execute(
                     "UPDATE pairings SET result = NULL, status = 'scheduled' WHERE id = ?",
@@ -1756,6 +1756,11 @@ class TournamentDB:
                     "UPDATE pairings SET result = ?, status = 'completed' WHERE id = ?",
                     (result, pairing_id)
                 )
+                
+                # Ensure we have valid player IDs before updating scores
+                if not current_result['white_player_id'] or not current_result['black_player_id']:
+                    self.conn.rollback()
+                    return False
                 
                 # Update player scores based on the new result
                 if result == '1-0':
