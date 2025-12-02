@@ -752,9 +752,14 @@ def create_random_teams(tournament_id):
 @login_required
 def view(tournament_id):
     """View tournament details."""
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    
     try:
         db = get_db()
         tournament = db.get_tournament(tournament_id)
+        logger.debug(f"Viewing tournament: {tournament}")
         
         # Check if tournament exists
         if not tournament:
@@ -802,7 +807,13 @@ def view(tournament_id):
         view_type = request.args.get('view', 'individual')
         
         # Get standings based on view type
+        logger.debug(f"Getting standings for tournament {tournament_id} with view_type {view_type}")
         standings = db.get_standings(tournament_id, view_type=view_type)
+        logger.debug(f"Retrieved {len(standings) if standings else 0} standings records")
+        if standings:
+            logger.debug(f"Sample standing: {standings[0]}")
+        else:
+            logger.debug("No standings data returned from get_standings")
         
         # Get creator's username and email
         creator_username = 'System'
@@ -823,7 +834,7 @@ def view(tournament_id):
                             tournament=tournament,
                             current_round=current_round,
                             pairings=pairings,
-                            Standings=standings,
+                            standings=standings,
                             view_type=view_type,
                             creator_username=creator_username,
                             creator_email=creator_email,

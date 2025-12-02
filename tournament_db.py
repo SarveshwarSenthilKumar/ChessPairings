@@ -2217,6 +2217,9 @@ class TournamentDB:
         Returns:
             List of dictionaries containing player or team standings
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"get_standings called with tournament_id={tournament_id}, view_type={view_type}")
         if view_type == 'team':
             return self.get_team_standings(tournament_id)
             
@@ -2240,8 +2243,30 @@ class TournamentDB:
         JOIN players p ON all_players.player_id = p.id
         LEFT JOIN tournament_players tp2 ON p.id = tp2.player_id AND tp2.tournament_id = ?
         """
+        logger.debug(f"Executing player query: {query}")
+        logger.debug(f"With params: {[tournament_id, tournament_id, tournament_id, tournament_id]}")
+        
         self.cursor.execute(query, (tournament_id, tournament_id, tournament_id, tournament_id))
         players = [dict(row) for row in self.cursor.fetchall()]
+        logger.debug(f"Found {len(players)} players in tournament {tournament_id}")
+        if players:
+            logger.debug(f"Sample player: {players[0]}")
+        else:
+            logger.warning("No players found for tournament. Checking if tournament_players has any entries...")
+            # Check if there are any tournament_players entries
+            self.cursor.execute("SELECT COUNT(*) as count FROM tournament_players WHERE tournament_id = ?", (tournament_id,))
+            count = self.cursor.fetchone()['count']
+            logger.warning(f"Found {count} entries in tournament_players for tournament {tournament_id}")
+            
+            # Also check if there are any pairings for this tournament
+            self.cursor.execute("""
+                SELECT COUNT(*) as count 
+                FROM pairings p 
+                JOIN rounds r ON p.round_id = r.id 
+                WHERE r.tournament_id = ?
+            """, (tournament_id,))
+            pairings_count = self.cursor.fetchone()['count']
+            logger.warning(f"Found {pairings_count} pairings for tournament {tournament_id}")
         
         # Get all pairings for this tournament, including unplayed ones
         query = """
@@ -2346,7 +2371,9 @@ class TournamentDB:
             # Calculate performance rating (simplified)
             total_matches = player['wins'] + player['losses'] + player['draws']
             if total_matches > 0:
-                player['performance'] = round((player['wins'] + (player['draws'] * 0.5)) / total_matches * 100)
+                player['performance'] = round((player['wins'] + (player['draws'] * 0.5)) / total_matches * 100, 1)
+            else:
+                player['performance'] = 0
             
             # Calculate Buchholz (sum of opponents' scores from completed games only)
             buchholz = 0.0
