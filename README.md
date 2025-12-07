@@ -1,6 +1,6 @@
 Swiss System for Chess — Summary
 
-Created for Port Credit Chess Club Use:
+Created for Zugzwang Chess Club Use:
 can be used by anyone for ang pairings purpose 
 need to update resdmr
 
