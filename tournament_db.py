@@ -194,6 +194,46 @@ class TournamentDB:
             self.conn.rollback()
             return False
     
+    def update_player_score(self, tournament_id: int, player_id: int, points_to_add: float) -> bool:
+        """Add points to a player's score in a tournament.
+        
+        Args:
+            tournament_id: The ID of the tournament
+            player_id: The ID of the player
+            points_to_add: Points to add to the player's current score (can be negative)
+            
+        Returns:
+            bool: True if the update was successful, False otherwise
+        """
+        try:
+            # First get the current score
+            self.cursor.execute(
+                "SELECT score FROM tournament_players WHERE tournament_id = ? AND player_id = ?",
+                (tournament_id, player_id)
+            )
+            result = self.cursor.fetchone()
+            
+            if not result:
+                return False
+                
+            current_score = result['score'] or 0.0
+            new_score = current_score + points_to_add
+            
+            # Update the score
+            self.cursor.execute(
+                """UPDATE tournament_players 
+                   SET score = ? 
+                   WHERE tournament_id = ? AND player_id = ?""",
+                (new_score, tournament_id, player_id)
+            )
+            self.conn.commit()
+            return True
+            
+        except sqlite3.Error as e:
+            print(f"Error updating player score: {e}")
+            self.conn.rollback()
+            return False
+            
     def get_tournament(self, tournament_id: int, user_id: int = None) -> Optional[Dict[str, Any]]:
         """Get a single tournament by ID with optional user access check.
         

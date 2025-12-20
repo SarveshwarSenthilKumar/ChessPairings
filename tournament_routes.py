@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g, current_app, jsonify, send_file
 from flask_wtf.csrf import generate_csrf
 from flask_wtf import FlaskForm
-from wtforms import SelectField, BooleanField, IntegerField, StringField, TextAreaField, SubmitField, DateField, FloatField
+from wtforms import SelectField, BooleanField, IntegerField, StringField, TextAreaField, SubmitField, DateField, FloatField, DecimalField
 from wtforms.validators import DataRequired, NumberRange, InputRequired
 import os
 import pandas as pd
@@ -846,6 +846,42 @@ def view(tournament_id):
 
 @tournament_bp.route('/<int:tournament_id>/players/<int:player_id>/edit', methods=['GET', 'POST'])
 @login_required
+@tournament_bp.route('/<int:tournament_id>/player/<int:player_id>/add_points', methods=['POST'])
+@login_required
+def add_player_points(tournament_id, player_id):
+    """Add points to a player's score."""
+    db = get_db()
+    
+    # Verify tournament exists and user has access
+    tournament = db.get_tournament(tournament_id, session.get('user_id'))
+    if not tournament:
+        flash('Tournament not found or access denied', 'error')
+        return redirect(url_for('tournament.index'))
+    
+    # Get the player
+    player = db.get_player(player_id)
+    if not player:
+        flash('Player not found', 'error')
+        return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+    
+    # Get points from form
+    try:
+        points = float(request.form.get('points', 0))
+        if points == 0:
+            flash('Points value cannot be zero', 'error')
+            return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+    except (ValueError, TypeError):
+        flash('Invalid points value', 'error')
+        return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+    
+    # Update the score
+    if db.update_player_score(tournament_id, player_id, points):
+        flash(f'Successfully added {points} points to {player["name"]}', 'success')
+    else:
+        flash('Failed to update player score', 'error')
+    
+    return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
+
 def edit_player(tournament_id, player_id):
     """Edit a player's details."""
     db = get_db()
