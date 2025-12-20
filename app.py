@@ -34,12 +34,17 @@ app = Flask(__name__)
 
 # Helper function to return JSON responses
 def json_response(data, status=200):
-    response = make_response(
-        json.dumps(data, default=str, ignore_nan=True, ensure_ascii=False),
-        status
-    )
-    response.mimetype = 'application/json'
-    return response
+    """Create a JSON response with proper encoding."""
+    try:
+        response_data = json.dumps(data, default=str, ensure_ascii=False)
+        response = make_response(response_data, status)
+        response.mimetype = 'application/json'
+        return response
+    except Exception as e:
+        error_data = {'error': 'Failed to encode response', 'details': str(e)}
+        response = make_response(json.dumps(error_data, default=str), 500)
+        response.mimetype = 'application/json'
+        return response
 
 # Configuration
 app.config['SECRET_KEY'] = 'your-secure-secret-key-123'  # Use a fixed key for development
