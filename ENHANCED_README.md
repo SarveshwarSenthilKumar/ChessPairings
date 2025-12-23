@@ -84,11 +84,136 @@ When players are tied on points, the following tiebreak systems are available:
 | **Head-to-Head** | Result of direct encounter between tied players |
 | **Most Wins** | Total number of wins in the tournament |
 
+# 🏆 Chess Tournament Pairings - User Manual
+
 ## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.8+
+- pip (Python package manager)
+- Modern web browser
+
+### Installation
 1. Clone this repository
-2. Configure your tournament settings
-3. Add player information
-4. Run the pairing system
+   ```bash
+   git clone [your-repository-url]
+   cd Zugzwang-Chess-Pairings/ChessPairings
+   ```
+
+2. Create and activate a virtual environment (recommended):
+   ```bash
+   python -m venv venv
+   .\venv\Scripts\activate  # On Windows
+   # OR
+   source venv/bin/activate  # On macOS/Linux
+   ```
+
+3. Install the required packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Initialize the database:
+   ```bash
+   python init_db.py
+   ```
+
+5. Run the application:
+   ```bash
+   flask run
+   ```
+
+6. Open your browser and navigate to:
+   ```
+   http://localhost:5000
+   ```
+
+## 📋 User Guide
+
+### 1. Tournament Creation
+1. Click on "Create New Tournament"
+2. Fill in the tournament details:
+   - Tournament Name
+   - Location
+   - Start/End Dates
+   - Number of Rounds
+   - Time Control
+   - Description (optional)
+3. Click "Create Tournament"
+
+### 2. Managing Players
+#### Adding Players
+1. Navigate to your tournament
+2. Click on "Manage Players"
+3. To add a new player:
+   - Enter player details (Name, Rating, Team)
+   - Click "Add Player"
+4. To import multiple players:
+   - Prepare a CSV/Excel file with columns: name, rating
+   - Click "Import Players"
+   - Select your file and upload
+
+#### Removing Players
+1. In the "Current Players" section
+2. Click the trash icon next to the player you want to remove
+3. Confirm the removal
+
+### 3. Adjusting Player Points
+1. Go to "Manage Players"
+2. In the "Current Players" table, find the player
+3. In the "Add Points" column:
+   - Enter the number of points to add (use negative to subtract)
+   - Click the "+" button to apply
+
+### 4. Generating Pairings
+1. Navigate to "Manage Pairings"
+2. Select the round number
+3. Choose pairing method:
+   - Swiss System (default)
+   - Round Robin
+   - Manual Pairing
+4. Click "Generate Pairings"
+
+### 5. Entering Results
+1. In the pairings view, find the match
+2. Click on the result field
+3. Select the outcome:
+   - 1-0 (White wins)
+   - 0-1 (Black wins)
+   - ½-½ (Draw)
+   - 0-0 (Double Forfeit)
+4. Click "Save"
+
+### 6. Viewing Standings
+1. Go to "Standings"
+2. View the current rankings
+3. Sort by different criteria using the column headers
+
+### 7. Tournament Completion
+1. After the final round, go to "Tournament Settings"
+2. Click "Conclude Tournament"
+3. View final standings and download results
+
+## 🔧 Troubleshooting
+
+### Common Issues
+- **Application won't start**:
+  - Ensure all dependencies are installed
+  - Check if the database file exists and has proper permissions
+  - Look for error messages in the console
+
+- **Database issues**:
+  - Try running `python init_db.py` to reset the database
+  - Make sure the database file is not open in another program
+
+- **JSON encoding errors**:
+  - Make sure all date objects are properly serialized
+  - Check for any None values that should be converted to empty strings
+
+## 📞 Support
+For additional help, please contact [your-email@example.com] or open an issue in the repository.
+
+## 📝 License
 
 ## 📝 License
 This project is open source and available for anyone to use for tournament pairings.
