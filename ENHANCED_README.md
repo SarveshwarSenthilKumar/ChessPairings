@@ -214,8 +214,6 @@ When players are tied on points, the following tiebreak systems are available:
 For additional help, please contact [your-email@example.com] or open an issue in the repository.
 
 ## 📝 License
-
-## 📝 License
 This project is open source and available for anyone to use for tournament pairings.
 
 ## 🤝 Contributing
