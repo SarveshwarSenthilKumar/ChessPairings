@@ -19,7 +19,7 @@ A Swiss-system tournament pairs players with similar scores each round, allowing
 ## 🏁 How It Works
 
 ### 📌 Core Principles
-- All players compete in every round
+- All players compete in every round if not assigned a bye 
 - Players face opponents with similar scores
 - No repeated pairings
 - Color alternation (white/black) each round
