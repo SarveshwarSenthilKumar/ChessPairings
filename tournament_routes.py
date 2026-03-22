@@ -844,8 +844,6 @@ def view(tournament_id):
         flash('An error occurred while loading the tournament.', 'error')
         return redirect(url_for('tournament.index'))
 
-@tournament_bp.route('/<int:tournament_id>/players/<int:player_id>/edit', methods=['GET', 'POST'])
-@login_required
 @tournament_bp.route('/<int:tournament_id>/player/<int:player_id>/add_points', methods=['POST'])
 @login_required
 def add_player_points(tournament_id, player_id):
@@ -882,6 +880,8 @@ def add_player_points(tournament_id, player_id):
     
     return redirect(url_for('tournament.manage_players', tournament_id=tournament_id))
 
+@tournament_bp.route('/<int:tournament_id>/players/<int:player_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_player(tournament_id, player_id):
     """Edit a player's details."""
     db = get_db()

@@ -957,6 +957,7 @@ class TournamentDB:
             The number of byes the player has received.
         """
         try:
+            # Count both system byes (pairings with NULL black_player_id) and manual byes
             self.cursor.execute("""
                 SELECT COUNT(*) 
                 FROM pairings p
@@ -964,10 +965,22 @@ class TournamentDB:
                 WHERE r.tournament_id = ?
                 AND p.white_player_id = ?
                 AND p.black_player_id IS NULL
-                AND p.status = 'completed'
+                AND p.status != 'cancelled'
             """, (tournament_id, player_id))
             
-            return self.cursor.fetchone()[0] or 0
+            system_byes = self.cursor.fetchone()[0] or 0
+            
+            # Count manual byes
+            self.cursor.execute("""
+                SELECT COUNT(*) 
+                FROM manual_byes mb
+                WHERE mb.tournament_id = ?
+                AND mb.player_id = ?
+            """, (tournament_id, player_id))
+            
+            manual_byes = self.cursor.fetchone()[0] or 0
+            
+            return system_byes + manual_byes
             
         except sqlite3.Error as e:
             print(f"Error getting player bye count: {e}")
@@ -994,7 +1007,7 @@ class TournamentDB:
                 JOIN rounds r ON p.round_id = r.id
                 WHERE r.tournament_id = ?
                 AND (p.white_player_id = ? OR p.black_player_id = ?)
-                AND p.status = 'completed'
+                AND p.status != 'cancelled'
             """, (player_id, tournament_id, player_id, player_id))
             
             return [row[0] for row in self.cursor.fetchall() if row[0] is not None]
@@ -1332,54 +1345,54 @@ class TournamentDB:
                     previous_opponents = self.get_previous_pairings(tournament_id, player1['id'])
                     
                     # Get player's color history for better balancing
-                player1_history = self.get_player_color_history(tournament_id, player1['id'])
-                player1_white_count = sum(1 for h in player1_history if h['color'] == 'white')
-                player1_black_count = sum(1 for h in player1_history if h['color'] == 'black')
-                
-                # Try to find the highest-ranked opponent with the same or similar score
-                for score_diff in [0, 0.5, 1.0, 1.5, 2.0]:
-                    found_opponent = False
-                    best_opponent = None
-                    best_color_balance = float('inf')
+                    player1_history = self.get_player_color_history(tournament_id, player1['id'])
+                    player1_white_count = sum(1 for h in player1_history if h['color'] == 'white')
+                    player1_black_count = sum(1 for h in player1_history if h['color'] == 'black')
                     
-                    for j in range(i + 1, len(players)):
-                        player2 = players[j]
+                    # Try to find the highest-ranked opponent with the same or similar score
+                    for score_diff in [0, 0.5, 1.0, 1.5, 2.0]:
+                        found_opponent = False
+                        best_opponent = None
+                        best_color_balance = float('inf')
                         
-                        # Skip if already paired, score difference too big, or already played
-                        if (player2['id'] in paired or 
-                            abs(player2.get('score', 0) - player1.get('score', 0)) > score_diff or
-                            player2['id'] in previous_opponents or
-                            player2['id'] == player1['id']):
-                            continue
+                        for j in range(i + 1, len(players)):
+                            player2 = players[j]
+                            
+                            # Skip if already paired, score difference too big, or already played
+                            if (player2['id'] in paired or 
+                                abs(player2.get('score', 0) - player1.get('score', 0)) > score_diff or
+                                player2['id'] in previous_opponents or
+                                player2['id'] == player1['id']):
+                                continue
+                            
+                            # Get opponent's color history
+                            player2_history = self.get_player_color_history(tournament_id, player2['id'])
+                            player2_white_count = sum(1 for h in player2_history if h['color'] == 'white')
+                            player2_black_count = sum(1 for h in player2_history if h['color'] == 'black')
+                            
+                            # Try both color assignments and pick the one that balances colors better
+                            # Option 1: player1 as white, player2 as black
+                            option1_balance = abs((player1_white_count + 1 - player1_black_count) - 
+                                                (player2_black_count + 1 - player2_white_count))
+                            
+                            # Option 2: player2 as white, player1 as black  
+                            option2_balance = abs((player1_black_count + 1 - player1_white_count) - 
+                                                (player2_white_count + 1 - player2_black_count))
+                            
+                            # Track the best color balance we can achieve
+                            current_balance = min(option1_balance, option2_balance)
+                            
+                            if best_opponent is None or current_balance < best_color_balance:
+                                best_opponent = player2
+                                best_color_balance = current_balance
+                                best_pairing = (player1, player2) if option1_balance <= option2_balance else (player2, player1)
                         
-                        # Get opponent's color history
-                        player2_history = self.get_player_color_history(tournament_id, player2['id'])
-                        player2_white_count = sum(1 for h in player2_history if h['color'] == 'white')
-                        player2_black_count = sum(1 for h in player2_history if h['color'] == 'black')
-                        
-                        # Try both color assignments and pick the one that balances colors better
-                        # Option 1: player1 as white
-                        option1_balance = abs((player1_white_count + 1 - player1_black_count) - 
-                                            (player2_white_count - (player2_black_count + 1)))
-                        
-                        # Option 2: player2 as white
-                        option2_balance = abs((player1_black_count + 1 - player1_white_count) - 
-                                            (player2_white_count + 1 - player2_black_count))
-                        
-                        # Track the best color balance we can achieve
-                        current_balance = min(option1_balance, option2_balance)
-                        
-                        if best_opponent is None or current_balance < best_color_balance:
-                            best_opponent = player2
-                            best_color_balance = current_balance
-                            best_pairing = (player1, player2) if option1_balance <= option2_balance else (player2, player1)
-                    
-                    if best_opponent is not None:
-                        pairings.append(best_pairing)
-                        paired.add(player1['id'])
-                        paired.add(best_opponent['id'])
-                        found_opponent = True
-                        break
+                        if best_opponent is not None:
+                            pairings.append(best_pairing)
+                            paired.add(player1['id'])
+                            paired.add(best_opponent['id'])
+                            found_opponent = True
+                            break
                 
                 # Get all unpaired players
                 unpaired = [p for p in players if p['id'] not in paired]
@@ -1419,9 +1432,11 @@ class TournamentDB:
                         # Exclude top players from bye consideration
                         eligible_for_bye = unpaired
                         if len(unpaired) > 1:  # If there are multiple players left
-                            # Don't give byes to top players (top half of unpaired)
-                            mid_point = len(unpaired) // 2
-                            eligible_for_bye = unpaired[mid_point:]
+                            # Don't give byes to top players (top half of unpaired by score/rating)
+                            unpaired_sorted = sorted(unpaired, 
+                                                  key=lambda x: (-x.get('score', 0), -x.get('rating', 0)))
+                            mid_point = max(1, len(unpaired_sorted) // 2)
+                            eligible_for_bye = unpaired_sorted[mid_point:]
                             
                         players_with_bye_counts = [
                             {
@@ -1477,11 +1492,11 @@ class TournamentDB:
                         player2_black = sum(1 for h in player2_history if h['color'] == 'black')
                         
                         # Calculate color balance for both possible pairings
-                        # Option 1: player1 as white
+                        # Option 1: player1 as white, player2 as black
                         option1_balance = abs((player1_white + 1 - player1_black) - 
-                                           (player2_white - (player2_black + 1)))
+                                           (player2_black + 1 - player2_white))
                         
-                        # Option 2: player2 as white
+                        # Option 2: player2 as white, player1 as black
                         option2_balance = abs((player1_black + 1 - player1_white) - 
                                            (player2_white + 1 - player2_black))
                         
@@ -2265,7 +2280,7 @@ class TournamentDB:
             
         # Get all players who have ever been in the tournament
         query = """
-        SELECT DISTINCT p.id, p.name, p.rating, p.team,
+        SELECT DISTINCT p.id, p.name, p.rating,
                CASE WHEN tp2.player_id IS NOT NULL THEN 1 ELSE 0 END as is_active
         FROM (
             -- Current tournament players
