@@ -19,7 +19,7 @@ A Swiss-system tournament pairs players with similar scores each round, allowing
 ## 🏁 How It Works
 
 ### 📌 Core Principles
-- All players compete in every round
+- All players compete in every round if not assigned a bye 
 - Players face opponents with similar scores
 - No repeated pairings
 - Color alternation (white/black) each round
@@ -212,8 +212,6 @@ When players are tied on points, the following tiebreak systems are available:
 
 ## 📞 Support
 For additional help, please contact [your-email@example.com] or open an issue in the repository.
-
-## 📝 License
 
 ## 📝 License
 This project is open source and available for anyone to use for tournament pairings.
