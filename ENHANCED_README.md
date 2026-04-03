@@ -1,4 +1,4 @@
-# 🏆 Chess Tournament Pairing System
+# 🏆 Chess Tournament Pairing System (Global Pairings)
 
 A comprehensive Swiss-system tournament pairing solution for chess clubs and events. Originally created for Zugzwang Chess Club, this system can be used by anyone for tournament pairings.
 
