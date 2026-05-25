@@ -1,8 +1,8 @@
 Swiss System for Chess — Summary
 
 Created for Zugzwang Chess Club Use:
-can be used by anyone for ang pairings purpose 
-need to update resdmr
+can be used by anyone for any pairings purpose 
+need to update reasme
 
 🧠 Purpose
 A Swiss-system tournament pairs players with similar scores each round, allowing many players to compete fairly and efficiently over a few rounds — without elimination.
